@@ -1,23 +1,10 @@
-# DVS Planning — Build 1.0
+# DVS Planning — Build 2.0
 
-Prima build ufficiale del progetto DVS Planning.
+Seconda build ufficiale, focalizzata sull'ergonomia della schermata principale.
 
-## Pubblicazione
-Il progetto è predisposto per essere pubblicato automaticamente con **GitHub Pages**.
-Dopo ogni Commit e Push sul ramo `main`, GitHub costruisce e aggiorna il sito.
-
-## Contenuto della Build 1.0
-- Planning principale con Sale 1–15
-- Divisioni grafiche Sale 1–5, 6–10 e 11–15
-- Grafica e Sound da remoto
-- Turni giornalieri indipendenti
-- Più turni nella stessa sala e giornata
-- Produzione, orario, film/programma, lavorazione e persona
-- Stati provvisorio e definitivo
-- Creazione e modifica dei turni
-- Drag & drop
-- Riepilogo mensile per persona
-- Dati dimostrativi locali
+## Pubblicazione con GitHub Desktop
+Copia il contenuto di questa cartella nella cartella locale del repository `DVS-Planning`, quindi esegui Commit e Push.
+La cartella principale contiene già la versione compilata per GitHub Pages.
 
 ## Nota
-Questa build non è ancora collegata a Supabase. I dati servono per valutare la schermata e si azzerano aggiornando la pagina.
+I dati sono ancora dimostrativi e non sono collegati a Supabase.

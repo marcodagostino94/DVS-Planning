@@ -1,23 +1,27 @@
-DVS-Planning_Build_1.0
+DVS-Planning_Build_2.0
 
-PRIMA BUILD UFFICIALE
+OBIETTIVO: rendere il planning la schermata dominante e molto più compatta.
 
-- Schermata principale del planning
-- Sale 1–15
-- Separatori grafici per i tre gruppi di sale
-- Righe Grafica remoto e Sound remoto
-- Turni giornalieri indipendenti
-- Più turni nella stessa sala/giornata
-- Provvisorio e definitivo
-- Creazione e modifica turno
-- Drag & drop
-- Riepilogo mensile turni per persona
-- Identità grafica Digital Video
-- Pubblicazione automatica con GitHub Pages
+✓ Sidebar ridotta a icone
+✓ Rimossi riepilogo fisso, legenda e testo di aiuto
+✓ Planning quasi a tutto schermo
+✓ Circa due settimane visibili all'apertura su desktop
+✓ Circa dieci sale visibili verticalmente
+✓ Giorni su una sola riga: LUN 01
+✓ Separatore rosso Digital Video tra le settimane
+✓ Turni più piccoli e allineati
+✓ Riga sala adattiva quando contiene più turni
+✓ Provvisori bianchi di default
+✓ Fascia montatore integrata nella card e più scura
+✓ Nome montatore in grassetto
+✓ Triangolo di avviso a destra del nome
+✓ Click singolo seleziona
+✓ Doppio click modifica
+✓ Shift-click seleziona un intervallo sulla stessa sala
+✓ Command-C / Command-V per copia e incolla
+✓ Drag & drop
+✓ Blocco sovrapposizione orari nella stessa sala
+✓ Avviso non bloccante per montatore sovrapposto
 
-Non ancora presente:
-- Supabase
-- Account e realtime
-- Creazione multipla da data a data
-- Selezione multipla
-- Funzione temporanea “spostato al…”
+NOTA
+La finestra Nuovo turno è ancora provvisoria e verrà riprogettata insieme.
