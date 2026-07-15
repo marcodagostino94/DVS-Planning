@@ -1,14 +1,86 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="it">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta name="theme-color" content="#101216" />
-    <title>DVS Planning — Build 0.1</title>
-    <script type="module" crossorigin src="./assets/index-BgQ2Rz2J.js"></script>
-    <link rel="stylesheet" crossorigin href="./assets/index-CWJmIOhJ.css">
-  </head>
-  <body>
-    <div id="root"></div>
-  </body>
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>DVS Planning — Build 2.0</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <div class="app">
+    <aside class="rail">
+      <div class="logo">DV</div>
+      <button class="rail-btn active" title="Planning">▦</button>
+      <button class="rail-btn" title="Riepilogo turni">≡</button>
+      <button class="rail-btn" title="Persone">◉</button>
+      <button class="rail-btn bottom" title="Impostazioni">⚙</button>
+    </aside>
+
+    <main class="workspace">
+      <header class="topbar">
+        <div class="title-wrap">
+          <h1>Planning</h1>
+          <span class="build">Build 2.0</span>
+        </div>
+        <div class="top-actions">
+          <button class="month-btn" id="prevMonth">‹</button>
+          <button class="month-name" id="monthName">Luglio 2026</button>
+          <button class="month-btn" id="nextMonth">›</button>
+          <button class="new-btn" id="newShift">+ Nuovo turno</button>
+        </div>
+      </header>
+
+      <div class="board-shell">
+        <div class="board" id="board"></div>
+      </div>
+    </main>
+  </div>
+
+  <dialog id="editDialog" class="dialog">
+    <form id="shiftForm">
+      <div class="dialog-head">
+        <div>
+          <span class="dialog-kicker">TURNO</span>
+          <h2 id="dialogTitle">Modifica turno</h2>
+        </div>
+        <button type="button" class="close" id="closeDialog">×</button>
+      </div>
+
+      <div class="form-grid">
+        <label>Produzione<input id="client" required></label>
+        <label>Film / Programma<input id="program" required></label>
+        <label>Data<input id="date" type="date" required></label>
+        <label>Sala<select id="room"></select></label>
+        <label>Dalle<input id="start" type="time" required></label>
+        <label>Alle<input id="end" type="time" required></label>
+        <label>Lavorazione
+          <select id="workType">
+            <option>EDIT</option>
+            <option>ASSISTENTE</option>
+            <option>GRAFICA</option>
+            <option>COLOR</option>
+            <option>SOUND DESIGN</option>
+          </select>
+        </label>
+        <label>Montatore<input id="editor" placeholder="Vuoto se provvisorio"></label>
+        <label>Stato
+          <select id="status">
+            <option value="definitivo">Definitivo</option>
+            <option value="provvisorio">Provvisorio</option>
+          </select>
+        </label>
+      </div>
+
+      <div class="dialog-actions">
+        <button type="button" class="secondary" id="deleteBtn">Elimina</button>
+        <div class="spacer"></div>
+        <button type="button" class="secondary" id="cancelBtn">Annulla</button>
+        <button class="save-btn" type="submit">Salva</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast"></div>
+  <script src="app.js"></script>
+</body>
 </html>

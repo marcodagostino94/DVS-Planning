@@ -1,10 +1,25 @@
 # DVS Planning — Build 2.0
 
-Seconda build ufficiale, focalizzata sull'ergonomia della schermata principale.
+Build grafica e interattiva, pronta per GitHub Pages.
 
-## Pubblicazione con GitHub Desktop
-Copia il contenuto di questa cartella nella cartella locale del repository `DVS-Planning`, quindi esegui Commit e Push.
-La cartella principale contiene già la versione compilata per GitHub Pages.
+## Uso
+Copia tutti i file contenuti in questa cartella nella root del repository GitHub.
+Non richiede Node.js.
 
-## Nota
-I dati sono ancora dimostrativi e non sono collegati a Supabase.
+## Funzioni presenti
+- layout desktop-first quasi full screen
+- barra laterale minima
+- giorni su una sola riga
+- divisore rosso tra le settimane
+- 15 sale + lavorazioni remote
+- card compatte con fascia montatore più scura
+- triangolo di avviso a destra del montatore
+- provvisori bianchi
+- click singolo seleziona
+- doppio click modifica
+- shift-click sulla stessa sala
+- Command+C / Command+V
+- drag & drop
+- blocco orari sovrapposti nella stessa sala
+- avviso non bloccante per montatore sovrapposto
+- altezza riga sala dinamica se ci sono più turni

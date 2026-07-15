@@ -1,27 +1,19 @@
 DVS-Planning_Build_2.0
 
-OBIETTIVO: rendere il planning la schermata dominante e molto più compatta.
-
-✓ Sidebar ridotta a icone
-✓ Rimossi riepilogo fisso, legenda e testo di aiuto
-✓ Planning quasi a tutto schermo
-✓ Circa due settimane visibili all'apertura su desktop
-✓ Circa dieci sale visibili verticalmente
-✓ Giorni su una sola riga: LUN 01
-✓ Separatore rosso Digital Video tra le settimane
-✓ Turni più piccoli e allineati
-✓ Riga sala adattiva quando contiene più turni
-✓ Provvisori bianchi di default
-✓ Fascia montatore integrata nella card e più scura
+✓ Layout quasi full screen
+✓ Sidebar ridotta alle icone
+✓ Giorni compatti su una riga
+✓ Divisori settimanali rossi
+✓ Turni più piccoli
+✓ Provvisori bianchi
+✓ Fascia montatore più scura
 ✓ Nome montatore in grassetto
-✓ Triangolo di avviso a destra del nome
-✓ Click singolo seleziona
-✓ Doppio click modifica
-✓ Shift-click seleziona un intervallo sulla stessa sala
-✓ Command-C / Command-V per copia e incolla
+✓ Triangolo di avviso a destra
+✓ Click per selezione
+✓ Doppio click per modifica
+✓ Shift-click sulla stessa sala
+✓ Command+C / Command+V
 ✓ Drag & drop
-✓ Blocco sovrapposizione orari nella stessa sala
-✓ Avviso non bloccante per montatore sovrapposto
-
-NOTA
-La finestra Nuovo turno è ancora provvisoria e verrà riprogettata insieme.
+✓ Blocco sovrapposizioni sala
+✓ Avviso sovrapposizioni persona
+✓ Altezza sala dinamica
