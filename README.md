@@ -1,44 +1,49 @@
 # DVS Planning — Build 3.0
 
-Prima build con identità grafica chiara in stile Apple / Digital Video.
+Base software del nuovo planning Digital Video.
 
-## Avvio immediato
+## Questa build comprende
 
-Il progetto è statico e pronto per GitHub Pages. Non richiede Node.js.
-Senza configurazione Supabase funziona in modalità demo locale.
+- interfaccia chiara in stile Apple / Digital Video;
+- menu laterale;
+- planning mensile delle Sale 1–15;
+- righe Grafica remoto e Sound remoto;
+- giorni compatti su una riga;
+- separatori settimanali rossi;
+- card turno con effetto vetro;
+- 12 colori assegnabili ai film;
+- turni provvisori grigio ghiaccio;
+- fascia inferiore del montatore;
+- triangolo di avviso sul montatore in caso di sovrapposizione;
+- click su una cella vuota per creare un turno;
+- click su un turno per modificarlo;
+- eliminazione;
+- salvataggio locale nel browser;
+- blocco degli orari sovrapposti nella stessa sala;
+- schema SQL iniziale per Supabase.
 
-## Pubblicazione
+## Pubblicazione su GitHub Pages
 
-Copia nella root del repository:
+Copia tutto il contenuto della cartella Build 3.0 nella root del repository:
 
 - `index.html`
-- `styles.css`
-- `app.js`
-- `config.js`
+- `src/`
 - `assets/`
 - `database/`
 - `README.md`
-- `SUPABASE_SETUP.md`
 - `CHANGELOG.txt`
 
-Poi esegui Commit e Push da GitHub Desktop.
+Poi:
 
-## Funzioni presenti
+1. GitHub Desktop;
+2. Commit to main;
+3. Push origin;
+4. ricarica GitHub Pages.
 
-- interfaccia chiara
-- menu laterale scuro con logo Digital Video
-- circa due settimane visibili su un monitor desktop
-- scroll verticale e orizzontale
-- separatori settimanali rossi
-- colori assegnati ai film
-- 12 colori vetro disponibili
-- provvisori grigio ghiaccio e visivamente inattivi
-- fascia montatore più marcata
-- triangolo di avviso a destra del nome
-- clic seleziona, doppio clic modifica
-- Shift + clic sulla stessa sala
-- Command+C / Command+V con destinazione esatta
-- drag & drop
-- blocco sovrapposizione orari nella stessa sala
-- modalità locale oppure Supabase
-- aggiornamenti realtime quando Supabase è configurato
+Non servono Node.js, npm o Terminale.
+
+## Supabase
+
+La Build 3.0 non è ancora collegata a Supabase.
+Il file `database/schema.sql` serve a iniziare a definire la struttura corretta.
+Il collegamento reale verrà fatto dopo l'approvazione della base software.

@@ -4,88 +4,111 @@
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <title>DVS Planning — Build 3.0</title>
-  <link rel="stylesheet" href="styles.css">
+  <meta name="theme-color" content="#f4f5f7">
+  <link rel="stylesheet" href="./src/styles.css">
 </head>
 <body>
   <div class="app-shell">
     <aside class="sidebar">
-      <div class="brand-area">
-        <img src="assets/logo-digital-video.png" alt="Digital Video" class="brand-logo">
-        <div class="brand-caption">DVS PLANNING</div>
+      <div class="brand">
+        <img src="./assets/logos/digital-video-full.png" alt="Digital Video">
       </div>
 
-      <nav class="main-nav" aria-label="Navigazione principale">
-        <button class="nav-item is-active">
+      <nav class="sidebar-nav" aria-label="Navigazione principale">
+        <button class="nav-item active" type="button">
           <span class="nav-icon">▦</span><span>Planning</span>
         </button>
-        <button class="nav-item" id="summaryButton">
-          <span class="nav-icon">≡</span><span>Riepilogo turni</span>
+        <button class="nav-item" type="button" disabled>
+          <span class="nav-icon">◉</span><span>Montatori</span>
         </button>
-        <button class="nav-item">
-          <span class="nav-icon">◎</span><span>Persone</span>
+        <button class="nav-item" type="button" disabled>
+          <span class="nav-icon">▤</span><span>Film</span>
         </button>
-        <button class="nav-item">
-          <span class="nav-icon">◈</span><span>Film</span>
+        <button class="nav-item" type="button" disabled>
+          <span class="nav-icon">≡</span><span>Riepiloghi</span>
         </button>
       </nav>
 
-      <div class="sidebar-spacer"></div>
-
-      <div class="online-card">
-        <div class="online-label"><span class="online-dot"></span> Collegati</div>
-        <div class="online-people">
-          <span>MD</span><span>SE</span><span>HR</span>
-        </div>
+      <div class="sidebar-footer">
+        <button class="nav-item" type="button" disabled>
+          <span class="nav-icon">⚙</span><span>Impostazioni</span>
+        </button>
+        <div class="build-pill">Build 3.0</div>
       </div>
-
-      <button class="nav-item settings">
-        <span class="nav-icon">⚙</span><span>Impostazioni</span>
-      </button>
     </aside>
 
     <main class="main-area">
-      <header class="toolbar">
+      <header class="topbar">
         <div class="page-title">
-          <h1>Planning</h1>
-          <span class="build-pill">Build 3.0</span>
+          <h1>Planning sale</h1>
+          <p>Turni giornalieri · Sale 1–15</p>
         </div>
 
-        <div class="toolbar-actions">
-          <button class="toolbar-button square" id="prevMonth" aria-label="Mese precedente">‹</button>
-          <button class="toolbar-button month" id="monthLabel">Luglio 2026</button>
-          <button class="toolbar-button square" id="nextMonth" aria-label="Mese successivo">›</button>
-          <button class="toolbar-button today" id="todayButton">Oggi</button>
-          <button class="primary-button" id="newShiftButton">＋ Nuovo turno</button>
+        <div class="toolbar">
+          <button id="todayBtn" class="toolbar-btn" type="button">Oggi</button>
+          <div class="month-switcher">
+            <button id="prevMonth" class="icon-btn" type="button" aria-label="Mese precedente">‹</button>
+            <button id="monthLabel" class="month-label" type="button">Luglio 2026</button>
+            <button id="nextMonth" class="icon-btn" type="button" aria-label="Mese successivo">›</button>
+          </div>
+          <button id="newShiftBtn" class="primary-btn" type="button">+ Nuovo turno</button>
         </div>
       </header>
 
-      <section class="planning-stage">
-        <div class="planning-scroller" id="planningScroller">
-          <div class="planning-grid" id="planningGrid"></div>
+      <section class="planning-frame">
+        <div id="planningScroller" class="planning-scroller">
+          <div id="planningGrid" class="planning-grid" aria-label="Planning mensile"></div>
         </div>
       </section>
     </main>
   </div>
 
-  <dialog class="sheet" id="shiftDialog">
+  <dialog id="shiftDialog" class="shift-dialog">
     <form id="shiftForm">
-      <header class="sheet-header">
+      <div class="dialog-header">
         <div>
-          <div class="sheet-kicker">TURNO</div>
-          <h2 id="sheetTitle">Modifica turno</h2>
+          <span class="dialog-eyebrow">TURNO</span>
+          <h2 id="dialogTitle">Nuovo turno</h2>
         </div>
-        <button type="button" class="close-button" id="closeSheet">×</button>
-      </header>
+        <button id="closeDialog" class="dialog-close" type="button" aria-label="Chiudi">×</button>
+      </div>
+
+      <input id="shiftId" type="hidden">
 
       <div class="form-grid">
-        <label>Produzione<input id="clientInput" required></label>
-        <label>Film / programma<input id="filmInput" required></label>
-        <label>Data<input id="dateInput" type="date" required></label>
-        <label>Sala<select id="roomInput"></select></label>
-        <label>Dalle<input id="startInput" type="time" required></label>
-        <label>Alle<input id="endInput" type="time" required></label>
-        <label>Lavorazione
-          <select id="typeInput">
+        <label>
+          Produzione
+          <input id="production" required placeholder="RAI, CATTLEYA…">
+        </label>
+
+        <label>
+          Film / Programma
+          <input id="film" required placeholder="VITA IN DIRETTA">
+        </label>
+
+        <label>
+          Data
+          <input id="date" type="date" required>
+        </label>
+
+        <label>
+          Sala
+          <select id="room" required></select>
+        </label>
+
+        <label>
+          Dalle
+          <input id="start" type="time" required value="08:00">
+        </label>
+
+        <label>
+          Alle
+          <input id="end" type="time" required value="16:00">
+        </label>
+
+        <label>
+          Lavorazione
+          <select id="workType" required>
             <option>EDIT</option>
             <option>ASSISTENTE</option>
             <option>GRAFICA</option>
@@ -93,41 +116,37 @@
             <option>SOUND DESIGN</option>
           </select>
         </label>
-        <label>Montatore<input id="editorInput" placeholder="Vuoto se provvisorio"></label>
-        <label>Stato
-          <select id="statusInput">
+
+        <label>
+          Montatore
+          <input id="editor" placeholder="Lascia vuoto se provvisorio">
+        </label>
+
+        <label>
+          Stato
+          <select id="status" required>
             <option value="definitivo">Definitivo</option>
             <option value="provvisorio">Provvisorio</option>
           </select>
         </label>
-        <label>Colore film
-          <select id="colorInput"></select>
+
+        <label>
+          Colore film
+          <select id="color" required></select>
         </label>
       </div>
 
-      <footer class="sheet-actions">
-        <button type="button" class="destructive-button" id="deleteButton">Elimina</button>
-        <span class="action-spacer"></span>
-        <button type="button" class="secondary-button" id="cancelButton">Annulla</button>
-        <button type="submit" class="primary-button">Salva</button>
-      </footer>
+      <div id="formError" class="form-error" role="alert"></div>
+
+      <div class="dialog-actions">
+        <button id="deleteShiftBtn" class="danger-btn hidden" type="button">Elimina</button>
+        <div class="dialog-spacer"></div>
+        <button id="cancelDialogBtn" class="secondary-btn" type="button">Annulla</button>
+        <button class="primary-btn" type="submit">Salva turno</button>
+      </div>
     </form>
   </dialog>
 
-  <dialog class="sheet summary-sheet" id="summaryDialog">
-    <header class="sheet-header">
-      <div>
-        <div class="sheet-kicker">RIEPILOGO</div>
-        <h2>Turni del mese</h2>
-      </div>
-      <button type="button" class="close-button" id="closeSummary">×</button>
-    </header>
-    <div class="summary-list" id="summaryList"></div>
-  </dialog>
-
-  <div class="toast" id="toast"></div>
-  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="config.js"></script>
-  <script src="app.js"></script>
+  <script src="./src/app.js"></script>
 </body>
 </html>

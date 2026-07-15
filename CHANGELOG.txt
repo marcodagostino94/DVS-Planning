@@ -1,36 +1,32 @@
 DVS-Planning_Build_3.0
 
-DESIGN
-✓ Tema chiaro stile Apple
-✓ Sidebar scura con logo Digital Video
-✓ Planning bianco e vetro
-✓ Card colorate effetto glass
-✓ 12 colori diversi assegnabili ai film
-✓ Provvisori grigio ghiaccio con effetto inattivo
-✓ Fascia inferiore montatore più intensa
-✓ Triangolo a destra del nome
-✓ Gerarchia tipografica più leggera
-✓ Giorni compatti su una riga
-✓ Divisori settimanali rossi
-✓ Circa due settimane e almeno dieci sale visibili
+PRIMA BASE SOFTWARE STABILE
 
-FUNZIONAMENTO DI PROVA
-✓ Scroll orizzontale e verticale
-✓ Clic singolo seleziona turno
-✓ Cella vuota indicata solo da un piccolo punto blu
-✓ Doppio clic modifica
-✓ Shift + clic sulla stessa sala
-✓ Command+C / Command+V
-✓ Incolla nella data esatta selezionata
-✓ Drag & drop
-✓ Blocco turni sovrapposti nella stessa sala
-✓ Avviso non bloccante sul montatore
+✓ Nuova interfaccia chiara
+✓ Sidebar Digital Video
+✓ Logo ufficiale integrato
+✓ Planning mensile Sale 1–15
+✓ Lavorazioni remote
+✓ Giorni LUN 01 su una sola riga
+✓ Separatore rosso tra le settimane
+✓ Card turno effetto vetro
+✓ 12 colori assegnabili ai film
+✓ Provvisori grigio ghiaccio
+✓ Fascia montatore più evidente
+✓ Triangolo avviso a destra del nome
+✓ Click cella vuota → Nuovo turno
+✓ Click turno → Modifica turno
+✓ Eliminazione turno
+✓ Salvataggio locale
+✓ Controllo sovrapposizioni sala
+✓ Schema SQL Supabase iniziale
 
-
-INTEGRAZIONE DATI
-✓ Configurazione Supabase separata
-✓ Script SQL iniziale
-✓ Salvataggio remoto opzionale
-✓ Aggiornamenti realtime
-✓ Modalità demo locale se Supabase non è configurato
-✓ Vincolo database contro sovrapposizioni nella stessa sala
+NON ANCORA PRESENTE
+- Login
+- Supabase collegato
+- Realtime
+- Drag & drop
+- Copia/incolla
+- Selezione multipla
+- Creazione massiva da data a data
+- Riepiloghi mensili
