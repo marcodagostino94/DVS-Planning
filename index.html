@@ -1,60 +1,91 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="it">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>DVS Planning — Build 2.0</title>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>DVS Planning — Build 3.0</title>
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div class="app">
-    <aside class="rail">
-      <div class="logo">DV</div>
-      <button class="rail-btn active" title="Planning">▦</button>
-      <button class="rail-btn" title="Riepilogo turni">≡</button>
-      <button class="rail-btn" title="Persone">◉</button>
-      <button class="rail-btn bottom" title="Impostazioni">⚙</button>
+  <div class="app-shell">
+    <aside class="sidebar">
+      <div class="brand-area">
+        <img src="assets/logo-digital-video.png" alt="Digital Video" class="brand-logo">
+        <div class="brand-caption">DVS PLANNING</div>
+      </div>
+
+      <nav class="main-nav" aria-label="Navigazione principale">
+        <button class="nav-item is-active">
+          <span class="nav-icon">▦</span><span>Planning</span>
+        </button>
+        <button class="nav-item" id="summaryButton">
+          <span class="nav-icon">≡</span><span>Riepilogo turni</span>
+        </button>
+        <button class="nav-item">
+          <span class="nav-icon">◎</span><span>Persone</span>
+        </button>
+        <button class="nav-item">
+          <span class="nav-icon">◈</span><span>Film</span>
+        </button>
+      </nav>
+
+      <div class="sidebar-spacer"></div>
+
+      <div class="online-card">
+        <div class="online-label"><span class="online-dot"></span> Collegati</div>
+        <div class="online-people">
+          <span>MD</span><span>SE</span><span>HR</span>
+        </div>
+      </div>
+
+      <button class="nav-item settings">
+        <span class="nav-icon">⚙</span><span>Impostazioni</span>
+      </button>
     </aside>
 
-    <main class="workspace">
-      <header class="topbar">
-        <div class="title-wrap">
+    <main class="main-area">
+      <header class="toolbar">
+        <div class="page-title">
           <h1>Planning</h1>
-          <span class="build">Build 2.0</span>
+          <span class="build-pill">Build 3.0</span>
         </div>
-        <div class="top-actions">
-          <button class="month-btn" id="prevMonth">‹</button>
-          <button class="month-name" id="monthName">Luglio 2026</button>
-          <button class="month-btn" id="nextMonth">›</button>
-          <button class="new-btn" id="newShift">+ Nuovo turno</button>
+
+        <div class="toolbar-actions">
+          <button class="toolbar-button square" id="prevMonth" aria-label="Mese precedente">‹</button>
+          <button class="toolbar-button month" id="monthLabel">Luglio 2026</button>
+          <button class="toolbar-button square" id="nextMonth" aria-label="Mese successivo">›</button>
+          <button class="toolbar-button today" id="todayButton">Oggi</button>
+          <button class="primary-button" id="newShiftButton">＋ Nuovo turno</button>
         </div>
       </header>
 
-      <div class="board-shell">
-        <div class="board" id="board"></div>
-      </div>
+      <section class="planning-stage">
+        <div class="planning-scroller" id="planningScroller">
+          <div class="planning-grid" id="planningGrid"></div>
+        </div>
+      </section>
     </main>
   </div>
 
-  <dialog id="editDialog" class="dialog">
+  <dialog class="sheet" id="shiftDialog">
     <form id="shiftForm">
-      <div class="dialog-head">
+      <header class="sheet-header">
         <div>
-          <span class="dialog-kicker">TURNO</span>
-          <h2 id="dialogTitle">Modifica turno</h2>
+          <div class="sheet-kicker">TURNO</div>
+          <h2 id="sheetTitle">Modifica turno</h2>
         </div>
-        <button type="button" class="close" id="closeDialog">×</button>
-      </div>
+        <button type="button" class="close-button" id="closeSheet">×</button>
+      </header>
 
       <div class="form-grid">
-        <label>Produzione<input id="client" required></label>
-        <label>Film / Programma<input id="program" required></label>
-        <label>Data<input id="date" type="date" required></label>
-        <label>Sala<select id="room"></select></label>
-        <label>Dalle<input id="start" type="time" required></label>
-        <label>Alle<input id="end" type="time" required></label>
+        <label>Produzione<input id="clientInput" required></label>
+        <label>Film / programma<input id="filmInput" required></label>
+        <label>Data<input id="dateInput" type="date" required></label>
+        <label>Sala<select id="roomInput"></select></label>
+        <label>Dalle<input id="startInput" type="time" required></label>
+        <label>Alle<input id="endInput" type="time" required></label>
         <label>Lavorazione
-          <select id="workType">
+          <select id="typeInput">
             <option>EDIT</option>
             <option>ASSISTENTE</option>
             <option>GRAFICA</option>
@@ -62,25 +93,41 @@
             <option>SOUND DESIGN</option>
           </select>
         </label>
-        <label>Montatore<input id="editor" placeholder="Vuoto se provvisorio"></label>
+        <label>Montatore<input id="editorInput" placeholder="Vuoto se provvisorio"></label>
         <label>Stato
-          <select id="status">
+          <select id="statusInput">
             <option value="definitivo">Definitivo</option>
             <option value="provvisorio">Provvisorio</option>
           </select>
         </label>
+        <label>Colore film
+          <select id="colorInput"></select>
+        </label>
       </div>
 
-      <div class="dialog-actions">
-        <button type="button" class="secondary" id="deleteBtn">Elimina</button>
-        <div class="spacer"></div>
-        <button type="button" class="secondary" id="cancelBtn">Annulla</button>
-        <button class="save-btn" type="submit">Salva</button>
-      </div>
+      <footer class="sheet-actions">
+        <button type="button" class="destructive-button" id="deleteButton">Elimina</button>
+        <span class="action-spacer"></span>
+        <button type="button" class="secondary-button" id="cancelButton">Annulla</button>
+        <button type="submit" class="primary-button">Salva</button>
+      </footer>
     </form>
   </dialog>
 
-  <div id="toast" class="toast"></div>
+  <dialog class="sheet summary-sheet" id="summaryDialog">
+    <header class="sheet-header">
+      <div>
+        <div class="sheet-kicker">RIEPILOGO</div>
+        <h2>Turni del mese</h2>
+      </div>
+      <button type="button" class="close-button" id="closeSummary">×</button>
+    </header>
+    <div class="summary-list" id="summaryList"></div>
+  </dialog>
+
+  <div class="toast" id="toast"></div>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="config.js"></script>
   <script src="app.js"></script>
 </body>
 </html>

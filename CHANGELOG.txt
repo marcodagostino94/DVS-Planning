@@ -1,19 +1,36 @@
-DVS-Planning_Build_2.0
+DVS-Planning_Build_3.0
 
-✓ Layout quasi full screen
-✓ Sidebar ridotta alle icone
+DESIGN
+✓ Tema chiaro stile Apple
+✓ Sidebar scura con logo Digital Video
+✓ Planning bianco e vetro
+✓ Card colorate effetto glass
+✓ 12 colori diversi assegnabili ai film
+✓ Provvisori grigio ghiaccio con effetto inattivo
+✓ Fascia inferiore montatore più intensa
+✓ Triangolo a destra del nome
+✓ Gerarchia tipografica più leggera
 ✓ Giorni compatti su una riga
 ✓ Divisori settimanali rossi
-✓ Turni più piccoli
-✓ Provvisori bianchi
-✓ Fascia montatore più scura
-✓ Nome montatore in grassetto
-✓ Triangolo di avviso a destra
-✓ Click per selezione
-✓ Doppio click per modifica
-✓ Shift-click sulla stessa sala
+✓ Circa due settimane e almeno dieci sale visibili
+
+FUNZIONAMENTO DI PROVA
+✓ Scroll orizzontale e verticale
+✓ Clic singolo seleziona turno
+✓ Cella vuota indicata solo da un piccolo punto blu
+✓ Doppio clic modifica
+✓ Shift + clic sulla stessa sala
 ✓ Command+C / Command+V
+✓ Incolla nella data esatta selezionata
 ✓ Drag & drop
-✓ Blocco sovrapposizioni sala
-✓ Avviso sovrapposizioni persona
-✓ Altezza sala dinamica
+✓ Blocco turni sovrapposti nella stessa sala
+✓ Avviso non bloccante sul montatore
+
+
+INTEGRAZIONE DATI
+✓ Configurazione Supabase separata
+✓ Script SQL iniziale
+✓ Salvataggio remoto opzionale
+✓ Aggiornamenti realtime
+✓ Modalità demo locale se Supabase non è configurato
+✓ Vincolo database contro sovrapposizioni nella stessa sala

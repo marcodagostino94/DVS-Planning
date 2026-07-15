@@ -1,25 +1,44 @@
-# DVS Planning — Build 2.0
+# DVS Planning — Build 3.0
 
-Build grafica e interattiva, pronta per GitHub Pages.
+Prima build con identità grafica chiara in stile Apple / Digital Video.
 
-## Uso
-Copia tutti i file contenuti in questa cartella nella root del repository GitHub.
-Non richiede Node.js.
+## Avvio immediato
+
+Il progetto è statico e pronto per GitHub Pages. Non richiede Node.js.
+Senza configurazione Supabase funziona in modalità demo locale.
+
+## Pubblicazione
+
+Copia nella root del repository:
+
+- `index.html`
+- `styles.css`
+- `app.js`
+- `config.js`
+- `assets/`
+- `database/`
+- `README.md`
+- `SUPABASE_SETUP.md`
+- `CHANGELOG.txt`
+
+Poi esegui Commit e Push da GitHub Desktop.
 
 ## Funzioni presenti
-- layout desktop-first quasi full screen
-- barra laterale minima
-- giorni su una sola riga
-- divisore rosso tra le settimane
-- 15 sale + lavorazioni remote
-- card compatte con fascia montatore più scura
-- triangolo di avviso a destra del montatore
-- provvisori bianchi
-- click singolo seleziona
-- doppio click modifica
-- shift-click sulla stessa sala
-- Command+C / Command+V
+
+- interfaccia chiara
+- menu laterale scuro con logo Digital Video
+- circa due settimane visibili su un monitor desktop
+- scroll verticale e orizzontale
+- separatori settimanali rossi
+- colori assegnati ai film
+- 12 colori vetro disponibili
+- provvisori grigio ghiaccio e visivamente inattivi
+- fascia montatore più marcata
+- triangolo di avviso a destra del nome
+- clic seleziona, doppio clic modifica
+- Shift + clic sulla stessa sala
+- Command+C / Command+V con destinazione esatta
 - drag & drop
-- blocco orari sovrapposti nella stessa sala
-- avviso non bloccante per montatore sovrapposto
-- altezza riga sala dinamica se ci sono più turni
+- blocco sovrapposizione orari nella stessa sala
+- modalità locale oppure Supabase
+- aggiornamenti realtime quando Supabase è configurato
