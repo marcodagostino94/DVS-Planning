@@ -56,7 +56,7 @@ const db = hasSupabaseConfig
 let currentMonth = new Date(2026, 6, 1);
 let editingShiftId = null;
 let editingEditorId = null;
-let selectedShiftIdss = new Set();
+let selectedShiftIds = new Set();
 let selectionAnchorId = null;
 let selectedCell = null;
 let draggedShiftId = null;
@@ -66,6 +66,9 @@ let marqueeElement = null;
 let contextTargetCell = null;
 let dragSourceShiftId = null;
 let dragGhost = null;
+let activeDragGroup = [];
+let activeDragSource = null;
+let suppressNextClick = false;
 let planningZoom = Number(localStorage.getItem(ZOOM_STORAGE)) || 1;
 
 const seedEditors = [
@@ -197,11 +200,11 @@ function editorConflict(shift) {
 }
 
 function selectedShiftList() {
-  return shifts.filter(shift => selectedShiftIdss.has(shift.id));
+  return shifts.filter(shift => selectedShiftIds.has(shift.id));
 }
 
 function selectOnlyShift(id) {
-  selectedShiftIdss = new Set([id]);
+  selectedShiftIds = new Set([id]);
   selectionAnchorId = id;
   selectedCell = null;
 }
@@ -234,14 +237,14 @@ function selectShiftRange(anchorId, targetId) {
   const start = Math.min(anchorIndex, targetIndex);
   const end = Math.max(anchorIndex, targetIndex);
 
-  selectedShiftIdss = new Set(
+  selectedShiftIds = new Set(
     sameRoom.slice(start, end + 1).map(shift => shift.id)
   );
   selectedCell = null;
 }
 
 function clearSelection() {
-  selectedShiftIdss.clear();
+  selectedShiftIds.clear();
   selectionAnchorId = null;
   selectedCell = null;
 }
@@ -309,7 +312,7 @@ function pasteCopiedShifts() {
   saveLocal();
   candidates.forEach(syncShiftToSupabase);
 
-  selectedShiftIdss = new Set(candidates.map(candidate => candidate.id));
+  selectedShiftIds = new Set(candidates.map(candidate => candidate.id));
   selectionAnchorId = candidates[0]?.id || null;
   selectedCell = null;
 
@@ -329,7 +332,7 @@ function selectionRoom() {
 }
 
 function updateSelectionBadge() {
-  const count = selectedShiftIdss.size;
+  const count = selectedShiftIds.size;
   selectionBadge.textContent = count > 1 ? `${count} turni selezionati` : "";
   selectionBadge.classList.toggle("hidden", count <= 1);
 }
@@ -342,11 +345,11 @@ function toggleCommandSelection(id) {
     selectOnlyShift(id);
     return;
   }
-  if (selectedShiftIdss.has(id)) {
-    selectedShiftIdss.delete(id);
-    if (selectionAnchorId === id) selectionAnchorId = [...selectedShiftIdss][0] || null;
+  if (selectedShiftIds.has(id)) {
+    selectedShiftIds.delete(id);
+    if (selectionAnchorId === id) selectionAnchorId = [...selectedShiftIds][0] || null;
   } else {
-    selectedShiftIdss.add(id);
+    selectedShiftIds.add(id);
     if (!selectionAnchorId) selectionAnchorId = id;
   }
   selectedCell = null;
@@ -393,37 +396,87 @@ function setSelectedStatus(status) {
 }
 
 function selectedGroupForDrag(sourceId) {
-  const source = shifts.find(s=>s.id===sourceId);
+  const source = shifts.find(shift => shift.id === sourceId);
   if (!source) return [];
-  if (!selectedShiftIdss.has(sourceId)) selectOnlyShift(sourceId);
-  return selectedShiftList().filter(s=>s.room===source.room).sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start)||a.id.localeCompare(b.id));
+
+  if (!selectedShiftIds.has(sourceId)) {
+    selectOnlyShift(sourceId);
+  }
+
+  return selectedShiftList()
+    .filter(shift => shift.room === source.room)
+    .map(shift => ({ ...shift }))
+    .sort((a, b) =>
+      a.date.localeCompare(b.date)
+      || a.start.localeCompare(b.start)
+      || a.id.localeCompare(b.id)
+    );
 }
 
-function buildMovedGroup(sourceId, targetRoom, targetDate) {
-  const group = selectedGroupForDrag(sourceId);
-  const source = group.find(s=>s.id===sourceId);
-  if (!source) return [];
-  const delta = Math.round((new Date(`${targetDate}T12:00:00`) - new Date(`${source.date}T12:00:00`))/86400000);
-  return group.map(s=>{
-    const d=new Date(`${s.date}T12:00:00`); d.setDate(d.getDate()+delta);
-    return {...s, room:targetRoom, date:isoDate(d.getFullYear(),d.getMonth(),d.getDate())};
+function captureDragGroup(sourceId) {
+  activeDragGroup = selectedGroupForDrag(sourceId);
+  activeDragSource = activeDragGroup.find(shift => shift.id === sourceId) || null;
+  return activeDragGroup;
+}
+
+function buildMovedGroup(targetRoom, targetDate) {
+  if (!activeDragSource || !activeDragGroup.length) return [];
+
+  const sourceDate = new Date(`${activeDragSource.date}T12:00:00`);
+  const destinationDate = new Date(`${targetDate}T12:00:00`);
+  const offsetDays = Math.round((destinationDate - sourceDate) / 86400000);
+
+  return activeDragGroup.map(original => {
+    const movedDate = new Date(`${original.date}T12:00:00`);
+    movedDate.setDate(movedDate.getDate() + offsetDays);
+
+    return {
+      ...original,
+      room: targetRoom,
+      date: isoDate(
+        movedDate.getFullYear(),
+        movedDate.getMonth(),
+        movedDate.getDate()
+      )
+    };
   });
 }
 
 function groupHasConflict(candidates) {
-  const movingIds = new Set(candidates.map(c=>c.id));
-  for (let i=0;i<candidates.length;i++) for (let j=i+1;j<candidates.length;j++) {
-    const a=candidates[i], b=candidates[j];
-    if (a.room===b.room && a.date===b.date && overlaps(a,b)) return true;
+  const movingIds = new Set(activeDragGroup.map(shift => shift.id));
+
+  for (let first = 0; first < candidates.length; first += 1) {
+    for (let second = first + 1; second < candidates.length; second += 1) {
+      const a = candidates[first];
+      const b = candidates[second];
+      if (
+        a.room === b.room
+        && a.date === b.date
+        && overlaps(a, b)
+      ) return true;
+    }
   }
-  return candidates.some(c=>shifts.some(s=>!movingIds.has(s.id)&&s.room===c.room&&s.date===c.date&&overlaps(s,c)));
+
+  return candidates.some(candidate =>
+    shifts.some(existing =>
+      !movingIds.has(existing.id)
+      && existing.room === candidate.room
+      && existing.date === candidate.date
+      && overlaps(existing, candidate)
+    )
+  );
+}
+
+function clearActiveDrag() {
+  activeDragGroup = [];
+  activeDragSource = null;
 }
 
 function startMarquee(event, cell) {
   if (event.button!==0 || event.target.closest('.shift-card')) return;
   const row = cell.getBoundingClientRect();
   marqueeState={room:cell.dataset.room,startX:event.clientX,currentX:event.clientX,rowTop:row.top,rowBottom:row.bottom,additive:event.metaKey||event.ctrlKey};
-  if (!marqueeState.additive) { selectedShiftIdss.clear(); selectionAnchorId=null; }
+  if (!marqueeState.additive) { selectedShiftIds.clear(); selectionAnchorId=null; }
   selectedCell=null;
   marqueeElement=document.createElement('div'); marqueeElement.className='selection-marquee'; document.body.appendChild(marqueeElement);
   updateMarquee(event); event.preventDefault();
@@ -437,10 +490,10 @@ function updateMarquee(event) {
   Object.assign(marqueeElement.style,{left:`${left}px`,top:`${top}px`,width:`${Math.max(1,right-left)}px`,height:`${Math.max(1,bottom-top)}px`});
   document.querySelectorAll(`.planning-cell[data-room="${marqueeState.room}"] .shift-card`).forEach(card=>{
     const r=card.getBoundingClientRect();
-    if (!(r.right<left||r.left>right||r.bottom<top||r.top>bottom)) selectedShiftIdss.add(card.dataset.shiftId);
+    if (!(r.right<left||r.left>right||r.bottom<top||r.top>bottom)) selectedShiftIds.add(card.dataset.shiftId);
   });
-  if (!selectionAnchorId) selectionAnchorId=[...selectedShiftIdss][0]||null;
-  document.querySelectorAll('.shift-card').forEach(card=>card.classList.toggle('selected',selectedShiftIdss.has(card.dataset.shiftId)));
+  if (!selectionAnchorId) selectionAnchorId=[...selectedShiftIds][0]||null;
+  document.querySelectorAll('.shift-card').forEach(card=>card.classList.toggle('selected',selectedShiftIds.has(card.dataset.shiftId)));
   updateSelectionBadge();
 }
 
@@ -497,7 +550,7 @@ function renderCard(shift) {
 
   return `
     <article
-      class="shift-card ${shift.status} ${selectedShiftIdss.has(shift.id) ? "selected" : ""}"
+      class="shift-card ${shift.status} ${selectedShiftIds.has(shift.id) ? "selected" : ""}"
       data-shift-id="${shift.id}"
       draggable="true"
       style="--accent-rgb:${color.rgb}">
@@ -596,7 +649,12 @@ function renderPlanning() {
 function bindPlanningEvents() {
   document.querySelectorAll(".shift-card").forEach(card => {
     card.addEventListener("click", event => {
-      event.stopPropagation(); hideContextMenu();
+      event.stopPropagation();
+      if (suppressNextClick) {
+        suppressNextClick = false;
+        return;
+      }
+      hideContextMenu();
       const id=card.dataset.shiftId;
       if (event.metaKey||event.ctrlKey) toggleCommandSelection(id);
       else if (event.shiftKey&&selectionAnchorId) selectShiftRange(selectionAnchorId,id);
@@ -606,25 +664,44 @@ function bindPlanningEvents() {
     card.addEventListener("dblclick", event => { event.stopPropagation(); hideContextMenu(); openEditShift(card.dataset.shiftId); });
     card.addEventListener("contextmenu", event => {
       const id=card.dataset.shiftId;
-      if (!selectedShiftIdss.has(id)) selectOnlyShift(id);
+      if (!selectedShiftIds.has(id)) selectOnlyShift(id);
       const x=event.clientX,y=event.clientY;
       renderPlanning();
       requestAnimationFrame(()=>showContextMenu({preventDefault(){},stopPropagation(){},clientX:x,clientY:y}, document.querySelector(`.shift-card[data-shift-id="${id}"]`)?.closest('.planning-cell')));
     });
     card.addEventListener("dragstart", event => {
-      dragSourceShiftId=card.dataset.shiftId;
-      const group=selectedGroupForDrag(dragSourceShiftId);
-      event.dataTransfer.effectAllowed='move'; event.dataTransfer.setData('text/plain',dragSourceShiftId);
-      const img=new Image(); img.src='data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw=='; event.dataTransfer.setDragImage(img,0,0);
-      createDragGhost(group.length); card.classList.add('dragging');
+      dragSourceShiftId = card.dataset.shiftId;
+      const group = captureDragGroup(dragSourceShiftId);
+
+      selectedShiftIds = new Set(group.map(shift => shift.id));
+      selectionAnchorId = dragSourceShiftId;
+      suppressNextClick = true;
+
+      document.querySelectorAll('.shift-card').forEach(item => {
+        if (selectedShiftIds.has(item.dataset.shiftId)) item.classList.add('dragging');
+      });
+
+      event.dataTransfer.effectAllowed = 'move';
+      event.dataTransfer.setData('text/plain', dragSourceShiftId);
+      const image = new Image();
+      image.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
+      event.dataTransfer.setDragImage(image, 0, 0);
+      createDragGhost(group.length);
+      updateSelectionBadge();
     });
-    card.addEventListener("dragend",()=>{card.classList.remove('dragging');dragSourceShiftId=null;removeDragGhost();});
+
+    card.addEventListener("dragend", () => {
+      document.querySelectorAll('.shift-card.dragging').forEach(item => item.classList.remove('dragging'));
+      dragSourceShiftId = null;
+      clearActiveDrag();
+      removeDragGhost();
+    });
   });
 
   document.querySelectorAll(".planning-cell").forEach(cell => {
     cell.addEventListener("click", event => {
       if (event.detail>1) return;
-      hideContextMenu(); selectedShiftIdss.clear(); selectionAnchorId=null; selectedCell={room:cell.dataset.room,date:cell.dataset.date}; renderPlanning();
+      hideContextMenu(); selectedShiftIds.clear(); selectionAnchorId=null; selectedCell={room:cell.dataset.room,date:cell.dataset.date}; renderPlanning();
     });
     cell.addEventListener("dblclick", event => { if (!event.target.closest('.shift-card')) openNewShift(cell.dataset.room,cell.dataset.date); });
     cell.addEventListener("mousedown", event => { if (!event.target.closest('.shift-card')) startMarquee(event,cell); });
@@ -633,12 +710,37 @@ function bindPlanningEvents() {
     cell.addEventListener("dragleave",()=>cell.classList.remove('group-drop-target'));
     cell.addEventListener("drop", event => {
       event.preventDefault(); cell.classList.remove('group-drop-target');
-      const sourceId=dragSourceShiftId||event.dataTransfer.getData('text/plain');
-      const candidates=buildMovedGroup(sourceId,cell.dataset.room,cell.dataset.date);
-      if (!candidates.length) return removeDragGhost();
-      if (groupHasConflict(candidates)) { showToast('Orari non compatibili'); return removeDragGhost(); }
-      const map=new Map(candidates.map(c=>[c.id,c])); shifts=shifts.map(s=>map.get(s.id)||s);
-      candidates.forEach(syncShiftToSupabase); saveLocal(); selectedShiftIdss=new Set(candidates.map(c=>c.id)); selectionAnchorId=sourceId; selectedCell=null; renderPlanning(); removeDragGhost(); showToast(candidates.length===1?'Turno spostato':`${candidates.length} turni spostati`);
+      const sourceId = dragSourceShiftId || event.dataTransfer.getData('text/plain');
+      if (!activeDragGroup.length) captureDragGroup(sourceId);
+
+      const candidates = buildMovedGroup(cell.dataset.room, cell.dataset.date);
+      if (!candidates.length) {
+        clearActiveDrag();
+        return removeDragGhost();
+      }
+
+      if (groupHasConflict(candidates)) {
+        showToast('Orari non compatibili');
+        clearActiveDrag();
+        return removeDragGhost();
+      }
+
+      const movedById = new Map(candidates.map(candidate => [candidate.id, candidate]));
+      shifts = shifts.map(shift => movedById.get(shift.id) || shift);
+      candidates.forEach(syncShiftToSupabase);
+      saveLocal();
+
+      selectedShiftIds = new Set(candidates.map(candidate => candidate.id));
+      selectionAnchorId = sourceId;
+      selectedCell = null;
+      clearActiveDrag();
+      renderPlanning();
+      removeDragGhost();
+      showToast(
+        candidates.length === 1
+          ? 'Turno spostato'
+          : `${candidates.length} turni spostati`
+      );
     });
   });
 }
@@ -774,7 +876,7 @@ shiftForm.addEventListener("submit", event => {
 
   saveLocal();
   syncShiftToSupabase(candidate);
-  selectedShiftIdss = new Set([candidate.id]);
+  selectedShiftIds = new Set([candidate.id]);
   selectionAnchorId = candidate.id;
   selectedCell = null;
   closeShiftDialog();
@@ -786,7 +888,7 @@ document.getElementById("deleteShiftBtn").addEventListener("click", () => {
   shifts = shifts.filter(item => item.id !== editingShiftId);
   saveLocal();
   deleteShiftFromSupabase(editingShiftId);
-  selectedShiftIdss.clear();
+  selectedShiftIds.clear();
   selectionAnchorId = null;
   closeShiftDialog();
   renderPlanning();
@@ -884,7 +986,7 @@ document.addEventListener("keydown", event => {
   }
 
   if (event.key === "Escape" && !shiftDialog.open && !editorDialog.open) {
-    selectedShiftIdss.clear();
+    selectedShiftIds.clear();
   selectionAnchorId = null;
     selectedCell = null;
     renderPlanning();
