@@ -1,49 +1,49 @@
-# DVS Planning — Build 3.0
+# DVS Planning — Build 4.0
 
-Base software del nuovo planning Digital Video.
+Prima build collegabile realmente a Supabase.
 
-## Questa build comprende
+## Funzioni principali
 
-- interfaccia chiara in stile Apple / Digital Video;
-- menu laterale;
-- planning mensile delle Sale 1–15;
-- righe Grafica remoto e Sound remoto;
-- giorni compatti su una riga;
-- separatori settimanali rossi;
-- card turno con effetto vetro;
-- 12 colori assegnabili ai film;
-- turni provvisori grigio ghiaccio;
-- fascia inferiore del montatore;
-- triangolo di avviso sul montatore in caso di sovrapposizione;
-- click su una cella vuota per creare un turno;
-- click su un turno per modificarlo;
-- eliminazione;
-- salvataggio locale nel browser;
-- blocco degli orari sovrapposti nella stessa sala;
-- schema SQL iniziale per Supabase.
+- interfaccia chiara meno abbagliante;
+- sidebar più scura, con logo leggibile;
+- utenti collegati in basso a sinistra;
+- giorni e colonna Sale più scuri del planning;
+- weekend e festività italiane evidenziati;
+- divisori settimanali rossi;
+- card effetto vetro;
+- provvisori grigio ghiaccio;
+- testi senza puntini: riduzione automatica del font;
+- montatori nel formato `M. Cognome`;
+- click singolo = selezione;
+- doppio click su turno = modifica;
+- doppio click su cella vuota = nuovo turno;
+- drag & drop mantenuto;
+- turni provvisori selezionabili;
+- zoom del solo planning:
+  - pinch del trackpad in Safari;
+  - Command/Ctrl + rotella;
+  - Command + / Command -;
+- pulsante Oggi che centra il giorno corrente;
+- supporto input `24:00`;
+- pagina Montatori;
+- produzione e film liberi con suggerimenti;
+- blocco delle sovrapposizioni nella stessa sala;
+- Supabase opzionale e realtime predisposto.
 
-## Pubblicazione su GitHub Pages
+## Installazione su GitHub Pages
 
-Copia tutto il contenuto della cartella Build 3.0 nella root del repository:
+Copia nella root del repository:
 
 - `index.html`
-- `src/`
 - `assets/`
+- `src/`
 - `database/`
+- `docs/`
 - `README.md`
 - `CHANGELOG.txt`
 
-Poi:
-
-1. GitHub Desktop;
-2. Commit to main;
-3. Push origin;
-4. ricarica GitHub Pages.
-
-Non servono Node.js, npm o Terminale.
+Poi Commit e Push da GitHub Desktop.
 
 ## Supabase
 
-La Build 3.0 non è ancora collegata a Supabase.
-Il file `database/schema.sql` serve a iniziare a definire la struttura corretta.
-Il collegamento reale verrà fatto dopo l'approvazione della base software.
+Leggi `docs/SUPABASE_SETUP.md`.

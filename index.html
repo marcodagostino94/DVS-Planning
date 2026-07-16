@@ -2,9 +2,9 @@
 <html lang="it">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>DVS Planning — Build 3.0</title>
-  <meta name="theme-color" content="#f4f5f7">
+  <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+  <title>DVS Planning — Build 4.0</title>
+  <meta name="theme-color" content="#e8eaed">
   <link rel="stylesheet" href="./src/styles.css">
 </head>
 <body>
@@ -15,62 +15,102 @@
       </div>
 
       <nav class="sidebar-nav" aria-label="Navigazione principale">
-        <button class="nav-item active" type="button">
+        <button class="nav-item active" data-view="planning" type="button">
           <span class="nav-icon">▦</span><span>Planning</span>
         </button>
-        <button class="nav-item" type="button" disabled>
+        <button class="nav-item" data-view="editors" type="button">
           <span class="nav-icon">◉</span><span>Montatori</span>
-        </button>
-        <button class="nav-item" type="button" disabled>
-          <span class="nav-icon">▤</span><span>Film</span>
         </button>
         <button class="nav-item" type="button" disabled>
           <span class="nav-icon">≡</span><span>Riepiloghi</span>
         </button>
       </nav>
 
+      <section class="online-panel" aria-label="Utenti collegati">
+        <div class="online-title">
+          <span class="presence-dot"></span>
+          <span>Utenti collegati</span>
+        </div>
+        <div class="online-users">
+          <span class="online-avatar" title="Marco D'Agostino">MD</span>
+          <span class="online-avatar" title="Segreteria">SG</span>
+          <span class="online-avatar" title="Responsabile HR">HR</span>
+        </div>
+        <div class="online-count">3 online</div>
+      </section>
+
       <div class="sidebar-footer">
         <button class="nav-item" type="button" disabled>
           <span class="nav-icon">⚙</span><span>Impostazioni</span>
         </button>
-        <div class="build-pill">Build 3.0</div>
+        <span class="build-pill">Build 4.0</span>
       </div>
     </aside>
 
     <main class="main-area">
-      <header class="topbar">
-        <div class="page-title">
-          <h1>Planning sale</h1>
-          <p>Turni giornalieri · Sale 1–15</p>
-        </div>
-
-        <div class="toolbar">
-          <button id="todayBtn" class="toolbar-btn" type="button">Oggi</button>
-          <div class="month-switcher">
-            <button id="prevMonth" class="icon-btn" type="button" aria-label="Mese precedente">‹</button>
-            <button id="monthLabel" class="month-label" type="button">Luglio 2026</button>
-            <button id="nextMonth" class="icon-btn" type="button" aria-label="Mese successivo">›</button>
+      <section id="planningView" class="app-view active">
+        <header class="topbar">
+          <div class="page-title">
+            <h1>Planning sale</h1>
+            <p>Turni giornalieri · Sale 1–15</p>
           </div>
-          <button id="newShiftBtn" class="primary-btn" type="button">+ Nuovo turno</button>
-        </div>
-      </header>
 
-      <section class="planning-frame">
-        <div id="planningScroller" class="planning-scroller">
-          <div id="planningGrid" class="planning-grid" aria-label="Planning mensile"></div>
-        </div>
+          <div class="toolbar">
+            <button id="todayBtn" class="toolbar-btn" type="button">Oggi</button>
+
+            <div class="month-switcher">
+              <button id="prevMonth" class="icon-btn" type="button" aria-label="Mese precedente">‹</button>
+              <button id="monthLabel" class="month-label" type="button">Luglio 2026</button>
+              <button id="nextMonth" class="icon-btn" type="button" aria-label="Mese successivo">›</button>
+            </div>
+
+            <div class="zoom-indicator" title="Lo zoom agisce soltanto sul planning">
+              <span id="zoomLabel">100%</span>
+            </div>
+
+            <button id="newShiftBtn" class="primary-btn" type="button">+ Nuovo turno</button>
+          </div>
+        </header>
+
+        <section class="planning-frame">
+          <div id="planningScroller" class="planning-scroller">
+            <div id="planningCanvas" class="planning-canvas">
+              <div id="planningGrid" class="planning-grid" aria-label="Planning mensile"></div>
+            </div>
+          </div>
+        </section>
+      </section>
+
+      <section id="editorsView" class="app-view">
+        <header class="topbar">
+          <div class="page-title">
+            <h1>Montatori</h1>
+            <p>Anagrafica utilizzata nei turni e nei riepiloghi</p>
+          </div>
+          <button id="newEditorBtn" class="primary-btn" type="button">+ Nuovo montatore</button>
+        </header>
+
+        <section class="editors-page">
+          <div class="editors-card">
+            <div class="editors-toolbar">
+              <input id="editorSearch" type="search" placeholder="Cerca montatore">
+              <span id="editorsCount" class="count-pill"></span>
+            </div>
+            <div id="editorsList" class="editors-list"></div>
+          </div>
+        </section>
       </section>
     </main>
   </div>
 
-  <dialog id="shiftDialog" class="shift-dialog">
+  <dialog id="shiftDialog" class="app-dialog">
     <form id="shiftForm">
       <div class="dialog-header">
         <div>
           <span class="dialog-eyebrow">TURNO</span>
-          <h2 id="dialogTitle">Nuovo turno</h2>
+          <h2 id="shiftDialogTitle">Nuovo turno</h2>
         </div>
-        <button id="closeDialog" class="dialog-close" type="button" aria-label="Chiudi">×</button>
+        <button id="closeShiftDialog" class="dialog-close" type="button" aria-label="Chiudi">×</button>
       </div>
 
       <input id="shiftId" type="hidden">
@@ -78,12 +118,14 @@
       <div class="form-grid">
         <label>
           Produzione
-          <input id="production" required placeholder="RAI, CATTLEYA…">
+          <input id="production" list="productionSuggestions" required placeholder="RAI, CATTLEYA…">
+          <datalist id="productionSuggestions"></datalist>
         </label>
 
         <label>
           Film / Programma
-          <input id="film" required placeholder="VITA IN DIRETTA">
+          <input id="film" list="filmSuggestions" required placeholder="VITA IN DIRETTA">
+          <datalist id="filmSuggestions"></datalist>
         </label>
 
         <label>
@@ -98,12 +140,12 @@
 
         <label>
           Dalle
-          <input id="start" type="time" required value="08:00">
+          <input id="start" type="text" inputmode="numeric" required value="08:00" placeholder="08:00">
         </label>
 
         <label>
           Alle
-          <input id="end" type="time" required value="16:00">
+          <input id="end" type="text" inputmode="numeric" required value="16:00" placeholder="16:00 o 24:00">
         </label>
 
         <label>
@@ -119,7 +161,7 @@
 
         <label>
           Montatore
-          <input id="editor" placeholder="Lascia vuoto se provvisorio">
+          <select id="editor"></select>
         </label>
 
         <label>
@@ -136,17 +178,58 @@
         </label>
       </div>
 
-      <div id="formError" class="form-error" role="alert"></div>
+      <div id="shiftFormError" class="form-error" role="alert"></div>
 
       <div class="dialog-actions">
         <button id="deleteShiftBtn" class="danger-btn hidden" type="button">Elimina</button>
         <div class="dialog-spacer"></div>
-        <button id="cancelDialogBtn" class="secondary-btn" type="button">Annulla</button>
+        <button id="cancelShiftBtn" class="secondary-btn" type="button">Annulla</button>
         <button class="primary-btn" type="submit">Salva turno</button>
       </div>
     </form>
   </dialog>
 
+  <dialog id="editorDialog" class="app-dialog editor-dialog">
+    <form id="editorForm">
+      <div class="dialog-header">
+        <div>
+          <span class="dialog-eyebrow">MONTATORE</span>
+          <h2 id="editorDialogTitle">Nuovo montatore</h2>
+        </div>
+        <button id="closeEditorDialog" class="dialog-close" type="button" aria-label="Chiudi">×</button>
+      </div>
+
+      <input id="editorId" type="hidden">
+
+      <div class="form-grid">
+        <label>
+          Nome
+          <input id="editorFirstName" required placeholder="Marco">
+        </label>
+        <label>
+          Cognome
+          <input id="editorLastName" required placeholder="D'Agostino">
+        </label>
+        <label class="checkbox-label">
+          <input id="editorActive" type="checkbox" checked>
+          Montatore attivo
+        </label>
+      </div>
+
+      <div id="editorFormError" class="form-error" role="alert"></div>
+
+      <div class="dialog-actions">
+        <div class="dialog-spacer"></div>
+        <button id="cancelEditorBtn" class="secondary-btn" type="button">Annulla</button>
+        <button class="primary-btn" type="submit">Salva montatore</button>
+      </div>
+    </form>
+  </dialog>
+
+  <div id="toast" class="toast" aria-live="polite"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="./src/config.js"></script>
   <script src="./src/app.js"></script>
 </body>
 </html>

@@ -1,32 +1,36 @@
-DVS-Planning_Build_3.0
+DVS-Planning_Build_4.0
 
-PRIMA BASE SOFTWARE STABILE
+GRAFICA
+✓ Planning leggermente più scuro
+✓ Header giorni più scuro
+✓ Colonna Sale più scura
+✓ Popup più scuro del planning
+✓ Sidebar antracite più contrastata rispetto al logo
+✓ Weekend e festività italiane rosso tenue
+✓ Testi senza puntini e ridimensionamento automatico
+✓ Utenti collegati ripristinati
 
-✓ Nuova interfaccia chiara
-✓ Sidebar Digital Video
-✓ Logo ufficiale integrato
-✓ Planning mensile Sale 1–15
-✓ Lavorazioni remote
-✓ Giorni LUN 01 su una sola riga
-✓ Separatore rosso tra le settimane
-✓ Card turno effetto vetro
-✓ 12 colori assegnabili ai film
-✓ Provvisori grigio ghiaccio
-✓ Fascia montatore più evidente
-✓ Triangolo avviso a destra del nome
-✓ Click cella vuota → Nuovo turno
-✓ Click turno → Modifica turno
-✓ Eliminazione turno
-✓ Salvataggio locale
+INTERAZIONI
+✓ Click singolo seleziona
+✓ Doppio click apre
+✓ Turni provvisori selezionabili
+✓ Hover con movimento morbido Apple
+✓ Bordo blu Apple in selezione
+✓ Drag & drop ripristinato
+✓ Zoom esclusivo del planning
+✓ Pulsante Oggi centra il giorno attuale
+
+DATI
+✓ Montatori come anagrafica
+✓ Formato M. Cognome
+✓ Produzione e Film liberi con suggerimenti
+✓ Supporto 24:00
 ✓ Controllo sovrapposizioni sala
-✓ Schema SQL Supabase iniziale
+✓ Pagina Montatori
 
-NON ANCORA PRESENTE
-- Login
-- Supabase collegato
-- Realtime
-- Drag & drop
-- Copia/incolla
-- Selezione multipla
-- Creazione massiva da data a data
-- Riepiloghi mensili
+SUPABASE
+✓ Script SQL iniziale
+✓ Seed Sale 1–15 e remoto
+✓ Configurazione frontend
+✓ Lettura e scrittura opzionale
+✓ Realtime predisposto
