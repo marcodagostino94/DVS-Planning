@@ -1,36 +1,24 @@
-DVS-Planning_Build_4.0
+DVS-Planning_Build_5.0
+
+BASE
+✓ Parte dalla Build 4.0 confermata
+✓ Nessuna regressione intenzionale su drag, doppio clic, zoom e grafica
 
 GRAFICA
-✓ Planning leggermente più scuro
-✓ Header giorni più scuro
-✓ Colonna Sale più scura
-✓ Popup più scuro del planning
-✓ Sidebar antracite più contrastata rispetto al logo
-✓ Weekend e festività italiane rosso tenue
-✓ Testi senza puntini e ridimensionamento automatico
-✓ Utenti collegati ripristinati
+✓ Montatore sempre M. COGNOME
+✓ Pallino celeste nella cella selezionata
+✓ Hover delle celle più discreto
+✓ Effetto vetro mantenuto
 
-INTERAZIONI
-✓ Click singolo seleziona
-✓ Doppio click apre
-✓ Turni provvisori selezionabili
-✓ Hover con movimento morbido Apple
-✓ Bordo blu Apple in selezione
-✓ Drag & drop ripristinato
-✓ Zoom esclusivo del planning
-✓ Pulsante Oggi centra il giorno attuale
+PRODUTTIVITÀ
+✓ Command/Ctrl + C copia il turno selezionato
+✓ Command/Ctrl + V incolla nella cella selezionata
+✓ Incolla esattamente nella data scelta
+✓ Controllo conflitti prima dell'incolla
+✓ Shift + clic seleziona un intervallo di turni
+✓ Selezione multipla limitata alla stessa sala
+✓ Turni provvisori inclusi nella selezione e copia
 
-DATI
-✓ Montatori come anagrafica
-✓ Formato M. Cognome
-✓ Produzione e Film liberi con suggerimenti
-✓ Supporto 24:00
-✓ Controllo sovrapposizioni sala
-✓ Pagina Montatori
-
-SUPABASE
-✓ Script SQL iniziale
-✓ Seed Sale 1–15 e remoto
-✓ Configurazione frontend
-✓ Lettura e scrittura opzionale
-✓ Realtime predisposto
+DATABASE
+✓ Stesso schema Supabase della Build 4.0
+✓ Realtime mantenuto

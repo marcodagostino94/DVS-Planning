@@ -1,49 +1,32 @@
-# DVS Planning — Build 4.0
+# DVS Planning — Build 5.0
 
-Prima build collegabile realmente a Supabase.
+Build di produttività basata sulla Build 4.0 confermata.
 
-## Funzioni principali
+## Novità
 
-- interfaccia chiara meno abbagliante;
-- sidebar più scura, con logo leggibile;
-- utenti collegati in basso a sinistra;
-- giorni e colonna Sale più scuri del planning;
-- weekend e festività italiane evidenziati;
-- divisori settimanali rossi;
-- card effetto vetro;
-- provvisori grigio ghiaccio;
-- testi senza puntini: riduzione automatica del font;
-- montatori nel formato `M. Cognome`;
-- click singolo = selezione;
-- doppio click su turno = modifica;
-- doppio click su cella vuota = nuovo turno;
-- drag & drop mantenuto;
-- turni provvisori selezionabili;
-- zoom del solo planning:
-  - pinch del trackpad in Safari;
-  - Command/Ctrl + rotella;
-  - Command + / Command -;
-- pulsante Oggi che centra il giorno corrente;
-- supporto input `24:00`;
-- pagina Montatori;
-- produzione e film liberi con suggerimenti;
-- blocco delle sovrapposizioni nella stessa sala;
-- Supabase opzionale e realtime predisposto.
+- montatori sempre nel formato `M. COGNOME`;
+- pallino celeste in alto a destra nella cella selezionata;
+- hover delle celle molto più discreto;
+- copia del turno con `⌘C`;
+- incolla nella cella selezionata con `⌘V`;
+- controllo degli orari incompatibili prima dell'incolla;
+- selezione multipla con `Shift + clic`;
+- selezione multipla limitata alla stessa sala;
+- operazioni compatibili con turni definitivi e provvisori;
+- drag & drop, doppio clic, zoom e stile della Build 4.0 mantenuti;
+- Supabase e Realtime mantenuti.
 
-## Installazione su GitHub Pages
+## Installazione
 
-Copia nella root del repository:
+Sostituisci i file della Build 4.0 nella root del repository con tutto il contenuto
+della cartella Build 5.0, quindi esegui Commit e Push da GitHub Desktop.
 
-- `index.html`
-- `assets/`
-- `src/`
-- `database/`
-- `docs/`
-- `README.md`
-- `CHANGELOG.txt`
+## Database
 
-Poi Commit e Push da GitHub Desktop.
+La Build 5.0 usa lo stesso schema database della 4.0.
+Non è necessario eseguire nuovi script SQL se hai già eseguito:
 
-## Supabase
+1. `database/001_initial_schema.sql`
+2. `database/002_seed_rooms.sql`
 
-Leggi `docs/SUPABASE_SETUP.md`.
+Configura `src/config.js` con Project URL e Publishable Key per usare Supabase.

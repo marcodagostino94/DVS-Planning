@@ -36,9 +36,9 @@ const ITALIAN_FIXED_HOLIDAYS = new Set([
   "08-15", "11-01", "12-08", "12-25", "12-26"
 ]);
 
-const SHIFT_STORAGE = "dvs-planning-build-4-shifts";
-const EDITOR_STORAGE = "dvs-planning-build-4-editors";
-const ZOOM_STORAGE = "dvs-planning-build-4-zoom";
+const SHIFT_STORAGE = "dvs-planning-build-5-shifts";
+const EDITOR_STORAGE = "dvs-planning-build-5-editors";
+const ZOOM_STORAGE = "dvs-planning-build-5-zoom";
 
 const hasSupabaseConfig = Boolean(
   window.DVS_SUPABASE?.url &&
@@ -56,9 +56,11 @@ const db = hasSupabaseConfig
 let currentMonth = new Date(2026, 6, 1);
 let editingShiftId = null;
 let editingEditorId = null;
-let selectedShiftId = null;
+let selectedShiftIdss = new Set();
+let selectionAnchorId = null;
 let selectedCell = null;
 let draggedShiftId = null;
+let copiedShifts = [];
 let planningZoom = Number(localStorage.getItem(ZOOM_STORAGE)) || 1;
 
 const seedEditors = [
@@ -174,7 +176,7 @@ function getEditor(id) {
 function editorDisplay(editor) {
   if (!editor) return "Da assegnare";
   const initial = editor.firstName.trim().charAt(0).toUpperCase();
-  return `${initial}. ${editor.lastName.trim()}`;
+  return `${initial}. ${editor.lastName.trim().toUpperCase()}`;
 }
 
 function editorConflict(shift) {
@@ -185,6 +187,132 @@ function editorConflict(shift) {
     && other.editorId === shift.editorId
     && overlaps(other, shift)
   );
+}
+
+function selectedShiftList() {
+  return shifts.filter(shift => selectedShiftIdss.has(shift.id));
+}
+
+function selectOnlyShift(id) {
+  selectedShiftIdss = new Set([id]);
+  selectionAnchorId = id;
+  selectedCell = null;
+}
+
+function selectShiftRange(anchorId, targetId) {
+  const anchorShift = shifts.find(shift => shift.id === anchorId);
+  const targetShift = shifts.find(shift => shift.id === targetId);
+
+  if (!anchorShift || !targetShift || anchorShift.room !== targetShift.room) {
+    selectOnlyShift(targetId);
+    return;
+  }
+
+  const sameRoom = shifts
+    .filter(shift => shift.room === anchorShift.room)
+    .sort((a, b) =>
+      a.date.localeCompare(b.date)
+      || a.start.localeCompare(b.start)
+      || a.id.localeCompare(b.id)
+    );
+
+  const anchorIndex = sameRoom.findIndex(shift => shift.id === anchorId);
+  const targetIndex = sameRoom.findIndex(shift => shift.id === targetId);
+
+  if (anchorIndex < 0 || targetIndex < 0) {
+    selectOnlyShift(targetId);
+    return;
+  }
+
+  const start = Math.min(anchorIndex, targetIndex);
+  const end = Math.max(anchorIndex, targetIndex);
+
+  selectedShiftIdss = new Set(
+    sameRoom.slice(start, end + 1).map(shift => shift.id)
+  );
+  selectedCell = null;
+}
+
+function clearSelection() {
+  selectedShiftIdss.clear();
+  selectionAnchorId = null;
+  selectedCell = null;
+}
+
+function copySelectedShifts() {
+  const selected = selectedShiftList()
+    .sort((a, b) =>
+      a.date.localeCompare(b.date)
+      || a.start.localeCompare(b.start)
+    );
+
+  if (!selected.length) return false;
+
+  copiedShifts = selected.map(shift => ({ ...shift }));
+  showToast(
+    selected.length === 1
+      ? "Turno copiato"
+      : `${selected.length} turni copiati`
+  );
+  return true;
+}
+
+function pasteCopiedShifts() {
+  if (!copiedShifts.length || !selectedCell) return false;
+
+  const sourceBase = new Date(`${copiedShifts[0].date}T12:00:00`);
+  const targetBase = new Date(`${selectedCell.date}T12:00:00`);
+  const offsetDays = Math.round((targetBase - sourceBase) / 86400000);
+
+  const candidates = copiedShifts.map((source, index) => {
+    const sourceDate = new Date(`${source.date}T12:00:00`);
+    sourceDate.setDate(sourceDate.getDate() + offsetDays);
+
+    return {
+      ...source,
+      id: crypto.randomUUID(),
+      room: selectedCell.room,
+      date: isoDate(
+        sourceDate.getFullYear(),
+        sourceDate.getMonth(),
+        sourceDate.getDate()
+      )
+    };
+  });
+
+  const hasInternalConflict = candidates.some((candidate, index) =>
+    candidates.some((other, otherIndex) =>
+      index !== otherIndex
+      && candidate.room === other.room
+      && candidate.date === other.date
+      && overlaps(candidate, other)
+    )
+  );
+
+  const hasExistingConflict = candidates.some(candidate =>
+    roomConflict(candidate)
+  );
+
+  if (hasInternalConflict || hasExistingConflict) {
+    showToast("Orari non compatibili");
+    return true;
+  }
+
+  shifts.push(...candidates);
+  saveLocal();
+  candidates.forEach(syncShiftToSupabase);
+
+  selectedShiftIdss = new Set(candidates.map(candidate => candidate.id));
+  selectionAnchorId = candidates[0]?.id || null;
+  selectedCell = null;
+
+  renderPlanning();
+  showToast(
+    candidates.length === 1
+      ? "Turno incollato"
+      : `${candidates.length} turni incollati`
+  );
+  return true;
 }
 
 function isHoliday(date) {
@@ -229,7 +357,7 @@ function renderCard(shift) {
 
   return `
     <article
-      class="shift-card ${shift.status} ${selectedShiftId === shift.id ? "selected" : ""}"
+      class="shift-card ${shift.status} ${selectedShiftIdss.has(shift.id) ? "selected" : ""}"
       data-shift-id="${shift.id}"
       draggable="true"
       style="--accent-rgb:${color.rgb}">
@@ -311,6 +439,7 @@ function renderPlanning() {
           style="--row-height:${rowHeight}px"
           data-room="${room.id}"
           data-date="${date}">
+          ${isSelected ? '<span class="cell-selection-dot" aria-hidden="true"></span>' : ""}
           ${dayShifts.map(renderCard).join("")}
           ${dayShifts.length ? "" : '<span class="cell-add-hint">+ turno</span>'}
         </div>
@@ -327,8 +456,14 @@ function bindPlanningEvents() {
   document.querySelectorAll(".shift-card").forEach(card => {
     card.addEventListener("click", event => {
       event.stopPropagation();
-      selectedShiftId = card.dataset.shiftId;
-      selectedCell = null;
+      const id = card.dataset.shiftId;
+
+      if (event.shiftKey && selectionAnchorId) {
+        selectShiftRange(selectionAnchorId, id);
+      } else {
+        selectOnlyShift(id);
+      }
+
       renderPlanning();
     });
 
@@ -351,7 +486,8 @@ function bindPlanningEvents() {
 
   document.querySelectorAll(".planning-cell").forEach(cell => {
     cell.addEventListener("click", () => {
-      selectedShiftId = null;
+      selectedShiftIdss.clear();
+      selectionAnchorId = null;
       selectedCell = { room: cell.dataset.room, date: cell.dataset.date };
       renderPlanning();
     });
@@ -386,7 +522,8 @@ function bindPlanningEvents() {
       shift.date = candidate.date;
       saveLocal();
       syncShiftToSupabase(shift);
-      selectedShiftId = shift.id;
+      selectedShiftIdss = new Set([shift.id]);
+      selectionAnchorId = shift.id;
       selectedCell = null;
       renderPlanning();
       showToast("Turno spostato");
@@ -510,7 +647,8 @@ shiftForm.addEventListener("submit", event => {
 
   saveLocal();
   syncShiftToSupabase(candidate);
-  selectedShiftId = candidate.id;
+  selectedShiftIdss = new Set([candidate.id]);
+  selectionAnchorId = candidate.id;
   selectedCell = null;
   closeShiftDialog();
   renderPlanning();
@@ -521,7 +659,8 @@ document.getElementById("deleteShiftBtn").addEventListener("click", () => {
   shifts = shifts.filter(item => item.id !== editingShiftId);
   saveLocal();
   deleteShiftFromSupabase(editingShiftId);
-  selectedShiftId = null;
+  selectedShiftIdss.clear();
+  selectionAnchorId = null;
   closeShiftDialog();
   renderPlanning();
 });
@@ -532,23 +671,20 @@ document.getElementById("newShiftBtn").addEventListener("click", () => openNewSh
 
 document.getElementById("prevMonth").addEventListener("click", () => {
   currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1);
-  selectedShiftId = null;
-  selectedCell = null;
+  clearSelection();
   renderPlanning();
 });
 
 document.getElementById("nextMonth").addEventListener("click", () => {
   currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() + 1, 1);
-  selectedShiftId = null;
-  selectedCell = null;
+  clearSelection();
   renderPlanning();
 });
 
 document.getElementById("todayBtn").addEventListener("click", () => {
   const now = new Date();
   currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  selectedShiftId = null;
-  selectedCell = null;
+  clearSelection();
   renderPlanning();
 
   requestAnimationFrame(() => {
@@ -602,16 +738,27 @@ planningScroller.addEventListener("gesturechange", event => {
 }, { passive: false });
 
 document.addEventListener("keydown", event => {
+  const target = event.target;
+  const isTyping = Boolean(target.closest("input, select, textarea"));
+
+  if (!isTyping && (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "c") {
+    if (copySelectedShifts()) event.preventDefault();
+  }
+
+  if (!isTyping && (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "v") {
+    if (pasteCopiedShifts()) event.preventDefault();
+  }
+
   if ((event.metaKey || event.ctrlKey) && ["+", "=", "-"].includes(event.key)) {
-    const target = event.target;
-    if (target.closest("input, select, textarea")) return;
+    if (isTyping) return;
     event.preventDefault();
     planningZoom = clampZoom(planningZoom + (event.key === "-" ? -.08 : .08));
     applyPlanningZoom();
   }
 
   if (event.key === "Escape" && !shiftDialog.open && !editorDialog.open) {
-    selectedShiftId = null;
+    selectedShiftIdss.clear();
+  selectionAnchorId = null;
     selectedCell = null;
     renderPlanning();
   }
