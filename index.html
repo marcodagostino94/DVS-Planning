@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <title>DVS Planning — Build 5.0</title>
+  <title>DVS Planning — Build 6.0</title>
   <meta name="theme-color" content="#e8eaed">
   <link rel="stylesheet" href="./src/styles.css">
 </head>
@@ -43,7 +43,7 @@
         <button class="nav-item" type="button" disabled>
           <span class="nav-icon">⚙</span><span>Impostazioni</span>
         </button>
-        <span class="build-pill">Build 5.0</span>
+        <span class="build-pill">Build 6.0</span>
       </div>
     </aside>
 
@@ -226,6 +226,19 @@
     </form>
   </dialog>
 
+
+  <div id="selectionBadge" class="selection-badge hidden" aria-live="polite"></div>
+  <div id="contextMenu" class="context-menu hidden" role="menu">
+    <button type="button" data-action="edit">Modifica turno</button>
+    <div class="context-separator"></div>
+    <button type="button" data-action="copy">Copia</button>
+    <button type="button" data-action="paste">Incolla</button>
+    <div class="context-separator"></div>
+    <button type="button" data-action="make-definitive">Rendi definitivo</button>
+    <button type="button" data-action="make-provisional">Rendi provvisorio</button>
+    <div class="context-separator"></div>
+    <button type="button" class="danger-action" data-action="delete">Elimina</button>
+  </div>
   <div id="toast" class="toast" aria-live="polite"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

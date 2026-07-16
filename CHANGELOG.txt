@@ -1,24 +1,14 @@
-DVS-Planning_Build_5.0
+DVS-Planning_Build_6.0
 
-BASE
-✓ Parte dalla Build 4.0 confermata
-✓ Nessuna regressione intenzionale su drag, doppio clic, zoom e grafica
-
-GRAFICA
-✓ Montatore sempre M. COGNOME
-✓ Pallino celeste nella cella selezionata
-✓ Hover delle celle più discreto
-✓ Effetto vetro mantenuto
-
-PRODUTTIVITÀ
-✓ Command/Ctrl + C copia il turno selezionato
-✓ Command/Ctrl + V incolla nella cella selezionata
-✓ Incolla esattamente nella data scelta
-✓ Controllo conflitti prima dell'incolla
-✓ Shift + clic seleziona un intervallo di turni
-✓ Selezione multipla limitata alla stessa sala
-✓ Turni provvisori inclusi nella selezione e copia
-
-DATABASE
-✓ Stesso schema Supabase della Build 4.0
-✓ Realtime mantenuto
+✓ Command + clic
+✓ Shift + clic
+✓ Rettangolo di selezione
+✓ Selezione confinata a una sala
+✓ Drag multiplo
+✓ Traslazione delle date
+✓ Più turni nello stesso giorno
+✓ Controllo conflitti tutto-o-niente
+✓ Menu contestuale DVS
+✓ Rendi definitivo / provvisorio
+✓ Provvisori con bordo Apple
+✓ Selezione browser disabilitata

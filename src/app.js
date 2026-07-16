@@ -61,6 +61,10 @@ let selectionAnchorId = null;
 let selectedCell = null;
 let draggedShiftId = null;
 let copiedShifts = [];
+let marqueeState = null;
+let marqueeElement = null;
+let contextTargetCell = null;
+let dragSourceShiftId = null;
 let planningZoom = Number(localStorage.getItem(ZOOM_STORAGE)) || 1;
 
 const seedEditors = [
@@ -103,6 +107,8 @@ const editorDialog = document.getElementById("editorDialog");
 const shiftForm = document.getElementById("shiftForm");
 const editorForm = document.getElementById("editorForm");
 const toast = document.getElementById("toast");
+const contextMenu = document.getElementById("contextMenu");
+const selectionBadge = document.getElementById("selectionBadge");
 
 function loadLocal(key, fallback) {
   const saved = localStorage.getItem(key);
@@ -448,88 +454,47 @@ function renderPlanning() {
   });
 
   bindPlanningEvents();
+  updateSelectionBadge();
   fitAllCardText();
   applyPlanningZoom(false);
 }
 
+
+function selectionRoom(){const s=selectedShiftList();return s.length?s[0].room:null}
+function updateSelectionBadge(){const n=selectedShiftIdss.size;if(n>1){selectionBadge.textContent=`${n} turni selezionati`;selectionBadge.classList.remove('hidden')}else{selectionBadge.classList.add('hidden')}}
+function toggleCommandSelection(id){const t=shifts.find(s=>s.id===id);if(!t)return;const r=selectionRoom();if(r&&r!==t.room){selectOnlyShift(id);return}if(selectedShiftIdss.has(id)){selectedShiftIdss.delete(id);if(selectionAnchorId===id)selectionAnchorId=[...selectedShiftIdss][0]||null}else{selectedShiftIdss.add(id);selectionAnchorId ||= id}selectedCell=null}
+function hideContextMenu(){contextMenu.classList.add('hidden');contextTargetCell=null}
+function showContextMenu(e,cell){e.preventDefault();e.stopPropagation();contextTargetCell=cell;const sel=selectedShiftList();contextMenu.querySelector('[data-action="edit"]').disabled=sel.length!==1;contextMenu.querySelector('[data-action="make-definitive"]').disabled=!sel.some(s=>s.status==='provvisorio');contextMenu.querySelector('[data-action="make-provisional"]').disabled=!sel.some(s=>s.status==='definitivo');contextMenu.querySelector('[data-action="paste"]').disabled=!copiedShifts.length||!cell;contextMenu.classList.remove('hidden');const x=Math.min(e.clientX,window.innerWidth-210),y=Math.min(e.clientY,window.innerHeight-contextMenu.offsetHeight-8);contextMenu.style.left=`${Math.max(8,x)}px`;contextMenu.style.top=`${Math.max(8,y)}px`}
+function setSelectedStatus(status){const sel=selectedShiftList();sel.forEach(s=>{s.status=status;syncShiftToSupabase(s)});saveLocal();renderPlanning();showToast(sel.length===1?`Turno reso ${status}`:`${sel.length} turni aggiornati`)}
+function deleteSelectedShifts(){const sel=selectedShiftList();if(!sel.length)return;if(!confirm(`Eliminare ${sel.length===1?'questo turno':sel.length+' turni'}?`))return;const ids=new Set(sel.map(s=>s.id));shifts=shifts.filter(s=>!ids.has(s.id));sel.forEach(s=>deleteShiftFromSupabase(s.id));saveLocal();clearSelection();renderPlanning()}
+function groupForDrag(id){const src=shifts.find(s=>s.id===id);if(!src)return[];if(!selectedShiftIdss.has(id))selectOnlyShift(id);return selectedShiftList().filter(s=>s.room===src.room).sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start))}
+function movedGroup(id,room,date){const g=groupForDrag(id),src=g.find(s=>s.id===id);if(!src)return[];const d0=new Date(src.date+'T12:00:00'),d1=new Date(date+'T12:00:00'),off=Math.round((d1-d0)/86400000);return g.map(s=>{const d=new Date(s.date+'T12:00:00');d.setDate(d.getDate()+off);return{...s,room,date:isoDate(d.getFullYear(),d.getMonth(),d.getDate())}})}
+function groupConflict(cands){const ids=new Set(cands.map(c=>c.id));for(let i=0;i<cands.length;i++)for(let j=i+1;j<cands.length;j++)if(cands[i].room===cands[j].room&&cands[i].date===cands[j].date&&overlaps(cands[i],cands[j]))return true;return cands.some(c=>shifts.some(s=>!ids.has(s.id)&&s.room===c.room&&s.date===c.date&&overlaps(s,c)))}
+function startMarquee(e,cell){if(e.button!==0||e.target.closest('.shift-card'))return;const r=cell.getBoundingClientRect();marqueeState={room:cell.dataset.room,x:e.clientX,top:r.top,bottom:r.bottom,add:e.metaKey||e.ctrlKey};if(!marqueeState.add){selectedShiftIdss.clear();selectionAnchorId=null}selectedCell=null;marqueeElement=document.createElement('div');marqueeElement.className='selection-marquee';document.body.appendChild(marqueeElement);updateMarquee(e);e.preventDefault()}
+function updateMarquee(e){if(!marqueeState)return;const l=Math.min(marqueeState.x,e.clientX),rr=Math.max(marqueeState.x,e.clientX),t=marqueeState.top+2,b=marqueeState.bottom-2;Object.assign(marqueeElement.style,{left:l+'px',top:t+'px',width:Math.max(1,rr-l)+'px',height:Math.max(1,b-t)+'px'});document.querySelectorAll(`.planning-cell[data-room="${marqueeState.room}"] .shift-card`).forEach(card=>{const q=card.getBoundingClientRect();if(!(q.right<l||q.left>rr||q.bottom<t||q.top>b))selectedShiftIdss.add(card.dataset.shiftId)});selectionAnchorId ||= [...selectedShiftIdss][0]||null;document.querySelectorAll('.shift-card').forEach(c=>c.classList.toggle('selected',selectedShiftIdss.has(c.dataset.shiftId)));updateSelectionBadge()}
+function finishMarquee(){if(!marqueeState)return;marqueeElement?.remove();marqueeElement=null;marqueeState=null;renderPlanning()}
 function bindPlanningEvents() {
-  document.querySelectorAll(".shift-card").forEach(card => {
-    card.addEventListener("click", event => {
-      event.stopPropagation();
-      const id = card.dataset.shiftId;
-
-      if (event.shiftKey && selectionAnchorId) {
-        selectShiftRange(selectionAnchorId, id);
-      } else {
-        selectOnlyShift(id);
-      }
-
-      renderPlanning();
-    });
-
-    card.addEventListener("dblclick", event => {
-      event.stopPropagation();
-      openEditShift(card.dataset.shiftId);
-    });
-
-    card.addEventListener("dragstart", event => {
-      draggedShiftId = card.dataset.shiftId;
-      card.classList.add("dragging");
-      event.dataTransfer.effectAllowed = "move";
-    });
-
-    card.addEventListener("dragend", () => {
-      card.classList.remove("dragging");
-      draggedShiftId = null;
-    });
+  document.querySelectorAll('.shift-card').forEach(card=>{
+    card.addEventListener('click',e=>{e.stopPropagation();hideContextMenu();const id=card.dataset.shiftId;if(e.metaKey||e.ctrlKey)toggleCommandSelection(id);else if(e.shiftKey&&selectionAnchorId)selectShiftRange(selectionAnchorId,id);else selectOnlyShift(id);renderPlanning()});
+    card.addEventListener('dblclick',e=>{e.stopPropagation();hideContextMenu();openEditShift(card.dataset.shiftId)});
+    card.addEventListener('contextmenu',e=>{const id=card.dataset.shiftId;if(!selectedShiftIdss.has(id))selectOnlyShift(id);const cell=card.closest('.planning-cell');showContextMenu(e,cell);renderPlanning()});
+    card.addEventListener('dragstart',e=>{dragSourceShiftId=card.dataset.shiftId;groupForDrag(dragSourceShiftId);card.classList.add('dragging');e.dataTransfer.effectAllowed='move';e.dataTransfer.setData('text/plain',dragSourceShiftId)});
+    card.addEventListener('dragend',()=>{card.classList.remove('dragging');dragSourceShiftId=null;document.querySelectorAll('.group-drop-target').forEach(x=>x.classList.remove('group-drop-target'))});
   });
-
-  document.querySelectorAll(".planning-cell").forEach(cell => {
-    cell.addEventListener("click", () => {
-      selectedShiftIdss.clear();
-      selectionAnchorId = null;
-      selectedCell = { room: cell.dataset.room, date: cell.dataset.date };
-      renderPlanning();
-    });
-
-    cell.addEventListener("dblclick", event => {
-      if (event.target.closest(".shift-card")) return;
-      openNewShift(cell.dataset.room, cell.dataset.date);
-    });
-
-    cell.addEventListener("dragover", event => {
-      event.preventDefault();
-      event.dataTransfer.dropEffect = "move";
-    });
-
-    cell.addEventListener("drop", event => {
-      event.preventDefault();
-      const shift = shifts.find(item => item.id === draggedShiftId);
-      if (!shift) return;
-
-      const candidate = {
-        ...shift,
-        room: cell.dataset.room,
-        date: cell.dataset.date
-      };
-
-      if (roomConflict(candidate, shift.id)) {
-        showToast("Orari non compatibili");
-        return;
-      }
-
-      shift.room = candidate.room;
-      shift.date = candidate.date;
-      saveLocal();
-      syncShiftToSupabase(shift);
-      selectedShiftIdss = new Set([shift.id]);
-      selectionAnchorId = shift.id;
-      selectedCell = null;
-      renderPlanning();
-      showToast("Turno spostato");
-    });
+  document.querySelectorAll('.planning-cell').forEach(cell=>{
+    cell.addEventListener('click',e=>{if(e.detail>1)return;hideContextMenu();selectedShiftIdss.clear();selectionAnchorId=null;selectedCell={room:cell.dataset.room,date:cell.dataset.date};renderPlanning()});
+    cell.addEventListener('dblclick',e=>{if(e.target.closest('.shift-card'))return;hideContextMenu();openNewShift(cell.dataset.room,cell.dataset.date)});
+    cell.addEventListener('mousedown',e=>startMarquee(e,cell));
+    cell.addEventListener('contextmenu',e=>{selectedCell={room:cell.dataset.room,date:cell.dataset.date};showContextMenu(e,cell)});
+    cell.addEventListener('dragover',e=>{e.preventDefault();e.dataTransfer.dropEffect='move';cell.classList.add('group-drop-target')});
+    cell.addEventListener('dragleave',e=>{if(!cell.contains(e.relatedTarget))cell.classList.remove('group-drop-target')});
+    cell.addEventListener('drop',e=>{e.preventDefault();cell.classList.remove('group-drop-target');const id=dragSourceShiftId||e.dataTransfer.getData('text/plain'),c=movedGroup(id,cell.dataset.room,cell.dataset.date);if(!c.length)return;if(groupConflict(c)){showToast('Orari non compatibili');return}const map=new Map(c.map(x=>[x.id,x]));shifts=shifts.map(s=>map.get(s.id)||s);c.forEach(syncShiftToSupabase);saveLocal();selectedShiftIdss=new Set(c.map(x=>x.id));selectionAnchorId=id;selectedCell=null;renderPlanning();showToast(c.length===1?'Turno spostato':`${c.length} turni spostati`)});
   });
 }
+document.addEventListener('mousemove',e=>{if(marqueeState)updateMarquee(e)});
+document.addEventListener('mouseup',()=>{if(marqueeState)finishMarquee()});
+document.addEventListener('click',e=>{if(!contextMenu.contains(e.target))hideContextMenu()});
+contextMenu.addEventListener('click',e=>{const b=e.target.closest('button[data-action]');if(!b||b.disabled)return;const action=b.dataset.action,cell=contextTargetCell;hideContextMenu();if(action==='edit'){const s=selectedShiftList();if(s.length===1)openEditShift(s[0].id)}else if(action==='copy')copySelectedShifts();else if(action==='paste'&&cell){selectedCell={room:cell.dataset.room,date:cell.dataset.date};pasteCopiedShifts()}else if(action==='make-definitive')setSelectedStatus('definitivo');else if(action==='make-provisional')setSelectedStatus('provvisorio');else if(action==='delete')deleteSelectedShifts()});
 
 function populateShiftSelects() {
   document.getElementById("room").innerHTML = ROOMS
