@@ -226,9 +226,9 @@
     </form>
   </dialog>
 
-
   <div id="selectionBadge" class="selection-badge hidden" aria-live="polite"></div>
-  <div id="contextMenu" class="context-menu hidden" role="menu">
+
+  <div id="contextMenu" class="context-menu hidden" role="menu" aria-label="Azioni turno">
     <button type="button" data-action="edit">Modifica turno</button>
     <div class="context-separator"></div>
     <button type="button" data-action="copy">Copia</button>
@@ -239,6 +239,7 @@
     <div class="context-separator"></div>
     <button type="button" class="danger-action" data-action="delete">Elimina</button>
   </div>
+
   <div id="toast" class="toast" aria-live="polite"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>

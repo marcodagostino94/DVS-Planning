@@ -1,14 +1,11 @@
 DVS-Planning_Build_6.0
 
-✓ Command + clic
-✓ Shift + clic
-✓ Rettangolo di selezione
-✓ Selezione confinata a una sala
-✓ Drag multiplo
-✓ Traslazione delle date
-✓ Più turni nello stesso giorno
-✓ Controllo conflitti tutto-o-niente
-✓ Menu contestuale DVS
-✓ Rendi definitivo / provvisorio
-✓ Provvisori con bordo Apple
-✓ Selezione browser disabilitata
+✓ Command+clic
+✓ Shift+clic
+✓ selezione a rettangolo
+✓ drag multiplo
+✓ traslazione relativa date
+✓ controllo conflitti gruppo
+✓ menu contestuale DVS
+✓ provvisori evidenziati
+✓ no selezione testo browser
