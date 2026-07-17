@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <title>DVS Planning — Build 9.0</title>
+  <title>DVS Planning — Build 10.0</title>
   <meta name="theme-color" content="#e8eaed">
-  <link rel="stylesheet" href="./src/styles.css?v=9.0">
+  <link rel="stylesheet" href="./src/styles.css?v=10.0">
 </head>
 <body>
   <div class="app-shell">
@@ -43,7 +43,7 @@
         <button class="nav-item" type="button" disabled>
           <span class="nav-icon">⚙</span><span>Impostazioni</span>
         </button>
-        <span class="build-pill">Build 9.0</span>
+        <span class="build-pill">Build 10.0</span>
       </div>
     </aside>
 
@@ -112,7 +112,7 @@
     </main>
   </div>
 
-  <dialog id="shiftDialog" class="app-dialog">
+  <dialog id="shiftDialog" class="app-dialog shift-dialog-wide">
     <form id="shiftForm">
       <div class="dialog-header">
         <div>
@@ -127,34 +127,48 @@
       <div class="form-grid">
         <label>
           Produzione
-          <input id="production" list="productionSuggestions" required placeholder="RAI, CATTLEYA…">
+          <input id="production" list="productionSuggestions" required placeholder="RAI, CATTLEYA…" autocomplete="off">
           <datalist id="productionSuggestions"></datalist>
         </label>
 
         <label>
           Film / Programma
-          <input id="film" list="filmSuggestions" required placeholder="VITA IN DIRETTA">
+          <input id="film" list="filmSuggestions" required placeholder="VITA IN DIRETTA" autocomplete="off">
           <datalist id="filmSuggestions"></datalist>
         </label>
 
+        <fieldset class="date-range-field form-wide">
+          <legend>Periodo</legend>
+          <div class="date-range-inputs">
+            <label>Dal<input id="dateFrom" type="date" required></label>
+            <span class="date-arrow">→</span>
+            <label>Al<input id="dateTo" type="date" required></label>
+          </div>
+          <div id="weekdayPicker" class="weekday-picker" aria-label="Giorni della settimana">
+            <button type="button" data-weekday="all" class="active">T</button>
+            <button type="button" data-weekday="1">L</button>
+            <button type="button" data-weekday="2">M</button>
+            <button type="button" data-weekday="3">M</button>
+            <button type="button" data-weekday="4">G</button>
+            <button type="button" data-weekday="5">V</button>
+            <button type="button" data-weekday="6">S</button>
+            <button type="button" data-weekday="0">D</button>
+          </div>
+        </fieldset>
+
         <label>
-          Data
-          <input id="date" type="date" required>
+          Dalle
+          <input id="start" type="time" required value="10:00">
+        </label>
+
+        <label>
+          Alle
+          <input id="end" type="time" required value="18:00">
         </label>
 
         <label>
           Sala
           <select id="room" required></select>
-        </label>
-
-        <label>
-          Dalle
-          <input id="start" type="text" inputmode="numeric" required value="08:00" placeholder="08:00">
-        </label>
-
-        <label>
-          Alle
-          <input id="end" type="text" inputmode="numeric" required value="16:00" placeholder="16:00 o 24:00">
         </label>
 
         <label>
@@ -164,25 +178,39 @@
             <option>ASSISTENTE</option>
             <option>GRAFICA</option>
             <option>COLOR</option>
-            <option>SOUND DESIGN</option>
+            <option>SOUND</option>
+            <option>REDAZIONE</option>
           </select>
         </label>
 
-        <label>
-          Montatore
-          <select id="editor"></select>
+        <label class="form-wide">
+          Dipendente
+          <input id="editorSearchInput" list="editorSuggestions" placeholder="Cerca per nome o cognome" autocomplete="off">
+          <datalist id="editorSuggestions"></datalist>
+          <input id="editor" type="hidden">
         </label>
 
-        <label>
-          Stato
-          <select id="status" required>
-            <option value="definitivo">Definitivo</option>
-            <option value="provvisorio">Provvisorio</option>
-          </select>
+        <label class="checkbox-label option-card">
+          <input id="isClient" type="checkbox">
+          <span><strong>CLIENTE</strong><small>Disabilita la selezione del dipendente</small></span>
         </label>
 
-        <label>
-          Colore film
+        <label class="checkbox-label option-card">
+          <input id="isDoubleStation" type="checkbox">
+          <span><strong>DOPPIA POSTAZIONE</strong><small>Il turno sarà evidenziato in rosso</small></span>
+        </label>
+
+        <fieldset class="status-field form-wide">
+          <legend>Stato</legend>
+          <div class="segmented-control">
+            <button type="button" data-status="definitivo" class="active">Definitivo</button>
+            <button type="button" data-status="provvisorio">Provvisorio</button>
+          </div>
+          <input id="status" type="hidden" value="definitivo">
+        </fieldset>
+
+        <label id="colorField" class="form-wide">
+          Colore turno
           <select id="color" required></select>
         </label>
       </div>
@@ -190,7 +218,7 @@
       <div id="shiftFormError" class="form-error" role="alert"></div>
 
       <div class="dialog-actions">
-        <button id="deleteShiftBtn" class="danger-btn hidden" type="button">Elimina</button>
+        <button id="deleteShiftBtn" class="danger-btn hidden" type="button">Elimina turno</button>
         <div class="dialog-spacer"></div>
         <button id="cancelShiftBtn" class="secondary-btn" type="button">Annulla</button>
         <button class="primary-btn" type="submit">Salva turno</button>
@@ -259,6 +287,8 @@
 
   <div id="contextMenu" class="context-menu hidden" role="menu" aria-label="Azioni turno">
     <button type="button" data-action="edit">Modifica turno</button>
+    <button type="button" data-action="confirm">Conferma turno</button>
+    <button type="button" data-action="unconfirm">Annulla conferma</button>
     <div class="context-separator"></div>
     <button type="button" data-action="copy">Copia</button>
     <button type="button" data-action="cut">Taglia</button>
@@ -273,7 +303,7 @@
   <div id="toast" class="toast" aria-live="polite"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="./src/config.js?v=8.0.5"></script>
-  <script src="./src/app.js?v=9.0"></script>
+  <script src="./src/config.js?v=10.0"></script>
+  <script src="./src/app.js?v=10.0"></script>
 </body>
 </html>

@@ -1,11 +1,15 @@
-DVS Planning — Build 9.0
+DVS Planning · Build 10.0
 
-- Filtri Dipendenti per qualifica.
-- Ordinamento alfabetico per NOME e poi COGNOME.
-- Nome e cognome visualizzati in MAIUSCOLO.
-- Placeholder corretti: Nome / Cognome.
-- Turni collegati a Supabase come fonte ufficiale.
-- Realtime per dipendenti e turni.
-- Migrazione 005 con schema database completo di base: qualifications, staff, rooms, productions, shifts, app_profiles, app_settings.
-- Normalizzazione in maiuscolo dei nominativi già presenti.
-- RLS prototipo, indici, trigger updated_at e controllo sovrapposizioni sale.
+- Calendario mensile esteso al lunedì precedente e alla domenica successiva.
+- Date esterne al mese mostrate solo per continuità visiva.
+- Nuovo popup turno con periodo Dal/Al e selettore T-L-M-M-G-V-S-D.
+- Orario predefinito 10:00–18:00 e proposta automatica di 8 ore.
+- Aggiunte lavorazioni EDIT, ASSISTENTE, GRAFICA, COLOR, SOUND, REDAZIONE.
+- Aggiunte modalità CLIENTE e DOPPIA POSTAZIONE.
+- Ricerca dipendente per nome/cognome, senza inserimento di nominativi sconosciuti.
+- Stato definitivo/provvisorio con colore disabilitato nei provvisori.
+- Conferma e annullamento conferma dal menu contestuale.
+- Turni confermati bloccati contro modifica, spostamento, taglio, eliminazione e cambio stato.
+- Turni confermati visualizzati con maggiore saturazione.
+- Sale Remote 1, Remote 2 e Remote 3.
+- Migrazione database 006_shifts_build_10.sql.

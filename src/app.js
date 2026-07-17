@@ -5,8 +5,9 @@ const ROOMS = [
     label: `Sala ${index + 1}`,
     sortOrder: index + 1
   })),
-  { id: "remoto-grafica", label: "Grafica remoto", sortOrder: 16 },
-  { id: "remoto-sound", label: "Sound remoto", sortOrder: 17 }
+  { id: "remoto-1", label: "Remote 1", sortOrder: 16 },
+  { id: "remoto-2", label: "Remote 2", sortOrder: 17 },
+  { id: "remoto-3", label: "Remote 3", sortOrder: 18 }
 ];
 
 const GROUPS = {
@@ -36,7 +37,7 @@ const ITALIAN_FIXED_HOLIDAYS = new Set([
   "08-15", "11-01", "12-08", "12-25", "12-26"
 ]);
 
-const SHIFT_STORAGE = "dvs-planning-build-5-shifts";
+const SHIFT_STORAGE = "dvs-planning-build-10-shifts";
 const EDITOR_STORAGE = "dvs-planning-build-9-staff";
 const ZOOM_STORAGE = "dvs-planning-build-5-zoom";
 
@@ -98,15 +99,20 @@ const seedShifts = [
   { id:"9", room:"sala-7", date:"2026-07-07", production:"RAI", film:"UNOMATTINA", start:"08:00", end:"16:00", workType:"EDIT", editorId:"ed-4", status:"definitivo", color:"pink" },
   { id:"10", room:"sala-8", date:"2026-07-08", production:"CATTLEYA", film:"GOMORRA - STAGIONE 6", start:"09:00", end:"17:00", workType:"COLOR", editorId:"ed-3", status:"definitivo", color:"violet" },
   { id:"11", room:"sala-9", date:"2026-07-09", production:"AMAZON PRIME", film:"CELEBRITY HUNTED", start:"10:00", end:"18:00", workType:"COLOR", editorId:"ed-2", status:"definitivo", color:"lime" },
-  { id:"12", room:"sala-10", date:"2026-07-10", production:"DVS", film:"SPOT ISTITUZIONALE", start:"08:00", end:"17:00", workType:"SOUND DESIGN", editorId:"ed-8", status:"definitivo", color:"blue" },
-  { id:"13", room:"remoto-grafica", date:"2026-07-02", production:"RAI", film:"VITA IN DIRETTA", start:"09:00", end:"17:00", workType:"GRAFICA", editorId:"ed-7", status:"definitivo", color:"coral" }
+  { id:"12", room:"sala-10", date:"2026-07-10", production:"DVS", film:"SPOT ISTITUZIONALE", start:"08:00", end:"17:00", workType:"SOUND", editorId:"ed-8", status:"definitivo", color:"blue" },
+  { id:"13", room:"remoto-1", date:"2026-07-02", production:"RAI", film:"VITA IN DIRETTA", start:"09:00", end:"17:00", workType:"GRAFICA", editorId:"ed-7", status:"definitivo", color:"coral" }
 ];
 
 let editors = loadLocal(EDITOR_STORAGE, []);
 // Build 8.0.1: elimina automaticamente i soli nominativi dimostrativi della vecchia interfaccia.
 const prototypeStaffIds = new Set(seedEditors.map(item => item.id));
 editors = editors.filter(item => !prototypeStaffIds.has(item.id));
-let shifts = loadLocal(SHIFT_STORAGE, seedShifts);
+let shifts = loadLocal(SHIFT_STORAGE, seedShifts).map(shift => ({
+  ...shift,
+  isClient: Boolean(shift.isClient),
+  isDoubleStation: Boolean(shift.isDoubleStation),
+  confirmed: Boolean(shift.confirmed)
+}));
 
 const planningGrid = document.getElementById("planningGrid");
 const planningCanvas = document.getElementById("planningCanvas");
@@ -155,6 +161,36 @@ function monthName(date) {
   }).format(date);
 }
 
+function addDays(date, amount) {
+  const copy = new Date(date);
+  copy.setDate(copy.getDate() + amount);
+  return copy;
+}
+
+function startOfPlanningMonth(monthDate) {
+  const first = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
+  const mondayOffset = (first.getDay() + 6) % 7;
+  return addDays(first, -mondayOffset);
+}
+
+function endOfPlanningMonth(monthDate) {
+  const last = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0);
+  const sundayOffset = (7 - last.getDay()) % 7;
+  return addDays(last, sundayOffset);
+}
+
+function planningDates(monthDate) {
+  const dates = [];
+  const start = startOfPlanningMonth(monthDate);
+  const end = endOfPlanningMonth(monthDate);
+  for (let date = new Date(start); date <= end; date = addDays(date, 1)) dates.push(new Date(date));
+  return dates;
+}
+
+function isoFromDate(date) {
+  return isoDate(date.getFullYear(), date.getMonth(), date.getDate());
+}
+
 function normalizeTime(value) {
   const trimmed = value.trim();
   if (trimmed === "24" || trimmed === "24:0" || trimmed === "24:00") return "24:00";
@@ -191,7 +227,7 @@ function getEditor(id) {
 }
 
 function editorDisplay(editor) {
-  if (!editor) return "Da assegnare";
+  if (!editor) return "";
   const initial = editor.firstName.trim().charAt(0).toUpperCase();
   return `${initial}. ${editor.lastName.trim().toUpperCase()}`;
 }
@@ -286,6 +322,7 @@ function cutSelectedShifts() {
   const selected = selectedShiftList()
     .sort((a, b) => a.date.localeCompare(b.date) || a.start.localeCompare(b.start));
   if (!selected.length) return false;
+  if (selected.some(shift => shift.confirmed)) { showToast("Il turno confermato è bloccato"); return false; }
 
   clipboardMode = "cut";
   copiedShifts = selected.map(shift => ({ ...shift }));
@@ -310,6 +347,8 @@ function pasteCopiedShifts() {
     return {
       ...source,
       id: isCut ? source.id : crypto.randomUUID(),
+      confirmed: isCut ? Boolean(source.confirmed) : false,
+      confirmedAt: null,
       room: selectedCell.room,
       date: isoDate(sourceDate.getFullYear(), sourceDate.getMonth(), sourceDate.getDate())
     };
@@ -390,13 +429,19 @@ function showContextMenu(event, targetCell) {
   event.stopPropagation();
   contextTargetCell = targetCell || null;
   const selected = selectedShiftList();
-  contextMenu.querySelector('[data-action="edit"]').disabled = selected.length !== 1;
+  const hasConfirmed = selected.some(shift => shift.confirmed);
+  const exactlyOne = selected.length === 1;
+  contextMenu.querySelector('[data-action="edit"]').disabled = !exactlyOne || hasConfirmed;
+  contextMenu.querySelector('[data-action="confirm"]').hidden = !exactlyOne || Boolean(selected[0]?.confirmed);
+  contextMenu.querySelector('[data-action="confirm"]').disabled = !exactlyOne || Boolean(selected[0]?.confirmed);
+  contextMenu.querySelector('[data-action="unconfirm"]').hidden = !exactlyOne || !selected[0]?.confirmed;
+  contextMenu.querySelector('[data-action="unconfirm"]').disabled = !exactlyOne || !selected[0]?.confirmed;
   contextMenu.querySelector('[data-action="copy"]').disabled = !selected.length;
-  contextMenu.querySelector('[data-action="cut"]').disabled = !selected.length;
+  contextMenu.querySelector('[data-action="cut"]').disabled = !selected.length || hasConfirmed;
   contextMenu.querySelector('[data-action="paste"]').disabled = !copiedShifts.length || !targetCell;
-  contextMenu.querySelector('[data-action="make-definitive"]').disabled = !selected.some(s => s.status === "provvisorio");
-  contextMenu.querySelector('[data-action="make-provisional"]').disabled = !selected.some(s => s.status === "definitivo");
-  contextMenu.querySelector('[data-action="delete"]').disabled = !selected.length;
+  contextMenu.querySelector('[data-action="make-definitive"]').disabled = hasConfirmed || !selected.some(s => s.status === "provvisorio");
+  contextMenu.querySelector('[data-action="make-provisional"]').disabled = hasConfirmed || !selected.some(s => s.status === "definitivo");
+  contextMenu.querySelector('[data-action="delete"]').disabled = !selected.length || hasConfirmed;
   contextMenu.classList.remove("hidden");
   const width = 210;
   const height = contextMenu.offsetHeight || 250;
@@ -406,6 +451,7 @@ function showContextMenu(event, targetCell) {
 
 function deleteSelectedShifts() {
   const selected = selectedShiftList();
+  if (selected.some(shift => shift.confirmed)) return showToast("Il turno confermato è bloccato");
   if (!selected.length) return;
   if (!confirm(selected.length === 1 ? "Eliminare questo turno?" : `Eliminare ${selected.length} turni?`)) return;
   const ids = new Set(selected.map(s=>s.id));
@@ -416,6 +462,7 @@ function deleteSelectedShifts() {
 
 function setSelectedStatus(status) {
   const selected = selectedShiftList();
+  if (selected.some(shift => shift.confirmed)) return showToast("Il turno confermato è bloccato");
   selected.forEach(s=>{ s.status=status; syncShiftToSupabase(s); });
   saveLocal(); renderPlanning();
   showToast(selected.length === 1 ? `Turno reso ${status}` : `${selected.length} turni aggiornati`);
@@ -423,20 +470,46 @@ function setSelectedStatus(status) {
 
 function selectedGroupForDrag(sourceId) {
   const source = shifts.find(shift => shift.id === sourceId);
-  if (!source) return [];
+  if (!source || source.confirmed) {
+    if (source?.confirmed) showToast("Il turno confermato è bloccato");
+    return [];
+  }
 
   if (!selectedShiftIds.has(sourceId)) {
     selectOnlyShift(sourceId);
   }
 
   return selectedShiftList()
-    .filter(shift => shift.room === source.room)
+    .filter(shift => shift.room === source.room && !shift.confirmed)
     .map(shift => ({ ...shift }))
     .sort((a, b) =>
       a.date.localeCompare(b.date)
       || a.start.localeCompare(b.start)
       || a.id.localeCompare(b.id)
     );
+}
+
+async function setShiftConfirmed(shift, confirmed) {
+  if (!shift) return;
+  shift.confirmed = confirmed;
+  shift.confirmedAt = confirmed ? new Date().toISOString() : null;
+  saveLocal();
+  await syncShiftToSupabase(shift);
+  renderPlanning();
+  showToast(confirmed ? "Turno confermato e bloccato" : "Conferma annullata");
+}
+
+function confirmSelectedShift() {
+  const [shift] = selectedShiftList();
+  if (!shift || shift.confirmed) return;
+  setShiftConfirmed(shift, true);
+}
+
+function unconfirmSelectedShift() {
+  const [shift] = selectedShiftList();
+  if (!shift || !shift.confirmed) return;
+  if (!confirm("Vuoi annullare la conferma del turno?")) return;
+  setShiftConfirmed(shift, false);
 }
 
 function captureDragGroup(sourceId) {
@@ -636,12 +709,20 @@ function renderCard(shift) {
   const color = FILM_COLORS[shift.color] || FILM_COLORS.blue;
   const editor = getEditor(shift.editorId);
   const warning = editorConflict(shift);
+  const assignment = shift.isClient ? "CLIENTE" : editorDisplay(editor);
+  const cardClasses = [
+    "shift-card", shift.status,
+    shift.confirmed ? "confirmed" : "",
+    shift.isDoubleStation ? "double-station" : "",
+    selectedShiftIds.has(shift.id) ? "selected" : "",
+    cutShiftIds.has(shift.id) ? "cut-pending" : ""
+  ].filter(Boolean).join(" ");
 
   return `
     <article
-      class="shift-card ${shift.status} ${selectedShiftIds.has(shift.id) ? "selected" : ""} ${cutShiftIds.has(shift.id) ? "cut-pending" : ""}"
+      class="${cardClasses}"
       data-shift-id="${shift.id}"
-      draggable="true"
+      draggable="${shift.confirmed ? "false" : "true"}"
       style="--accent-rgb:${color.rgb}">
       <div class="shift-main">
         <div class="shift-production">${escapeHtml(shift.production)}</div>
@@ -650,83 +731,72 @@ function renderCard(shift) {
         <div class="shift-type">${escapeHtml(shift.workType)}</div>
       </div>
       <div class="shift-editor">
-        <span class="editor-name">${escapeHtml(editorDisplay(editor))}</span>
-        ${warning ? '<span class="editor-warning" title="Montatore presente su più turni sovrapposti">▲</span>' : ""}
+        <span class="editor-name">${escapeHtml(assignment)}</span>
+        ${shift.confirmed ? '<span class="confirmed-lock" title="Turno confermato">●</span>' : ""}
+        ${warning ? '<span class="editor-warning" title="Dipendente presente su più turni sovrapposti">▲</span>' : ""}
       </div>
     </article>
   `;
 }
 
 function renderPlanning() {
-  const year = currentMonth.getFullYear();
-  const month = currentMonth.getMonth();
-  const totalDays = daysInMonth(currentMonth);
+  const dates = planningDates(currentMonth);
+  const activeMonth = currentMonth.getMonth();
   const now = new Date();
 
   monthLabel.textContent = monthName(currentMonth);
-  planningGrid.style.setProperty("--days", totalDays);
+  planningGrid.style.setProperty("--days", dates.length);
   planningGrid.innerHTML = `<div class="corner">SALE</div>`;
 
-  for (let day = 1; day <= totalDays; day++) {
-    const date = new Date(year, month, day);
+  dates.forEach(date => {
     const weekday = new Intl.DateTimeFormat("it-IT", { weekday: "short" })
       .format(date).replace(".", "").toUpperCase();
     const weekend = [0, 6].includes(date.getDay());
     const holiday = isHoliday(date);
-    const weekStart = date.getDay() === 1 && day !== 1;
+    const weekStart = date.getDay() === 1 && date.getTime() !== dates[0].getTime();
     const today = date.toDateString() === now.toDateString();
+    const outsideMonth = date.getMonth() !== activeMonth;
 
     planningGrid.insertAdjacentHTML("beforeend", `
-      <div class="day-head ${weekend ? "weekend" : ""} ${holiday ? "holiday" : ""} ${weekStart ? "week-start" : ""} ${today ? "today-column" : ""}"
-           data-day="${day}">
+      <div class="day-head ${weekend ? "weekend" : ""} ${holiday ? "holiday" : ""} ${weekStart ? "week-start" : ""} ${today ? "today-column" : ""} ${outsideMonth ? "outside-month" : ""}"
+           data-date="${isoFromDate(date)}">
         <span class="dow">${weekday}</span>
-        <span class="num">${String(day).padStart(2, "0")}</span>
+        <span class="num">${String(date.getDate()).padStart(2, "0")}</span>
+        ${outsideMonth ? `<span class="month-mini">${new Intl.DateTimeFormat("it-IT", {month:"short"}).format(date).replace(".", "").toUpperCase()}</span>` : ""}
       </div>
     `);
-  }
+  });
 
   ROOMS.forEach((room, roomIndex) => {
-    if (GROUPS[roomIndex]) {
-      planningGrid.insertAdjacentHTML("beforeend", `<div class="group-row">${GROUPS[roomIndex]}</div>`);
-    }
+    if (GROUPS[roomIndex]) planningGrid.insertAdjacentHTML("beforeend", `<div class="group-row">${GROUPS[roomIndex]}</div>`);
 
     let maxTurnsInDay = 1;
-    for (let day = 1; day <= totalDays; day++) {
-      const date = isoDate(year, month, day);
+    dates.forEach(dateObject => {
+      const date = isoFromDate(dateObject);
       const count = shifts.filter(shift => shift.room === room.id && shift.date === date).length;
       maxTurnsInDay = Math.max(maxTurnsInDay, count);
-    }
+    });
 
     const rowHeight = Math.max(98, maxTurnsInDay * 93 + 8);
+    planningGrid.insertAdjacentHTML("beforeend", `<div class="room-label" style="--row-height:${rowHeight}px">${room.label}</div>`);
 
-    planningGrid.insertAdjacentHTML("beforeend", `
-      <div class="room-label" style="--row-height:${rowHeight}px">${room.label}</div>
-    `);
-
-    for (let day = 1; day <= totalDays; day++) {
-      const dateObject = new Date(year, month, day);
-      const date = isoDate(year, month, day);
+    dates.forEach(dateObject => {
+      const date = isoFromDate(dateObject);
       const weekend = [0, 6].includes(dateObject.getDay());
       const holiday = isHoliday(dateObject);
-      const weekStart = dateObject.getDay() === 1 && day !== 1;
+      const weekStart = dateObject.getDay() === 1 && dateObject.getTime() !== dates[0].getTime();
+      const outsideMonth = dateObject.getMonth() !== activeMonth;
       const isSelected = selectedCell?.room === room.id && selectedCell?.date === date;
-
-      const dayShifts = shifts
-        .filter(shift => shift.room === room.id && shift.date === date)
-        .sort((a, b) => a.start.localeCompare(b.start));
+      const dayShifts = shifts.filter(shift => shift.room === room.id && shift.date === date).sort((a,b)=>a.start.localeCompare(b.start));
 
       planningGrid.insertAdjacentHTML("beforeend", `
-        <div
-          class="planning-cell ${weekend ? "weekend" : ""} ${holiday ? "holiday" : ""} ${weekStart ? "week-start" : ""} ${isSelected ? "cell-selected" : ""}"
-          style="--row-height:${rowHeight}px"
-          data-room="${room.id}"
-          data-date="${date}">
+        <div class="planning-cell ${weekend ? "weekend" : ""} ${holiday ? "holiday" : ""} ${weekStart ? "week-start" : ""} ${outsideMonth ? "outside-month" : ""} ${isSelected ? "cell-selected" : ""}"
+          style="--row-height:${rowHeight}px" data-room="${room.id}" data-date="${date}">
           ${isSelected ? '<span class="cell-selection-dot" aria-hidden="true"></span>' : ""}
           ${dayShifts.map(renderCard).join("")}
           ${dayShifts.length ? "" : '<span class="cell-add-hint">+ turno</span>'}
-        </div>
-      `);
-    }
+        </div>`);
+    });
   });
 
   bindPlanningEvents();
@@ -750,7 +820,12 @@ function bindPlanningEvents() {
       else selectOnlyShift(id);
       renderPlanning();
     });
-    card.addEventListener("dblclick", event => { event.stopPropagation(); hideContextMenu(); openEditShift(card.dataset.shiftId); });
+    card.addEventListener("dblclick", event => {
+      event.stopPropagation(); hideContextMenu();
+      const shift = shifts.find(item => item.id === card.dataset.shiftId);
+      if (shift?.confirmed) return showToast("Il turno confermato è bloccato");
+      openEditShift(card.dataset.shiftId);
+    });
     card.addEventListener("contextmenu", event => {
       const id=card.dataset.shiftId;
       if (!selectedShiftIds.has(id)) selectOnlyShift(id);
@@ -759,6 +834,8 @@ function bindPlanningEvents() {
       requestAnimationFrame(()=>showContextMenu({preventDefault(){},stopPropagation(){},clientX:x,clientY:y}, document.querySelector(`.shift-card[data-shift-id="${id}"]`)?.closest('.planning-cell')));
     });
     card.addEventListener("dragstart", event => {
+      const dragged = shifts.find(item => item.id === card.dataset.shiftId);
+      if (dragged?.confirmed) { event.preventDefault(); return showToast("Il turno confermato è bloccato"); }
       dragSourceShiftId = card.dataset.shiftId;
       const group = captureDragGroup(dragSourceShiftId);
 
@@ -862,6 +939,8 @@ contextMenu.addEventListener('click',event=>{
   const button=event.target.closest('button[data-action]'); if (!button||button.disabled) return;
   const action=button.dataset.action, targetCell=contextTargetCell; hideContextMenu();
   if (action==='edit') { const s=selectedShiftList(); if (s.length===1) openEditShift(s[0].id); }
+  else if (action==='confirm') confirmSelectedShift();
+  else if (action==='unconfirm') unconfirmSelectedShift();
   else if (action==='copy') copySelectedShifts();
   else if (action==='cut') cutSelectedShifts();
   else if (action==='paste'&&targetCell) { selectedCell={room:targetCell.dataset.room,date:targetCell.dataset.date}; pasteCopiedShifts(); }
@@ -871,142 +950,183 @@ contextMenu.addEventListener('click',event=>{
 });
 
 function populateShiftSelects() {
-  document.getElementById("room").innerHTML = ROOMS
-    .map(room => `<option value="${room.id}">${room.label}</option>`)
-    .join("");
+  document.getElementById("room").innerHTML = ROOMS.map(room => `<option value="${room.id}">${room.label}</option>`).join("");
+  document.getElementById("color").innerHTML = Object.entries(FILM_COLORS).map(([value,item]) => `<option value="${value}">${item.label}</option>`).join("");
 
-  document.getElementById("color").innerHTML = Object.entries(FILM_COLORS)
-    .map(([value, item]) => `<option value="${value}">${item.label}</option>`)
-    .join("");
-
-  const activeEditors = editors.filter(editor => editor.active);
-  document.getElementById("editor").innerHTML = [
-    '<option value="">Da assegnare</option>',
-    ...activeEditors.map(editor =>
-      `<option value="${editor.id}">${escapeHtml(editorDisplay(editor))}</option>`
-    )
-  ].join("");
+  const sortedEditors = [...editors].sort((a,b) => fullEmployeeName(a).localeCompare(fullEmployeeName(b), "it"));
+  document.getElementById("editorSuggestions").innerHTML = sortedEditors.map(editor =>
+    `<option value="${escapeHtml(fullEmployeeName(editor))}" data-id="${editor.id}"></option>`
+  ).join("");
 
   const productions = [...new Set(shifts.map(shift => shift.production).filter(Boolean))].sort();
   const films = [...new Set(shifts.map(shift => shift.film).filter(Boolean))].sort();
+  document.getElementById("productionSuggestions").innerHTML = productions.map(value => `<option value="${escapeHtml(value)}"></option>`).join("");
+  document.getElementById("filmSuggestions").innerHTML = films.map(value => `<option value="${escapeHtml(value)}"></option>`).join("");
+}
 
-  document.getElementById("productionSuggestions").innerHTML =
-    productions.map(value => `<option value="${escapeHtml(value)}"></option>`).join("");
+function setWeekdaySelection(values = ["all"]) {
+  const selected = new Set(values.map(String));
+  document.querySelectorAll("#weekdayPicker button").forEach(button => button.classList.toggle("active", selected.has(button.dataset.weekday)));
+}
 
-  document.getElementById("filmSuggestions").innerHTML =
-    films.map(value => `<option value="${escapeHtml(value)}"></option>`).join("");
+function selectedWeekdays() {
+  const values = [...document.querySelectorAll("#weekdayPicker button.active")].map(button => button.dataset.weekday);
+  return values.includes("all") ? null : new Set(values.map(Number));
+}
+
+function setStatusUI(status) {
+  document.getElementById("status").value = status;
+  document.querySelectorAll(".segmented-control [data-status]").forEach(button => button.classList.toggle("active", button.dataset.status === status));
+  const color = document.getElementById("color");
+  color.disabled = status === "provvisorio";
+  document.getElementById("colorField").classList.toggle("disabled-field", status === "provvisorio");
+}
+
+function updateClientUI() {
+  const client = document.getElementById("isClient").checked;
+  const search = document.getElementById("editorSearchInput");
+  search.disabled = client;
+  if (client) { search.value = ""; document.getElementById("editor").value = ""; }
+}
+
+function resolveEditorInput(showError = false) {
+  const input = document.getElementById("editorSearchInput");
+  const normalized = input.value.trim().toLocaleLowerCase("it");
+  if (!normalized) { document.getElementById("editor").value = ""; return true; }
+  const match = editors.find(editor => fullEmployeeName(editor).toLocaleLowerCase("it") === normalized);
+  document.getElementById("editor").value = match?.id || "";
+  if (!match && showError) document.getElementById("shiftFormError").textContent = "Seleziona un dipendente presente nel database.";
+  return Boolean(match);
 }
 
 function resetShiftForm(shift = {}) {
+  const date = shift.date || isoDate(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
   document.getElementById("shiftId").value = shift.id || "";
   document.getElementById("production").value = shift.production || "";
   document.getElementById("film").value = shift.film || "";
-  document.getElementById("date").value = shift.date || "";
+  document.getElementById("dateFrom").value = date;
+  document.getElementById("dateTo").value = shift.dateTo || date;
   document.getElementById("room").value = shift.room || "sala-1";
-  document.getElementById("start").value = shift.start || "08:00";
-  document.getElementById("end").value = shift.end || "16:00";
+  document.getElementById("start").value = shift.start || "10:00";
+  document.getElementById("end").value = shift.end || "18:00";
   document.getElementById("workType").value = shift.workType || "EDIT";
   document.getElementById("editor").value = shift.editorId || "";
-  document.getElementById("status").value = shift.status || "definitivo";
+  document.getElementById("editorSearchInput").value = shift.editorId ? fullEmployeeName(getEditor(shift.editorId)) : "";
+  document.getElementById("isClient").checked = Boolean(shift.isClient);
+  document.getElementById("isDoubleStation").checked = Boolean(shift.isDoubleStation);
   document.getElementById("color").value = shift.color || "blue";
+  setStatusUI(shift.status || "definitivo");
+  setWeekdaySelection(["all"]);
+  updateClientUI();
   document.getElementById("shiftFormError").textContent = "";
 }
 
 function openNewShift(room = "sala-1", date = "") {
-  populateShiftSelects();
-  editingShiftId = null;
+  populateShiftSelects(); editingShiftId = null;
   document.getElementById("shiftDialogTitle").textContent = "Nuovo turno";
   document.getElementById("deleteShiftBtn").classList.add("hidden");
-  resetShiftForm({
-    room,
-    date: date || isoDate(currentMonth.getFullYear(), currentMonth.getMonth(), 1)
-  });
+  document.getElementById("dateTo").disabled = false;
+  document.getElementById("weekdayPicker").classList.remove("disabled");
+  resetShiftForm({ room, date: date || isoDate(currentMonth.getFullYear(), currentMonth.getMonth(), 1) });
   shiftDialog.showModal();
 }
 
 function openEditShift(id) {
   const shift = shifts.find(item => item.id === id);
   if (!shift) return;
-  populateShiftSelects();
-  editingShiftId = id;
+  if (shift.confirmed) return showToast("Il turno confermato è bloccato");
+  populateShiftSelects(); editingShiftId = id;
   document.getElementById("shiftDialogTitle").textContent = "Modifica turno";
   document.getElementById("deleteShiftBtn").classList.remove("hidden");
   resetShiftForm(shift);
+  document.getElementById("dateTo").disabled = true;
+  document.getElementById("weekdayPicker").classList.add("disabled");
   shiftDialog.showModal();
 }
 
-function closeShiftDialog() {
-  shiftDialog.close();
-  document.getElementById("shiftFormError").textContent = "";
+function closeShiftDialog() { shiftDialog.close(); document.getElementById("shiftFormError").textContent = ""; }
+
+function datesForFormRange() {
+  const from = new Date(`${document.getElementById("dateFrom").value}T12:00:00`);
+  const to = new Date(`${document.getElementById("dateTo").value}T12:00:00`);
+  if (Number.isNaN(from.getTime()) || Number.isNaN(to.getTime()) || to < from) return [];
+  const weekdays = selectedWeekdays();
+  const values = [];
+  for (let date = new Date(from); date <= to; date = addDays(date, 1)) if (!weekdays || weekdays.has(date.getDay())) values.push(isoFromDate(date));
+  return values;
 }
 
 shiftForm.addEventListener("submit", event => {
   event.preventDefault();
-
   const start = normalizeTime(document.getElementById("start").value);
   const end = normalizeTime(document.getElementById("end").value);
+  const error = document.getElementById("shiftFormError");
+  error.textContent = "";
+  if (!start || !end || timeToMinutes(end) <= timeToMinutes(start)) { error.textContent = "Inserisci un intervallo orario valido."; return; }
+  if (!document.getElementById("isClient").checked && !resolveEditorInput(true)) return;
 
-  if (!start || !end) {
-    document.getElementById("shiftFormError").textContent =
-      "Inserisci un orario valido. È accettato anche 24:00.";
-    return;
-  }
+  const dates = editingShiftId ? [document.getElementById("dateFrom").value] : datesForFormRange();
+  if (!dates.length) { error.textContent = "Il periodo non contiene giorni selezionati."; return; }
 
-  const candidate = {
-    id: editingShiftId || crypto.randomUUID(),
+  const common = {
     room: document.getElementById("room").value,
-    date: document.getElementById("date").value,
-    production: document.getElementById("production").value.trim().replace(/\s+/g, " ").toUpperCase(),
-    film: document.getElementById("film").value.trim().replace(/\s+/g, " ").toUpperCase(),
-    start,
-    end,
+    production: document.getElementById("production").value.trim().replace(/\s+/g," ").toUpperCase(),
+    film: document.getElementById("film").value.trim().replace(/\s+/g," ").toUpperCase(),
+    start, end,
     workType: document.getElementById("workType").value,
     editorId: document.getElementById("editor").value || null,
+    isClient: document.getElementById("isClient").checked,
+    isDoubleStation: document.getElementById("isDoubleStation").checked,
     status: document.getElementById("status").value,
-    color: document.getElementById("color").value
+    color: document.getElementById("color").value,
+    confirmed: false
   };
 
-  if (timeToMinutes(candidate.end) <= timeToMinutes(candidate.start)) {
-    document.getElementById("shiftFormError").textContent = "Orari non compatibili.";
-    return;
-  }
-
-  if (roomConflict(candidate, editingShiftId)) {
-    document.getElementById("shiftFormError").textContent =
-      "Orari non compatibili: la sala contiene già un turno sovrapposto.";
-    return;
-  }
+  const candidates = dates.map((date,index) => ({ ...common, id: editingShiftId || crypto.randomUUID(), date }));
+  const conflict = candidates.find(candidate => roomConflict(candidate, editingShiftId));
+  if (conflict) { error.textContent = `La sala contiene già un turno sovrapposto il ${new Date(conflict.date+"T12:00:00").toLocaleDateString("it-IT")}.`; return; }
 
   if (editingShiftId) {
-    const index = shifts.findIndex(item => item.id === editingShiftId);
-    shifts[index] = candidate;
-  } else {
-    shifts.push(candidate);
-  }
+    const previous = shifts.find(item => item.id === editingShiftId);
+    candidates[0].confirmed = Boolean(previous?.confirmed);
+    shifts[shifts.findIndex(item => item.id === editingShiftId)] = candidates[0];
+  } else shifts.push(...candidates);
 
-  saveLocal();
-  syncShiftToSupabase(candidate);
-  selectedShiftIds = new Set([candidate.id]);
-  selectionAnchorId = candidate.id;
-  selectedCell = null;
-  closeShiftDialog();
-  renderPlanning();
+  saveLocal(); candidates.forEach(syncShiftToSupabase);
+  selectedShiftIds = new Set(candidates.map(candidate => candidate.id)); selectionAnchorId = candidates[0].id; selectedCell = null;
+  closeShiftDialog(); renderPlanning();
+  showToast(candidates.length === 1 ? "Turno salvato" : `${candidates.length} turni creati`);
 });
 
 document.getElementById("deleteShiftBtn").addEventListener("click", () => {
-  if (!editingShiftId || !confirm("Eliminare questo turno?")) return;
-  shifts = shifts.filter(item => item.id !== editingShiftId);
-  saveLocal();
-  deleteShiftFromSupabase(editingShiftId);
-  selectedShiftIds.clear();
-  selectionAnchorId = null;
-  closeShiftDialog();
-  renderPlanning();
+  const shift = shifts.find(item => item.id === editingShiftId);
+  if (!editingShiftId || shift?.confirmed) return;
+  if (!confirm("Eliminare questo turno?")) return;
+  shifts = shifts.filter(item => item.id !== editingShiftId); saveLocal(); deleteShiftFromSupabase(editingShiftId);
+  selectedShiftIds.clear(); selectionAnchorId = null; closeShiftDialog(); renderPlanning();
 });
 
 document.getElementById("closeShiftDialog").addEventListener("click", closeShiftDialog);
 document.getElementById("cancelShiftBtn").addEventListener("click", closeShiftDialog);
 document.getElementById("newShiftBtn").addEventListener("click", () => openNewShift());
+
+document.getElementById("start").addEventListener("change", event => {
+  const value = normalizeTime(event.target.value); if (!value) return;
+  const minutes = timeToMinutes(value) + 480;
+  document.getElementById("end").value = minutes >= 1440 ? "23:59" : `${String(Math.floor(minutes/60)).padStart(2,"0")}:${String(minutes%60).padStart(2,"0")}`;
+});
+document.getElementById("isClient").addEventListener("change", updateClientUI);
+document.getElementById("editorSearchInput").addEventListener("change", () => resolveEditorInput(false));
+document.querySelectorAll(".segmented-control [data-status]").forEach(button => button.addEventListener("click", () => setStatusUI(button.dataset.status)));
+document.querySelectorAll("#weekdayPicker button").forEach(button => button.addEventListener("click", () => {
+  if (button.dataset.weekday === "all") return setWeekdaySelection(["all"]);
+  document.querySelector('#weekdayPicker [data-weekday="all"]').classList.remove("active");
+  button.classList.toggle("active");
+  if (![...document.querySelectorAll('#weekdayPicker button:not([data-weekday="all"])')].some(item => item.classList.contains("active"))) setWeekdaySelection(["all"]);
+}));
+document.getElementById("dateFrom").addEventListener("change", event => {
+  const to = document.getElementById("dateTo"); if (!to.value || to.value < event.target.value) to.value = event.target.value;
+});
 
 document.getElementById("prevMonth").addEventListener("click", () => {
   currentMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth() - 1, 1);
@@ -1027,7 +1147,7 @@ document.getElementById("todayBtn").addEventListener("click", () => {
   renderPlanning();
 
   requestAnimationFrame(() => {
-    const dayHeader = planningGrid.querySelector(`[data-day="${now.getDate()}"]`);
+    const dayHeader = planningGrid.querySelector(`[data-date="${isoFromDate(now)}"]`);
     if (!dayHeader) return;
     const target = dayHeader.offsetLeft * planningZoom
       - planningScroller.clientWidth / 2
@@ -1306,6 +1426,16 @@ document.querySelectorAll(".nav-item[data-view]").forEach(button => {
   });
 });
 
+async function syncShiftSuggestions(shift) {
+  if (!db) return;
+  const operations = [];
+  if (shift.production) operations.push(db.from("production_suggestions").insert({ name: shift.production }));
+  if (shift.film) operations.push(db.from("program_suggestions").insert({ name: shift.film }));
+  const results = await Promise.all(operations);
+  const failed = results.find(result => result.error && result.error.code !== "23505");
+  if (failed?.error) console.warn("Suggerimenti non sincronizzati:", failed.error.message);
+}
+
 async function syncShiftToSupabase(shift) {
   if (!db) return;
   const row = {
@@ -1314,17 +1444,22 @@ async function syncShiftToSupabase(shift) {
     shift_date: shift.date,
     production: shift.production,
     film: shift.film,
+    program_title: shift.film,
     start_time: shift.start === "24:00" ? "00:00" : shift.start,
     end_time: shift.end === "24:00" ? "00:00" : shift.end,
     end_is_24: shift.end === "24:00",
     work_type: shift.workType,
     staff_id: shift.editorId,
+    is_client: Boolean(shift.isClient),
+    is_double_station: Boolean(shift.isDoubleStation),
     status: shift.status,
     confirmed: Boolean(shift.confirmed),
+    confirmed_at: shift.confirmed ? (shift.confirmedAt || new Date().toISOString()) : null,
     color_key: shift.color
   };
   const { error } = await db.from("shifts").upsert(row);
   if (error) showToast(`Supabase: ${error.message}`);
+  else syncShiftSuggestions(shift);
 }
 
 async function deleteShiftFromSupabase(id) {
@@ -1391,14 +1526,17 @@ async function loadSupabaseData() {
     room: row.room_code,
     date: row.shift_date,
     production: row.production || "",
-    film: row.film || "",
+    film: row.program_title || row.film || "",
     start: String(row.start_time || "").slice(0, 5),
     end: row.end_is_24 ? "24:00" : String(row.end_time || "").slice(0, 5),
     workType: row.work_type,
-    editorId: row.staff_id || null,
+    editorId: row.staff_id ? String(row.staff_id) : null,
+    isClient: Boolean(row.is_client),
+    isDoubleStation: Boolean(row.is_double_station),
     status: row.status,
     color: row.color_key,
-    confirmed: Boolean(row.confirmed)
+    confirmed: Boolean(row.confirmed),
+    confirmedAt: row.confirmed_at || null
   }));
 
   saveLocal();

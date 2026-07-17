@@ -1,15 +1,17 @@
-# DVS Planning — Build 9.0
+# DVS Planning · Build 10.0
 
-## Ordine di installazione
+Base ufficiale: Build 9.0.
 
-1. Conservare il proprio `src/config.js` già compilato con URL base Supabase e Publishable Key.
-2. In Supabase eseguire `database/005_complete_database_build_9.sql`.
-3. Verificare che la query termini con `Success`.
-4. Pubblicare i file della Build 9.0 con commit e push.
-5. Ricaricare GitHub Pages con `⌘ + ⇧ + R`.
+## Novità principali
+- Vista mensile composta sempre da settimane complete, da lunedì a domenica.
+- Popup unico per inserimento e modifica dei turni.
+- Creazione multipla per intervallo e giorni della settimana.
+- Dipendente ricercabile dal database, modalità CLIENTE e doppia postazione.
+- Stato definitivo/provvisorio e selezione colore solo per i definitivi.
+- Conferma turno esclusivamente dal menu del tasto destro.
+- Un turno confermato è totalmente bloccato e ha una saturazione maggiore.
+- Annullamento della conferma con richiesta esplicita di conferma.
 
-## Importante
-
-La migrazione 005 preserva la tabella `staff` e i dipendenti già importati. Crea le restanti tabelle del Planning. Da questa build in poi il database dovrà essere aggiornato soltanto tramite nuove migrazioni incrementali.
-
-La tabella `shifts` diventa la fonte ufficiale dei turni. Se è vuota, il Planning partirà senza turni e i nuovi turni creati dall'app verranno salvati direttamente in Supabase.
+## Database
+Eseguire, nell'ordine già previsto dal progetto, la migrazione:
+`database/006_shifts_build_10.sql`
