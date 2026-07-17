@@ -15,3 +15,13 @@ DVS-Planning_Build_6.0
 ✓ menu contestuale DVS
 ✓ provvisori evidenziati
 ✓ no selezione testo browser
+
+
+BUILD 8.0
+- Sezione Montatori rinominata e ricostruita come Dipendenti.
+- Campi: nome, cognome, qualifica, telefono, email e note.
+- Qualifiche: Montatore, Grafico, Colorist, Sound, Assistente, Altro.
+- Elenco alfabetico con telefono, email e note visibili quando presenti.
+- Ricerca estesa a tutti i campi.
+- Eliminazione definitiva dalla scheda Modifica con conferma.
+- Nuova tabella Supabase staff, realtime e script di importazione Excel.

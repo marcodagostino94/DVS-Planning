@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <title>DVS Planning — Build 7.0</title>
+  <title>DVS Planning — Build 8.0</title>
   <meta name="theme-color" content="#e8eaed">
   <link rel="stylesheet" href="./src/styles.css">
 </head>
@@ -19,7 +19,7 @@
           <span class="nav-icon">▦</span><span>Planning</span>
         </button>
         <button class="nav-item" data-view="editors" type="button">
-          <span class="nav-icon">◉</span><span>Montatori</span>
+          <span class="nav-icon">◉</span><span>Dipendenti</span>
         </button>
         <button class="nav-item" type="button" disabled>
           <span class="nav-icon">≡</span><span>Riepiloghi</span>
@@ -43,7 +43,7 @@
         <button class="nav-item" type="button" disabled>
           <span class="nav-icon">⚙</span><span>Impostazioni</span>
         </button>
-        <span class="build-pill">Build 6.0</span>
+        <span class="build-pill">Build 8.0</span>
       </div>
     </aside>
 
@@ -84,16 +84,16 @@
       <section id="editorsView" class="app-view">
         <header class="topbar">
           <div class="page-title">
-            <h1>Montatori</h1>
-            <p>Anagrafica utilizzata nei turni e nei riepiloghi</p>
+            <h1>Dipendenti</h1>
+            <p>Rubrica del personale sincronizzata con Supabase</p>
           </div>
-          <button id="newEditorBtn" class="primary-btn" type="button">+ Nuovo montatore</button>
+          <button id="newEditorBtn" class="primary-btn" type="button">+ Nuovo dipendente</button>
         </header>
 
         <section class="editors-page">
           <div class="editors-card">
             <div class="editors-toolbar">
-              <input id="editorSearch" type="search" placeholder="Cerca montatore">
+              <input id="editorSearch" type="search" placeholder="Cerca per nome, qualifica, telefono, email o note">
               <span id="editorsCount" class="count-pill"></span>
             </div>
             <div id="editorsList" class="editors-list"></div>
@@ -193,8 +193,8 @@
     <form id="editorForm">
       <div class="dialog-header">
         <div>
-          <span class="dialog-eyebrow">MONTATORE</span>
-          <h2 id="editorDialogTitle">Nuovo montatore</h2>
+          <span class="dialog-eyebrow">DIPENDENTE</span>
+          <h2 id="editorDialogTitle">Nuovo dipendente</h2>
         </div>
         <button id="closeEditorDialog" class="dialog-close" type="button" aria-label="Chiudi">×</button>
       </div>
@@ -204,24 +204,44 @@
       <div class="form-grid">
         <label>
           Nome
-          <input id="editorFirstName" required placeholder="Marco">
+          <input id="editorFirstName" required placeholder="Marco" autocomplete="given-name">
         </label>
         <label>
           Cognome
-          <input id="editorLastName" required placeholder="D'Agostino">
+          <input id="editorLastName" required placeholder="D'Agostino" autocomplete="family-name">
         </label>
-        <label class="checkbox-label">
-          <input id="editorActive" type="checkbox" checked>
-          Montatore attivo
+        <label>
+          Qualifica
+          <select id="editorRole" required>
+            <option value="Montatore">Montatore</option>
+            <option value="Grafico">Grafico</option>
+            <option value="Colorist">Colorist</option>
+            <option value="Sound">Sound</option>
+            <option value="Assistente">Assistente</option>
+            <option value="Altro">Altro</option>
+          </select>
+        </label>
+        <label>
+          Telefono
+          <input id="editorPhone" type="tel" placeholder="333 1234567" autocomplete="tel">
+        </label>
+        <label class="form-wide">
+          Email
+          <input id="editorEmail" type="email" placeholder="nome@azienda.it" autocomplete="email">
+        </label>
+        <label class="form-wide">
+          Note
+          <textarea id="editorNotes" rows="4" placeholder="Aggiungi liberamente informazioni utili…"></textarea>
         </label>
       </div>
 
       <div id="editorFormError" class="form-error" role="alert"></div>
 
       <div class="dialog-actions">
+        <button id="deleteEditorBtn" class="danger-btn hidden" type="button">Elimina</button>
         <div class="dialog-spacer"></div>
         <button id="cancelEditorBtn" class="secondary-btn" type="button">Annulla</button>
-        <button class="primary-btn" type="submit">Salva montatore</button>
+        <button class="primary-btn" type="submit">Salva dipendente</button>
       </div>
     </form>
   </dialog>

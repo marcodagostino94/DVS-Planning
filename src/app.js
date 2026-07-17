@@ -37,7 +37,7 @@ const ITALIAN_FIXED_HOLIDAYS = new Set([
 ]);
 
 const SHIFT_STORAGE = "dvs-planning-build-5-shifts";
-const EDITOR_STORAGE = "dvs-planning-build-5-editors";
+const EDITOR_STORAGE = "dvs-planning-build-8-staff";
 const ZOOM_STORAGE = "dvs-planning-build-5-zoom";
 
 const hasSupabaseConfig = Boolean(
@@ -102,7 +102,7 @@ const seedShifts = [
   { id:"13", room:"remoto-grafica", date:"2026-07-02", production:"RAI", film:"VITA IN DIRETTA", start:"09:00", end:"17:00", workType:"GRAFICA", editorId:"ed-7", status:"definitivo", color:"coral" }
 ];
 
-let editors = loadLocal(EDITOR_STORAGE, seedEditors);
+let editors = loadLocal(EDITOR_STORAGE, seedEditors.map(item => ({ ...item, role: "Montatore", phone: "", email: "", notes: "" })));
 let shifts = loadLocal(SHIFT_STORAGE, seedShifts);
 
 const planningGrid = document.getElementById("planningGrid");
@@ -191,6 +191,10 @@ function editorDisplay(editor) {
   if (!editor) return "Da assegnare";
   const initial = editor.firstName.trim().charAt(0).toUpperCase();
   return `${initial}. ${editor.lastName.trim().toUpperCase()}`;
+}
+
+function fullEmployeeName(editor) {
+  return `${editor.firstName || ""} ${editor.lastName || ""}`.trim();
 }
 
 function editorConflict(shift) {
@@ -1101,41 +1105,63 @@ document.addEventListener("keydown", event => {
 });
 
 function renderEditors() {
-  const query = document.getElementById("editorSearch").value.trim().toLowerCase();
+  const query = document.getElementById("editorSearch").value.trim().toLocaleLowerCase("it");
   const filtered = editors
     .filter(editor => {
-      const haystack = `${editor.firstName} ${editor.lastName} ${editorDisplay(editor)}`.toLowerCase();
+      const haystack = [fullEmployeeName(editor), editor.role, editor.phone, editor.email, editor.notes]
+        .filter(Boolean).join(" ").toLocaleLowerCase("it");
       return haystack.includes(query);
     })
-    .sort((a, b) => a.lastName.localeCompare(b.lastName));
+    .sort((a, b) => a.lastName.localeCompare(b.lastName, "it", { sensitivity: "base" })
+      || a.firstName.localeCompare(b.firstName, "it", { sensitivity: "base" }));
 
-  document.getElementById("editorsCount").textContent = `${filtered.length} montatori`;
-  document.getElementById("editorsList").innerHTML = filtered.map(editor => `
-    <div class="editor-row">
-      <div>
-        <div class="editor-display">${escapeHtml(editorDisplay(editor))}</div>
-        <div class="editor-full-name">${escapeHtml(editor.firstName)} ${escapeHtml(editor.lastName)}</div>
+  document.getElementById("editorsCount").textContent = `${filtered.length} dipendenti`;
+  document.getElementById("editorsList").innerHTML = filtered.length ? filtered.map(editor => `
+    <article class="editor-row" data-editor-id="${editor.id}" tabindex="0" aria-label="Modifica ${escapeHtml(fullEmployeeName(editor))}">
+      <div class="employee-main">
+        <div class="employee-heading">
+          <div class="editor-display">${escapeHtml(fullEmployeeName(editor))}</div>
+          <span class="employee-role">${escapeHtml(editor.role || "Altro")}</span>
+        </div>
+        <div class="employee-details">
+          ${editor.phone ? `<a class="employee-contact" href="tel:${escapeHtml(editor.phone.replace(/[^+\d]/g, ""))}" data-stop-open>☎ ${escapeHtml(editor.phone)}</a>` : ""}
+          ${editor.email ? `<a class="employee-contact" href="mailto:${escapeHtml(editor.email)}" data-stop-open>✉ ${escapeHtml(editor.email)}</a>` : ""}
+        </div>
+        ${editor.notes ? `<div class="employee-notes">${escapeHtml(editor.notes)}</div>` : ""}
       </div>
-      <span class="editor-status ${editor.active ? "" : "inactive"}">
-        ${editor.active ? "Attivo" : "Disattivato"}
-      </span>
-      <button class="editor-edit-btn" type="button" data-editor-id="${editor.id}" title="Modifica">✎</button>
-    </div>
-  `).join("");
+      <button class="editor-edit-btn" type="button" data-editor-id="${editor.id}" title="Modifica" aria-label="Modifica ${escapeHtml(fullEmployeeName(editor))}">✎</button>
+    </article>
+  `).join("") : `<div class="employees-empty">Nessun dipendente trovato.</div>`;
 
+  document.querySelectorAll(".editor-row").forEach(row => {
+    row.addEventListener("dblclick", event => {
+      if (!event.target.closest("[data-stop-open]")) openEditEditor(row.dataset.editorId);
+    });
+    row.addEventListener("keydown", event => {
+      if (event.key === "Enter") openEditEditor(row.dataset.editorId);
+    });
+  });
   document.querySelectorAll(".editor-edit-btn").forEach(button => {
     button.addEventListener("click", () => openEditEditor(button.dataset.editorId));
   });
 }
 
+function setEmployeeDialogValues(editor = null) {
+  document.getElementById("editorId").value = editor?.id || "";
+  document.getElementById("editorFirstName").value = editor?.firstName || "";
+  document.getElementById("editorLastName").value = editor?.lastName || "";
+  document.getElementById("editorRole").value = editor?.role || "Montatore";
+  document.getElementById("editorPhone").value = editor?.phone || "";
+  document.getElementById("editorEmail").value = editor?.email || "";
+  document.getElementById("editorNotes").value = editor?.notes || "";
+  document.getElementById("deleteEditorBtn").classList.toggle("hidden", !editor);
+  document.getElementById("editorFormError").textContent = "";
+}
+
 function openNewEditor() {
   editingEditorId = null;
-  document.getElementById("editorDialogTitle").textContent = "Nuovo montatore";
-  document.getElementById("editorId").value = "";
-  document.getElementById("editorFirstName").value = "";
-  document.getElementById("editorLastName").value = "";
-  document.getElementById("editorActive").checked = true;
-  document.getElementById("editorFormError").textContent = "";
+  document.getElementById("editorDialogTitle").textContent = "Nuovo dipendente";
+  setEmployeeDialogValues();
   editorDialog.showModal();
 }
 
@@ -1143,12 +1169,8 @@ function openEditEditor(id) {
   const editor = editors.find(item => item.id === id);
   if (!editor) return;
   editingEditorId = id;
-  document.getElementById("editorDialogTitle").textContent = "Modifica montatore";
-  document.getElementById("editorId").value = editor.id;
-  document.getElementById("editorFirstName").value = editor.firstName;
-  document.getElementById("editorLastName").value = editor.lastName;
-  document.getElementById("editorActive").checked = editor.active;
-  document.getElementById("editorFormError").textContent = "";
+  document.getElementById("editorDialogTitle").textContent = "Modifica dipendente";
+  setEmployeeDialogValues(editor);
   editorDialog.showModal();
 }
 
@@ -1157,63 +1179,76 @@ function closeEditorDialog() {
   document.getElementById("editorFormError").textContent = "";
 }
 
-editorForm.addEventListener("submit", event => {
+editorForm.addEventListener("submit", async event => {
   event.preventDefault();
 
   const firstName = document.getElementById("editorFirstName").value.trim();
   const lastName = document.getElementById("editorLastName").value.trim();
-  const active = document.getElementById("editorActive").checked;
+  const role = document.getElementById("editorRole").value;
+  const phone = document.getElementById("editorPhone").value.trim();
+  const email = document.getElementById("editorEmail").value.trim();
+  const notes = document.getElementById("editorNotes").value.trim();
 
   if (!firstName || !lastName) {
     document.getElementById("editorFormError").textContent = "Inserisci nome e cognome.";
     return;
   }
 
-  const duplicate = editors.some(editor =>
-    editor.id !== editingEditorId
-    && editor.firstName.toLowerCase() === firstName.toLowerCase()
-    && editor.lastName.toLowerCase() === lastName.toLowerCase()
-  );
-
+  const duplicate = editors.some(editor => editor.id !== editingEditorId
+    && editor.firstName.toLocaleLowerCase("it") === firstName.toLocaleLowerCase("it")
+    && editor.lastName.toLocaleLowerCase("it") === lastName.toLocaleLowerCase("it"));
   if (duplicate) {
-    document.getElementById("editorFormError").textContent = "Questo montatore esiste già.";
+    document.getElementById("editorFormError").textContent = "Questo dipendente esiste già.";
     return;
   }
 
-  const candidate = {
-    id: editingEditorId || crypto.randomUUID(),
-    firstName,
-    lastName,
-    active
-  };
-
-  if (editingEditorId) {
-    const index = editors.findIndex(item => item.id === editingEditorId);
-    editors[index] = candidate;
-  } else {
-    editors.push(candidate);
-  }
+  const candidate = { id: editingEditorId || crypto.randomUUID(), firstName, lastName, role, phone, email, notes };
+  if (editingEditorId) editors[editors.findIndex(item => item.id === editingEditorId)] = candidate;
+  else editors.push(candidate);
 
   saveLocal();
-  syncEditorToSupabase(candidate);
+  const ok = await syncEditorToSupabase(candidate);
   closeEditorDialog();
   renderEditors();
   renderPlanning();
+  showToast(ok ? "Dipendente salvato" : "Dipendente salvato in locale");
 });
+
+async function deleteCurrentEditor() {
+  if (!editingEditorId) return;
+  const editor = editors.find(item => item.id === editingEditorId);
+  if (!editor) return;
+  const linkedShifts = shifts.filter(shift => shift.editorId === editingEditorId).length;
+  const warning = linkedShifts
+    ? `\n\nÈ associato a ${linkedShifts} turn${linkedShifts === 1 ? "o" : "i"}: nei turni il dipendente verrà impostato come non assegnato.`
+    : "";
+  if (!confirm(`Eliminare definitivamente ${fullEmployeeName(editor)}?\n\nQuesta operazione non può essere annullata.${warning}`)) return;
+
+  if (linkedShifts) {
+    shifts = shifts.map(shift => shift.editorId === editingEditorId ? { ...shift, editorId: null } : shift);
+    for (const shift of shifts.filter(item => item.editorId === null)) await syncShiftToSupabase(shift);
+  }
+  editors = editors.filter(item => item.id !== editingEditorId);
+  await deleteEditorFromSupabase(editingEditorId);
+  saveLocal();
+  closeEditorDialog();
+  renderEditors();
+  renderPlanning();
+  showToast("Dipendente eliminato");
+}
 
 document.getElementById("newEditorBtn").addEventListener("click", openNewEditor);
 document.getElementById("closeEditorDialog").addEventListener("click", closeEditorDialog);
 document.getElementById("cancelEditorBtn").addEventListener("click", closeEditorDialog);
+document.getElementById("deleteEditorBtn").addEventListener("click", deleteCurrentEditor);
 document.getElementById("editorSearch").addEventListener("input", renderEditors);
 
 document.querySelectorAll(".nav-item[data-view]").forEach(button => {
   button.addEventListener("click", () => {
     document.querySelectorAll(".nav-item[data-view]").forEach(item => item.classList.remove("active"));
     button.classList.add("active");
-
     document.querySelectorAll(".app-view").forEach(view => view.classList.remove("active"));
     document.getElementById(`${button.dataset.view}View`).classList.add("active");
-
     if (button.dataset.view === "editors") renderEditors();
   });
 });
@@ -1245,22 +1280,33 @@ async function deleteShiftFromSupabase(id) {
 }
 
 async function syncEditorToSupabase(editor) {
-  if (!db) return;
+  if (!db) return false;
   const row = {
     id: editor.id,
     first_name: editor.firstName,
     last_name: editor.lastName,
-    active: editor.active
+    role: editor.role || "Altro",
+    phone: editor.phone || null,
+    email: editor.email || null,
+    notes: editor.notes || null
   };
-  const { error } = await db.from("editors").upsert(row);
-  if (error) showToast(`Supabase: ${error.message}`);
+  const { error } = await db.from("staff").upsert(row);
+  if (error) { showToast(`Supabase: ${error.message}`); return false; }
+  return true;
+}
+
+async function deleteEditorFromSupabase(id) {
+  if (!db) return true;
+  const { error } = await db.from("staff").delete().eq("id", id);
+  if (error) { showToast(`Supabase: ${error.message}`); return false; }
+  return true;
 }
 
 async function loadSupabaseData() {
   if (!db) return;
 
   const [editorsResult, shiftsResult] = await Promise.all([
-    db.from("editors").select("*").order("last_name"),
+    db.from("staff").select("*").order("last_name"),
     db.from("shifts").select("*").order("shift_date")
   ]);
 
@@ -1269,7 +1315,10 @@ async function loadSupabaseData() {
       id: String(row.id),
       firstName: row.first_name,
       lastName: row.last_name,
-      active: row.active
+      role: row.role || "Altro",
+      phone: row.phone || "",
+      email: row.email || "",
+      notes: row.notes || ""
     }));
   }
 
@@ -1299,7 +1348,7 @@ function enableRealtime() {
 
   db.channel("dvs-planning")
     .on("postgres_changes", { event: "*", schema: "public", table: "shifts" }, loadSupabaseData)
-    .on("postgres_changes", { event: "*", schema: "public", table: "editors" }, loadSupabaseData)
+    .on("postgres_changes", { event: "*", schema: "public", table: "staff" }, loadSupabaseData)
     .subscribe();
 }
 
