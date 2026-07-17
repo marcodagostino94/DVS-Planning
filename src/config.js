@@ -1,6 +1,6 @@
 // DVS Planning — configurazione Supabase
 // Inserisci i valori del progetto quando avrai eseguito gli script SQL.
 window.DVS_SUPABASE = {
-  url: "",
-  publishableKey: ""
+  url: "https://swoeqgfsgzhaddoqgqtk.supabase.co/rest/v1/",
+  publishableKey: "sb_publishable_CLah5eWdLTILQ6v-MMbo3g_SpIlDDTz"
 };
