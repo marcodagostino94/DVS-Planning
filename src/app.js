@@ -728,7 +728,7 @@ function renderCard(shift) {
         <div class="shift-production">${escapeHtml(shift.production)}</div>
         <div class="shift-time">${escapeHtml(shift.start)} – ${escapeHtml(shift.end)}</div>
         <div class="shift-film">${escapeHtml(shift.film)}</div>
-        <div class="shift-type">${escapeHtml(shift.workType)}</div>
+        <div class="shift-type">${escapeHtml(shift.workType)}${shift.isDoubleStation ? '<span class="double-station-label">DOPPIA POSTAZIONE</span>' : ""}</div>
       </div>
       <div class="shift-editor">
         <span class="editor-name">${escapeHtml(assignment)}</span>
@@ -999,6 +999,81 @@ function resolveEditorInput(showError = false) {
   return Boolean(match);
 }
 
+
+let rangeCalendarMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+let rangeSelectionPhase = "start";
+
+function formatRangeDate(value) {
+  if (!value) return "—";
+  return new Date(`${value}T12:00:00`).toLocaleDateString("it-IT", { day:"2-digit", month:"short", year:"numeric" });
+}
+
+function updateDateRangeDisplay() {
+  const from = document.getElementById("dateFrom").value;
+  const to = document.getElementById("dateTo").value;
+  document.getElementById("dateFromDisplay").textContent = formatRangeDate(from);
+  document.getElementById("dateToDisplay").textContent = formatRangeDate(to);
+}
+
+function renderRangeCalendar() {
+  const title = document.getElementById("rangeCalendarTitle");
+  const grid = document.getElementById("rangeCalendarGrid");
+  if (!title || !grid) return;
+  title.textContent = rangeCalendarMonth.toLocaleDateString("it-IT", { month:"long", year:"numeric" });
+  const first = new Date(rangeCalendarMonth.getFullYear(), rangeCalendarMonth.getMonth(), 1);
+  const mondayOffset = (first.getDay() + 6) % 7;
+  const gridStart = addDays(first, -mondayOffset);
+  const fromValue = document.getElementById("dateFrom").value;
+  const toValue = document.getElementById("dateTo").value;
+  const today = isoFromDate(new Date());
+  grid.innerHTML = Array.from({length:42}, (_,index) => {
+    const date = addDays(gridStart,index);
+    const value = isoFromDate(date);
+    const outside = date.getMonth() !== rangeCalendarMonth.getMonth();
+    const inRange = fromValue && toValue && value > fromValue && value < toValue;
+    const classes = ["range-calendar-day", outside?"outside":"", inRange?"in-range":"", value===fromValue?"range-start":"", value===toValue?"range-end":"", value===today?"today":""].filter(Boolean).join(" ");
+    return `<button type="button" class="${classes}" data-range-date="${value}">${date.getDate()}</button>`;
+  }).join("");
+  grid.querySelectorAll("[data-range-date]").forEach(button => button.addEventListener("click", () => selectRangeCalendarDate(button.dataset.rangeDate)));
+}
+
+function selectRangeCalendarDate(value) {
+  const from = document.getElementById("dateFrom");
+  const to = document.getElementById("dateTo");
+  if (rangeSelectionPhase === "start" || !from.value || (from.value && to.value)) {
+    from.value = value;
+    to.value = value;
+    rangeSelectionPhase = "end";
+  } else {
+    if (value < from.value) { to.value = from.value; from.value = value; }
+    else to.value = value;
+    rangeSelectionPhase = "start";
+    document.getElementById("rangeCalendar").classList.add("hidden");
+    document.getElementById("dateRangeTrigger").setAttribute("aria-expanded","false");
+  }
+  updateDateRangeDisplay();
+  renderRangeCalendar();
+}
+
+function openRangeCalendar() {
+  const panel = document.getElementById("rangeCalendar");
+  const from = document.getElementById("dateFrom").value;
+  if (from) { const date = new Date(`${from}T12:00:00`); rangeCalendarMonth = new Date(date.getFullYear(),date.getMonth(),1); }
+  rangeSelectionPhase = "start";
+  panel.classList.toggle("hidden");
+  document.getElementById("dateRangeTrigger").setAttribute("aria-expanded", String(!panel.classList.contains("hidden")));
+  renderRangeCalendar();
+}
+
+document.getElementById("dateRangeTrigger")?.addEventListener("click", openRangeCalendar);
+document.getElementById("rangePrevMonth")?.addEventListener("click", () => { rangeCalendarMonth = new Date(rangeCalendarMonth.getFullYear(),rangeCalendarMonth.getMonth()-1,1); renderRangeCalendar(); });
+document.getElementById("rangeNextMonth")?.addEventListener("click", () => { rangeCalendarMonth = new Date(rangeCalendarMonth.getFullYear(),rangeCalendarMonth.getMonth()+1,1); renderRangeCalendar(); });
+document.addEventListener("click", event => {
+  const panel = document.getElementById("rangeCalendar");
+  if (!panel || panel.classList.contains("hidden")) return;
+  if (!event.target.closest(".date-range-field")) { panel.classList.add("hidden"); document.getElementById("dateRangeTrigger").setAttribute("aria-expanded","false"); }
+});
+
 function resetShiftForm(shift = {}) {
   const date = shift.date || isoDate(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
   document.getElementById("shiftId").value = shift.id || "";
@@ -1006,6 +1081,9 @@ function resetShiftForm(shift = {}) {
   document.getElementById("film").value = shift.film || "";
   document.getElementById("dateFrom").value = date;
   document.getElementById("dateTo").value = shift.dateTo || date;
+  updateDateRangeDisplay();
+  rangeCalendarMonth = new Date(`${date}T12:00:00`);
+  renderRangeCalendar();
   document.getElementById("room").value = shift.room || "sala-1";
   document.getElementById("start").value = shift.start || "10:00";
   document.getElementById("end").value = shift.end || "18:00";
@@ -1025,7 +1103,7 @@ function openNewShift(room = "sala-1", date = "") {
   populateShiftSelects(); editingShiftId = null;
   document.getElementById("shiftDialogTitle").textContent = "Nuovo turno";
   document.getElementById("deleteShiftBtn").classList.add("hidden");
-  document.getElementById("dateTo").disabled = false;
+  document.getElementById("dateRangeTrigger").disabled = false;
   document.getElementById("weekdayPicker").classList.remove("disabled");
   resetShiftForm({ room, date: date || isoDate(currentMonth.getFullYear(), currentMonth.getMonth(), 1) });
   shiftDialog.showModal();
@@ -1039,7 +1117,7 @@ function openEditShift(id) {
   document.getElementById("shiftDialogTitle").textContent = "Modifica turno";
   document.getElementById("deleteShiftBtn").classList.remove("hidden");
   resetShiftForm(shift);
-  document.getElementById("dateTo").disabled = true;
+  document.getElementById("dateRangeTrigger").disabled = true;
   document.getElementById("weekdayPicker").classList.add("disabled");
   shiftDialog.showModal();
 }

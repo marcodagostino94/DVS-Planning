@@ -1,15 +1,7 @@
-DVS Planning · Build 10.0
+DVS Planning · v_10_CORREZIONI ULTIME
 
-- Calendario mensile esteso al lunedì precedente e alla domenica successiva.
-- Date esterne al mese mostrate solo per continuità visiva.
-- Nuovo popup turno con periodo Dal/Al e selettore T-L-M-M-G-V-S-D.
-- Orario predefinito 10:00–18:00 e proposta automatica di 8 ore.
-- Aggiunte lavorazioni EDIT, ASSISTENTE, GRAFICA, COLOR, SOUND, REDAZIONE.
-- Aggiunte modalità CLIENTE e DOPPIA POSTAZIONE.
-- Ricerca dipendente per nome/cognome, senza inserimento di nominativi sconosciuti.
-- Stato definitivo/provvisorio con colore disabilitato nei provvisori.
-- Conferma e annullamento conferma dal menu contestuale.
-- Turni confermati bloccati contro modifica, spostamento, taglio, eliminazione e cambio stato.
-- Turni confermati visualizzati con maggiore saturazione.
-- Sale Remote 1, Remote 2 e Remote 3.
-- Migrazione database 006_shifts_build_10.sql.
+- Selettore periodo Dal–Al su un unico calendario.
+- Doppia postazione: nessun bordo e nessuna alterazione del colore; sola dicitura rossa accanto alla lavorazione.
+- Aggiunta migrazione 007 con i turni del Planning di luglio 2026 (incluse le date di bordo 29–30 giugno e 1–2 agosto presenti nella vista).
+- Turni confermati importati in base alla cella dipendente gialla.
+- Configurazione Supabase preservata dalla versione allegata.

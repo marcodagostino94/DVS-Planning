@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <title>DVS Planning — Build 10.0</title>
+  <title>DVS Planning — v_10_CORREZIONI ULTIME</title>
   <meta name="theme-color" content="#e8eaed">
   <link rel="stylesheet" href="./src/styles.css?v=10.0">
 </head>
@@ -43,7 +43,7 @@
         <button class="nav-item" type="button" disabled>
           <span class="nav-icon">⚙</span><span>Impostazioni</span>
         </button>
-        <span class="build-pill">Build 10.0</span>
+        <span class="build-pill">v_10 CORREZIONI ULTIME</span>
       </div>
     </aside>
 
@@ -139,10 +139,22 @@
 
         <fieldset class="date-range-field form-wide">
           <legend>Periodo</legend>
-          <div class="date-range-inputs">
-            <label>Dal<input id="dateFrom" type="date" required></label>
+          <button id="dateRangeTrigger" class="date-range-trigger" type="button" aria-expanded="false">
+            <span><small>Dal</small><strong id="dateFromDisplay">—</strong></span>
             <span class="date-arrow">→</span>
-            <label>Al<input id="dateTo" type="date" required></label>
+            <span><small>Al</small><strong id="dateToDisplay">—</strong></span>
+          </button>
+          <input id="dateFrom" type="hidden" required>
+          <input id="dateTo" type="hidden" required>
+          <div id="rangeCalendar" class="range-calendar hidden" aria-label="Calendario intervallo">
+            <div class="range-calendar-toolbar">
+              <button id="rangePrevMonth" type="button" aria-label="Mese precedente">‹</button>
+              <strong id="rangeCalendarTitle"></strong>
+              <button id="rangeNextMonth" type="button" aria-label="Mese successivo">›</button>
+            </div>
+            <div class="range-calendar-weekdays"><span>L</span><span>M</span><span>M</span><span>G</span><span>V</span><span>S</span><span>D</span></div>
+            <div id="rangeCalendarGrid" class="range-calendar-grid"></div>
+            <div class="range-calendar-hint">Seleziona il primo e l’ultimo giorno dell’intervallo.</div>
           </div>
           <div id="weekdayPicker" class="weekday-picker" aria-label="Giorni della settimana">
             <button type="button" data-weekday="all" class="active">T</button>
@@ -197,7 +209,7 @@
 
         <label class="checkbox-label option-card">
           <input id="isDoubleStation" type="checkbox">
-          <span><strong>DOPPIA POSTAZIONE</strong><small>Il turno sarà evidenziato in rosso</small></span>
+          <span><strong>DOPPIA POSTAZIONE</strong><small>Mostra la dicitura rossa nel turno</small></span>
         </label>
 
         <fieldset class="status-field form-wide">

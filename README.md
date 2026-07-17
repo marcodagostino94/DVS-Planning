@@ -1,4 +1,4 @@
-# DVS Planning · Build 10.0
+# DVS Planning · v_10_CORREZIONI ULTIME
 
 Base ufficiale: Build 9.0.
 
@@ -15,3 +15,7 @@ Base ufficiale: Build 9.0.
 ## Database
 Eseguire, nell'ordine già previsto dal progetto, la migrazione:
 `database/006_shifts_build_10.sql`
+
+
+## Migrazione luglio 2026
+Dopo la migrazione 006 già eseguita, eseguire `database/007_seed_shifts_luglio_2026.sql`. La query è idempotente e può essere rilanciata senza duplicare i turni.
