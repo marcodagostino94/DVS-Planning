@@ -1,39 +1,15 @@
-# DVS Planning — Build 8.0.5
+# DVS Planning — Build 9.0
 
-Build 8.0.5 corretta con drag multiplo reale.
+## Ordine di installazione
 
-## Drag di gruppo
+1. Conservare il proprio `src/config.js` già compilato con URL base Supabase e Publishable Key.
+2. In Supabase eseguire `database/005_complete_database_build_9.sql`.
+3. Verificare che la query termini con `Success`.
+4. Pubblicare i file della Build 9.0 con commit e push.
+5. Ricaricare GitHub Pages con `⌘ + ⇧ + R`.
 
-La selezione viene congelata all’inizio del trascinamento. Tutti i turni selezionati della stessa sala vengono spostati insieme.
+## Importante
 
-Esempio: 10, 11 e 12 trascinati dal 10 al 15 diventano 15, 16 e 17.
+La migrazione 005 preserva la tabella `staff` e i dipendenti già importati. Crea le restanti tabelle del Planning. Da questa build in poi il database dovrà essere aggiornato soltanto tramite nuove migrazioni incrementali.
 
-Due turni presenti entrambi il 10 restano entrambi nello stesso giorno di destinazione.
-
-Prima del salvataggio viene verificato l’intero gruppo; se un solo turno è incompatibile, nessuno viene spostato.
-
-
-## Build 8.0.5 — consolidamento
-- Ripristinata selezione visiva delle celle vuote e doppio clic per Nuovo turno.
-- Aggiunto Taglia con ⌘X/menu contestuale e stato visivo fino all’incolla.
-- Aggiunto controllo atomico dei conflitti prima dell’incolla di un gruppo tagliato.
-- Drag multiplo con anteprima reale delle card e destinazioni evidenziate per tutto il gruppo.
-
-
-## Build 8.0.5 — Dipendenti
-
-La sezione Montatori è stata sostituita da Dipendenti. Ogni record contiene nome, cognome, qualifica, telefono, email e note. Telefono, email e note sono visibili direttamente nell’elenco quando presenti. La modifica consente anche l’eliminazione definitiva con conferma.
-
-### Supabase
-
-1. Eseguire `database/003_staff_build_8.sql`.
-2. Eseguire `database/004_seed_staff_from_excel.sql` per importare l’elenco iniziale.
-3. Verificare `src/config.js`.
-
-
-## Correzione 8.0.5
-- Apertura affidabile dei modali Nuovo/Modifica dipendente.
-- Click singolo sulla riga per modificare.
-- Rimozione automatica dei nominativi dimostrativi locali.
-- Import SQL pulito con eliminazione preventiva dei dati test in `staff`.
-- Cache busting degli asset per GitHub Pages.
+La tabella `shifts` diventa la fonte ufficiale dei turni. Se è vuota, il Planning partirà senza turni e i nuovi turni creati dall'app verranno salvati direttamente in Supabase.

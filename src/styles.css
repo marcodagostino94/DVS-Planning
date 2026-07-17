@@ -984,3 +984,9 @@ input,textarea,select,.app-dialog{-webkit-user-select:text;user-select:text}
 .employee-notes { margin-top:8px; color:#626d77; font-size:11px; line-height:1.45; white-space:pre-wrap; overflow-wrap:anywhere; }
 .employees-empty { padding:28px 16px; color:#727c86; text-align:center; font-size:12px; }
 @media (max-width:840px) { .form-wide { grid-column:auto; } .employee-details { display:grid; gap:6px; } }
+
+/* Build 9.0 — filtri e anagrafica */
+.editors-toolbar { display:grid; grid-template-columns:minmax(240px,1fr) minmax(170px,220px) auto; gap:10px; align-items:center; }
+.editor-role-filter { width:100%; border:1px solid rgba(91,105,119,.16); border-radius:12px; padding:11px 34px 11px 12px; background:rgba(255,255,255,.72); color:#34404b; font:inherit; }
+.editor-display { text-transform:uppercase; letter-spacing:.015em; }
+@media (max-width:760px){ .editors-toolbar{ grid-template-columns:1fr; } .count-pill{ justify-self:start; } }

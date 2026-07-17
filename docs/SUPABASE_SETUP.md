@@ -1,18 +1,25 @@
-# Supabase — Build 8.0.1
+# Supabase — Build 9.0
 
-Apri **Supabase → SQL Editor → New query**.
+Eseguire in SQL Editor:
 
-Esegui nell'ordine:
+`database/005_complete_database_build_9.sql`
 
-1. `database/003_staff_build_8.sql`
-2. `database/004_seed_staff_from_excel.sql`
+La migrazione preserva i dipendenti esistenti e crea lo schema completo di base.
 
-Il secondo script esegue intenzionalmente `delete from public.staff;` prima dell'importazione: rimuove tutti i dipendenti dimostrativi/test e carica da zero i 206 record dell'Excel.
+Tabelle previste:
+- qualifications
+- staff
+- rooms
+- productions
+- shifts
+- app_profiles
+- app_settings
 
-Attenzione: la cancellazione non elimina i turni. L'eventuale riferimento del turno al dipendente viene impostato a `NULL` dalla foreign key `ON DELETE SET NULL`.
+Dopo l'esecuzione controllare:
 
-Dopo l'esecuzione:
-
-- apri **Table Editor → staff**;
-- verifica che siano presenti 206 record;
-- ricarica la pagina del Planning con `⌘⇧R` una sola volta dopo il deploy, così il browser scarica gli asset Build 8.0.1.
+```sql
+select table_name
+from information_schema.tables
+where table_schema = 'public'
+order by table_name;
+```

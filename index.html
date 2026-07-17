@@ -3,9 +3,9 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <title>DVS Planning — Build 8.0.5</title>
+  <title>DVS Planning — Build 9.0</title>
   <meta name="theme-color" content="#e8eaed">
-  <link rel="stylesheet" href="./src/styles.css?v=8.0.5">
+  <link rel="stylesheet" href="./src/styles.css?v=9.0">
 </head>
 <body>
   <div class="app-shell">
@@ -43,7 +43,7 @@
         <button class="nav-item" type="button" disabled>
           <span class="nav-icon">⚙</span><span>Impostazioni</span>
         </button>
-        <span class="build-pill">Build 8.0.5</span>
+        <span class="build-pill">Build 9.0</span>
       </div>
     </aside>
 
@@ -94,6 +94,15 @@
           <div class="editors-card">
             <div class="editors-toolbar">
               <input id="editorSearch" type="search" placeholder="Cerca per nome, qualifica, telefono, email o note">
+              <select id="editorRoleFilter" class="editor-role-filter" aria-label="Filtra per qualifica">
+                <option value="">Tutte le qualifiche</option>
+                <option value="Montatore">Montatore</option>
+                <option value="Grafico">Grafico</option>
+                <option value="Colorist">Colorist</option>
+                <option value="Sound">Sound</option>
+                <option value="Assistente">Assistente</option>
+                <option value="Altro">Altro</option>
+              </select>
               <span id="editorsCount" class="count-pill"></span>
             </div>
             <div id="editorsList" class="editors-list"></div>
@@ -204,11 +213,11 @@
       <div class="form-grid">
         <label>
           Nome
-          <input id="editorFirstName" required placeholder="Marco" autocomplete="given-name">
+          <input id="editorFirstName" required placeholder="Nome" autocomplete="given-name">
         </label>
         <label>
           Cognome
-          <input id="editorLastName" required placeholder="D'Agostino" autocomplete="family-name">
+          <input id="editorLastName" required placeholder="Cognome" autocomplete="family-name">
         </label>
         <label>
           Qualifica
@@ -265,6 +274,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="./src/config.js?v=8.0.5"></script>
-  <script src="./src/app.js?v=8.0.5"></script>
+  <script src="./src/app.js?v=9.0"></script>
 </body>
 </html>

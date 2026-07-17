@@ -37,7 +37,7 @@ const ITALIAN_FIXED_HOLIDAYS = new Set([
 ]);
 
 const SHIFT_STORAGE = "dvs-planning-build-5-shifts";
-const EDITOR_STORAGE = "dvs-planning-build-8.0.2-staff";
+const EDITOR_STORAGE = "dvs-planning-build-9-staff";
 const ZOOM_STORAGE = "dvs-planning-build-5-zoom";
 
 const hasSupabaseConfig = Boolean(
@@ -1109,21 +1109,22 @@ document.addEventListener("keydown", event => {
 
 function renderEditors() {
   const query = document.getElementById("editorSearch").value.trim().toLocaleLowerCase("it");
+  const roleFilter = document.getElementById("editorRoleFilter")?.value || "";
   const filtered = editors
     .filter(editor => {
       const haystack = [fullEmployeeName(editor), editor.role, editor.phone, editor.email, editor.notes]
         .filter(Boolean).join(" ").toLocaleLowerCase("it");
-      return haystack.includes(query);
+      return haystack.includes(query) && (!roleFilter || editor.role === roleFilter);
     })
-    .sort((a, b) => a.lastName.localeCompare(b.lastName, "it", { sensitivity: "base" })
-      || a.firstName.localeCompare(b.firstName, "it", { sensitivity: "base" }));
+    .sort((a, b) => a.firstName.localeCompare(b.firstName, "it", { sensitivity: "base" })
+      || a.lastName.localeCompare(b.lastName, "it", { sensitivity: "base" }));
 
   document.getElementById("editorsCount").textContent = `${filtered.length} dipendenti`;
   document.getElementById("editorsList").innerHTML = filtered.length ? filtered.map(editor => `
     <article class="editor-row" data-editor-id="${editor.id}" tabindex="0" aria-label="Modifica ${escapeHtml(fullEmployeeName(editor))}">
       <div class="employee-main">
         <div class="employee-heading">
-          <div class="editor-display">${escapeHtml(fullEmployeeName(editor))}</div>
+          <div class="editor-display">${escapeHtml(fullEmployeeName(editor).toLocaleUpperCase("it"))}</div>
           <span class="employee-role">${escapeHtml(editor.role || "Altro")}</span>
         </div>
         <div class="employee-details">
@@ -1210,8 +1211,8 @@ function closeEditorDialog() {
 editorForm.addEventListener("submit", async event => {
   event.preventDefault();
 
-  const firstName = document.getElementById("editorFirstName").value.trim();
-  const lastName = document.getElementById("editorLastName").value.trim();
+  const firstName = document.getElementById("editorFirstName").value.trim().replace(/\s+/g, " ").toLocaleUpperCase("it");
+  const lastName = document.getElementById("editorLastName").value.trim().replace(/\s+/g, " ").toLocaleUpperCase("it");
   const role = document.getElementById("editorRole").value;
   const phone = document.getElementById("editorPhone").value.trim();
   const email = document.getElementById("editorEmail").value.trim();
@@ -1276,6 +1277,7 @@ closeEditorDialogBtn?.addEventListener("click", closeEditorDialog);
 cancelEditorBtn?.addEventListener("click", closeEditorDialog);
 deleteEditorBtn?.addEventListener("click", deleteCurrentEditor);
 editorSearch?.addEventListener("input", renderEditors);
+document.getElementById("editorRoleFilter")?.addEventListener("change", renderEditors);
 
 // Fallback delegato: mantiene funzionanti apertura e modifica anche dopo render dinamici o cache parziali.
 document.addEventListener("click", event => {
@@ -1316,8 +1318,9 @@ async function syncShiftToSupabase(shift) {
     end_time: shift.end === "24:00" ? "00:00" : shift.end,
     end_is_24: shift.end === "24:00",
     work_type: shift.workType,
-    editor_id: shift.editorId,
+    staff_id: shift.editorId,
     status: shift.status,
+    confirmed: Boolean(shift.confirmed),
     color_key: shift.color
   };
   const { error } = await db.from("shifts").upsert(row);
@@ -1356,18 +1359,20 @@ async function deleteEditorFromSupabase(id) {
 async function loadSupabaseData() {
   if (!db) return;
 
-  // Build 8: Supabase gestisce soltanto la rubrica Dipendenti.
-  // I turni restano nel salvataggio locale finché non verrà introdotta
-  // esplicitamente la tabella `shifts` in una build successiva.
-  const staffResult = await db
-    .from("staff")
-    .select("*")
-    .order("last_name")
-    .order("first_name");
+  const [staffResult, shiftsResult] = await Promise.all([
+    db.from("staff").select("*").order("first_name").order("last_name"),
+    db.from("shifts").select("*").order("shift_date").order("start_time")
+  ]);
 
   if (staffResult.error) {
     console.error("Errore caricamento staff:", staffResult.error);
     showToast(`Supabase staff: ${staffResult.error.message}`);
+    return;
+  }
+
+  if (shiftsResult.error) {
+    console.error("Errore caricamento turni:", shiftsResult.error);
+    showToast(`Supabase turni: ${shiftsResult.error.message}`);
     return;
   }
 
@@ -1381,6 +1386,21 @@ async function loadSupabaseData() {
     notes: row.notes || ""
   }));
 
+  shifts = (shiftsResult.data || []).map(row => ({
+    id: String(row.id),
+    room: row.room_code,
+    date: row.shift_date,
+    production: row.production || "",
+    film: row.film || "",
+    start: String(row.start_time || "").slice(0, 5),
+    end: row.end_is_24 ? "24:00" : String(row.end_time || "").slice(0, 5),
+    workType: row.work_type,
+    editorId: row.staff_id || null,
+    status: row.status,
+    color: row.color_key,
+    confirmed: Boolean(row.confirmed)
+  }));
+
   saveLocal();
   renderEditors();
   renderPlanning();
@@ -1389,8 +1409,9 @@ async function loadSupabaseData() {
 function enableRealtime() {
   if (!db) return;
 
-  db.channel("dvs-planning-staff")
+  db.channel("dvs-planning-realtime")
     .on("postgres_changes", { event: "*", schema: "public", table: "staff" }, loadSupabaseData)
+    .on("postgres_changes", { event: "*", schema: "public", table: "shifts" }, loadSupabaseData)
     .subscribe();
 }
 

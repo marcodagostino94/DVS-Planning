@@ -1,35 +1,11 @@
-DVS Planning — Build 8.0.5
-- Corretto popup Nuovo dipendente e Modifica dipendente.
-- Aggiunto fallback sicuro per apertura/chiusura dialog.
-- Modifica dipendente anche con click singolo sulla riga.
-- Rimossi i dipendenti dimostrativi locali della Build precedente.
-- Lo script 004 elimina prima tutti i record test dalla tabella staff.
-- Cache busting per evitare vecchi JavaScript su GitHub Pages.
+DVS Planning — Build 9.0
 
-BUILD 7.0
-- Celle vuote: pallino azzurro, rimozione focus visivo, doppio clic Nuovo turno senza conflitto con clic singolo.
-- Taglia: ⌘X e menu contestuale, stato visivo persistente, incolla con controllo conflitti.
-- Drag multiplo: anteprima dell’intero gruppo e highlight di tutte le celle di destinazione.
-- Rifinitura della selezione introdotta nella Build 6.0.
-
-DVS-Planning_Build_6.0
-
-✓ Command+clic
-✓ Shift+clic
-✓ selezione a rettangolo
-✓ drag multiplo
-✓ traslazione relativa date
-✓ controllo conflitti gruppo
-✓ menu contestuale DVS
-✓ provvisori evidenziati
-✓ no selezione testo browser
-
-
-BUILD 8.0
-- Sezione Montatori rinominata e ricostruita come Dipendenti.
-- Campi: nome, cognome, qualifica, telefono, email e note.
-- Qualifiche: Montatore, Grafico, Colorist, Sound, Assistente, Altro.
-- Elenco alfabetico con telefono, email e note visibili quando presenti.
-- Ricerca estesa a tutti i campi.
-- Eliminazione definitiva dalla scheda Modifica con conferma.
-- Nuova tabella Supabase staff, realtime e script di importazione Excel.
+- Filtri Dipendenti per qualifica.
+- Ordinamento alfabetico per NOME e poi COGNOME.
+- Nome e cognome visualizzati in MAIUSCOLO.
+- Placeholder corretti: Nome / Cognome.
+- Turni collegati a Supabase come fonte ufficiale.
+- Realtime per dipendenti e turni.
+- Migrazione 005 con schema database completo di base: qualifications, staff, rooms, productions, shifts, app_profiles, app_settings.
+- Normalizzazione in maiuscolo dei nominativi già presenti.
+- RLS prototipo, indici, trigger updated_at e controllo sovrapposizioni sale.
