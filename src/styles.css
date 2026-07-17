@@ -925,77 +925,41 @@ input,textarea,select,.app-dialog{-webkit-user-select:text;user-select:text}
 .drag-group-ghost{position:fixed;z-index:140;padding:8px 11px;border:1px solid rgba(10,132,255,.35);border-radius:10px;color:#135c98;background:rgba(225,241,255,.95);box-shadow:0 12px 30px rgba(28,70,106,.2);font-size:10px;font-weight:800;pointer-events:none}.planning-cell.group-drop-target{box-shadow:inset 0 0 0 2px rgba(10,132,255,.35),inset 0 0 22px rgba(10,132,255,.06)}
 
 
-/* Build 7.0 — stabilizzazione celle, taglia e drag multiplo */
-.planning-cell {
-  outline: none;
+/* Build 7.0 — consolidamento interazioni */
+.planning-cell,
+.planning-cell:focus,
+.planning-cell:focus-visible {
+  outline: none !important;
   -webkit-tap-highlight-color: transparent;
   user-select: none;
 }
-
-.planning-cell:focus,
-.planning-cell:focus-visible {
-  outline: none;
-}
-
 .shift-card.cut-pending {
-  opacity: .46;
+  opacity: .48;
   filter: saturate(.55);
-  box-shadow: inset 0 0 0 1px rgba(35, 44, 54, .16);
+  box-shadow: inset 0 0 0 1px rgba(10,132,255,.42);
 }
-
 .drag-group-ghost {
-  display: flex;
-  flex-direction: column;
-  align-items: stretch;
-  gap: 5px;
-  width: 176px;
-  padding: 7px;
-  border: 1px solid rgba(10,132,255,.28);
-  border-radius: 14px;
-  background: rgba(242,248,255,.88);
-  box-shadow: 0 16px 38px rgba(28,70,106,.23);
-  backdrop-filter: blur(18px) saturate(1.2);
-  -webkit-backdrop-filter: blur(18px) saturate(1.2);
+  position: fixed;
+  z-index: 140;
+  width: 104px;
+  min-height: 72px;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  box-shadow: none;
+  pointer-events: none;
 }
-
-.drag-ghost-card {
-  display: grid;
-  grid-template-columns: 1fr;
-  gap: 1px;
-  min-width: 0;
-  padding: 6px 8px;
-  border: 1px solid rgba(var(--accent-rgb), .28);
-  border-radius: 9px;
-  color: #18202a;
-  background: rgba(var(--accent-rgb), .18);
-  box-shadow: inset 3px 0 0 rgba(var(--accent-rgb), .8);
+.drag-group-ghost .drag-ghost-card {
+  position: absolute;
+  inset: 0 auto auto 0;
+  width: 104px;
+  min-height: 72px;
+  opacity: .92;
+  box-shadow: 0 12px 28px rgba(23,30,37,.28);
 }
-
-.drag-ghost-card.provvisorio {
-  border-style: dashed;
-  background: rgba(240,242,245,.92);
-}
-
-.drag-ghost-card strong,
-.drag-ghost-card span,
-.drag-ghost-card small {
-  overflow: hidden;
-  text-overflow: ellipsis;
-  white-space: nowrap;
-}
-
-.drag-ghost-card strong { font-size: 9px; }
-.drag-ghost-card span { font-size: 8px; font-weight: 650; }
-.drag-ghost-card small { font-size: 7px; color: #5f6872; }
-
 .planning-cell.group-drop-target {
-  box-shadow:
-    inset 0 0 0 2px rgba(10,132,255,.48),
-    inset 0 0 24px rgba(10,132,255,.10);
+  box-shadow: inset 0 0 0 2px rgba(10,132,255,.58), inset 0 0 22px rgba(10,132,255,.10);
 }
-
 .planning-cell.group-drop-invalid {
-  box-shadow:
-    inset 0 0 0 2px rgba(220,53,69,.48),
-    inset 0 0 24px rgba(220,53,69,.08);
+  box-shadow: inset 0 0 0 2px rgba(220,55,70,.55), inset 0 0 22px rgba(220,55,70,.08);
 }

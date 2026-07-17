@@ -1,11 +1,17 @@
-DVS-Planning_Build_7.0
+BUILD 7.0
+- Celle vuote: pallino azzurro, rimozione focus visivo, doppio clic Nuovo turno senza conflitto con clic singolo.
+- Taglia: ⌘X e menu contestuale, stato visivo persistente, incolla con controllo conflitti.
+- Drag multiplo: anteprima dell’intero gruppo e highlight di tutte le celle di destinazione.
+- Rifinitura della selezione introdotta nella Build 6.0.
 
-- Ripristinata selezione visiva delle celle vuote con pallino azzurro.
-- Eliminato il focus/cursore temporaneo sulle celle.
-- Corretto il conflitto tra click singolo e doppio click.
-- Doppio click su cella vuota apre Nuovo turno.
-- Aggiunto Taglia con ⌘X e menu contestuale.
-- Il gruppo tagliato resta evidenziato fino all’incolla.
-- Controllo conflitti prima dell’incolla/spostamento.
-- Drag multiplo con anteprima di tutte le card selezionate.
-- Evidenziazione simultanea di tutte le celle di destinazione.
+DVS-Planning_Build_6.0
+
+✓ Command+clic
+✓ Shift+clic
+✓ selezione a rettangolo
+✓ drag multiplo
+✓ traslazione relativa date
+✓ controllo conflitti gruppo
+✓ menu contestuale DVS
+✓ provvisori evidenziati
+✓ no selezione testo browser
