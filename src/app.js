@@ -61,7 +61,11 @@ let selectionAnchorId = null;
 let selectedCell = null;
 let draggedShiftId = null;
 let copiedShifts = [];
+let clipboardMode = null;
+let cutShiftIds = new Set();
 let marqueeState = null;
+let pendingMarquee = null;
+let cellClickTimer = null;
 let marqueeElement = null;
 let contextTargetCell = null;
 let dragSourceShiftId = null;
@@ -249,6 +253,11 @@ function clearSelection() {
   selectedCell = null;
 }
 
+function clearCutState() {
+  cutShiftIds.clear();
+  if (clipboardMode === "cut") clipboardMode = null;
+}
+
 function copySelectedShifts() {
   const selected = selectedShiftList()
     .sort((a, b) =>
@@ -259,10 +268,34 @@ function copySelectedShifts() {
   if (!selected.length) return false;
 
   copiedShifts = selected.map(shift => ({ ...shift }));
+  clipboardMode = "copy";
+  cutShiftIds.clear();
+  renderPlanning();
   showToast(
     selected.length === 1
       ? "Turno copiato"
       : `${selected.length} turni copiati`
+  );
+  return true;
+}
+
+function cutSelectedShifts() {
+  const selected = selectedShiftList()
+    .sort((a, b) =>
+      a.date.localeCompare(b.date)
+      || a.start.localeCompare(b.start)
+    );
+
+  if (!selected.length) return false;
+
+  copiedShifts = selected.map(shift => ({ ...shift }));
+  clipboardMode = "cut";
+  cutShiftIds = new Set(selected.map(shift => shift.id));
+  renderPlanning();
+  showToast(
+    selected.length === 1
+      ? "Turno tagliato"
+      : `${selected.length} turni tagliati`
   );
   return true;
 }
@@ -273,14 +306,15 @@ function pasteCopiedShifts() {
   const sourceBase = new Date(`${copiedShifts[0].date}T12:00:00`);
   const targetBase = new Date(`${selectedCell.date}T12:00:00`);
   const offsetDays = Math.round((targetBase - sourceBase) / 86400000);
+  const isCut = clipboardMode === "cut";
 
-  const candidates = copiedShifts.map((source, index) => {
+  const candidates = copiedShifts.map(source => {
     const sourceDate = new Date(`${source.date}T12:00:00`);
     sourceDate.setDate(sourceDate.getDate() + offsetDays);
 
     return {
       ...source,
-      id: crypto.randomUUID(),
+      id: isCut ? source.id : crypto.randomUUID(),
       room: selectedCell.room,
       date: isoDate(
         sourceDate.getFullYear(),
@@ -299,8 +333,14 @@ function pasteCopiedShifts() {
     )
   );
 
+  const movingIds = isCut ? new Set(copiedShifts.map(shift => shift.id)) : new Set();
   const hasExistingConflict = candidates.some(candidate =>
-    roomConflict(candidate)
+    shifts.some(existing =>
+      !movingIds.has(existing.id)
+      && existing.room === candidate.room
+      && existing.date === candidate.date
+      && overlaps(existing, candidate)
+    )
   );
 
   if (hasInternalConflict || hasExistingConflict) {
@@ -308,7 +348,13 @@ function pasteCopiedShifts() {
     return true;
   }
 
-  shifts.push(...candidates);
+  if (isCut) {
+    const movedById = new Map(candidates.map(candidate => [candidate.id, candidate]));
+    shifts = shifts.map(shift => movedById.get(shift.id) || shift);
+  } else {
+    shifts.push(...candidates);
+  }
+
   saveLocal();
   candidates.forEach(syncShiftToSupabase);
 
@@ -316,11 +362,16 @@ function pasteCopiedShifts() {
   selectionAnchorId = candidates[0]?.id || null;
   selectedCell = null;
 
+  if (isCut) {
+    copiedShifts = [];
+    clearCutState();
+  }
+
   renderPlanning();
   showToast(
     candidates.length === 1
-      ? "Turno incollato"
-      : `${candidates.length} turni incollati`
+      ? (isCut ? "Turno spostato" : "Turno incollato")
+      : (isCut ? `${candidates.length} turni spostati` : `${candidates.length} turni incollati`)
   );
   return true;
 }
@@ -367,6 +418,7 @@ function showContextMenu(event, targetCell) {
   const selected = selectedShiftList();
   contextMenu.querySelector('[data-action="edit"]').disabled = selected.length !== 1;
   contextMenu.querySelector('[data-action="copy"]').disabled = !selected.length;
+  contextMenu.querySelector('[data-action="cut"]').disabled = !selected.length;
   contextMenu.querySelector('[data-action="paste"]').disabled = !copiedShifts.length || !targetCell;
   contextMenu.querySelector('[data-action="make-definitive"]').disabled = !selected.some(s => s.status === "provvisorio");
   contextMenu.querySelector('[data-action="make-provisional"]').disabled = !selected.some(s => s.status === "definitivo");
@@ -472,41 +524,141 @@ function clearActiveDrag() {
   activeDragSource = null;
 }
 
-function startMarquee(event, cell) {
-  if (event.button!==0 || event.target.closest('.shift-card')) return;
+function beginMarquee(event, cell) {
   const row = cell.getBoundingClientRect();
-  marqueeState={room:cell.dataset.room,startX:event.clientX,currentX:event.clientX,rowTop:row.top,rowBottom:row.bottom,additive:event.metaKey||event.ctrlKey};
-  if (!marqueeState.additive) { selectedShiftIds.clear(); selectionAnchorId=null; }
-  selectedCell=null;
-  marqueeElement=document.createElement('div'); marqueeElement.className='selection-marquee'; document.body.appendChild(marqueeElement);
-  updateMarquee(event); event.preventDefault();
+  marqueeState = {
+    room: cell.dataset.room,
+    startX: pendingMarquee?.startX ?? event.clientX,
+    currentX: event.clientX,
+    rowTop: row.top,
+    rowBottom: row.bottom,
+    additive: pendingMarquee?.additive ?? (event.metaKey || event.ctrlKey)
+  };
+  if (!marqueeState.additive) {
+    selectedShiftIds.clear();
+    selectionAnchorId = null;
+  }
+  selectedCell = null;
+  marqueeElement = document.createElement('div');
+  marqueeElement.className = 'selection-marquee';
+  document.body.appendChild(marqueeElement);
+  updateMarquee(event);
+}
+
+function prepareMarquee(event, cell) {
+  if (event.button !== 0 || event.target.closest('.shift-card')) return;
+  pendingMarquee = {
+    cell,
+    startX: event.clientX,
+    startY: event.clientY,
+    additive: event.metaKey || event.ctrlKey
+  };
 }
 
 function updateMarquee(event) {
+  if (pendingMarquee && !marqueeState) {
+    const distance = Math.hypot(
+      event.clientX - pendingMarquee.startX,
+      event.clientY - pendingMarquee.startY
+    );
+    if (distance >= 5) {
+      beginMarquee(event, pendingMarquee.cell);
+      event.preventDefault();
+    }
+  }
+
   if (!marqueeState || !marqueeElement) return;
-  marqueeState.currentX=event.clientX;
-  const left=Math.min(marqueeState.startX,marqueeState.currentX), right=Math.max(marqueeState.startX,marqueeState.currentX);
-  const top=marqueeState.rowTop+2, bottom=marqueeState.rowBottom-2;
-  Object.assign(marqueeElement.style,{left:`${left}px`,top:`${top}px`,width:`${Math.max(1,right-left)}px`,height:`${Math.max(1,bottom-top)}px`});
-  document.querySelectorAll(`.planning-cell[data-room="${marqueeState.room}"] .shift-card`).forEach(card=>{
-    const r=card.getBoundingClientRect();
-    if (!(r.right<left||r.left>right||r.bottom<top||r.top>bottom)) selectedShiftIds.add(card.dataset.shiftId);
+  marqueeState.currentX = event.clientX;
+  const left = Math.min(marqueeState.startX, marqueeState.currentX);
+  const right = Math.max(marqueeState.startX, marqueeState.currentX);
+  const top = marqueeState.rowTop + 2;
+  const bottom = marqueeState.rowBottom - 2;
+  Object.assign(marqueeElement.style, {
+    left: `${left}px`,
+    top: `${top}px`,
+    width: `${Math.max(1, right-left)}px`,
+    height: `${Math.max(1, bottom-top)}px`
   });
-  if (!selectionAnchorId) selectionAnchorId=[...selectedShiftIds][0]||null;
-  document.querySelectorAll('.shift-card').forEach(card=>card.classList.toggle('selected',selectedShiftIds.has(card.dataset.shiftId)));
+  document.querySelectorAll(`.planning-cell[data-room="${marqueeState.room}"] .shift-card`).forEach(card => {
+    const r = card.getBoundingClientRect();
+    if (!(r.right < left || r.left > right || r.bottom < top || r.top > bottom)) {
+      selectedShiftIds.add(card.dataset.shiftId);
+    }
+  });
+  if (!selectionAnchorId) selectionAnchorId = [...selectedShiftIds][0] || null;
+  document.querySelectorAll('.shift-card').forEach(card =>
+    card.classList.toggle('selected', selectedShiftIds.has(card.dataset.shiftId))
+  );
   updateSelectionBadge();
 }
 
 function finishMarquee() {
+  pendingMarquee = null;
   if (!marqueeState) return;
-  marqueeElement?.remove(); marqueeElement=null; marqueeState=null; renderPlanning();
+  marqueeElement?.remove();
+  marqueeElement = null;
+  marqueeState = null;
+  suppressNextClick = true;
+  renderPlanning();
 }
 
-function createDragGhost(count) {
-  dragGhost?.remove(); dragGhost=document.createElement('div'); dragGhost.className='drag-group-ghost'; dragGhost.textContent=count===1?'1 turno':`${count} turni`; document.body.appendChild(dragGhost);
+function createDragGhost(group) {
+  dragGhost?.remove();
+  dragGhost = document.createElement('div');
+  dragGhost.className = 'drag-group-ghost';
+
+  const sourceDate = new Date(`${activeDragSource?.date || group[0]?.date}T12:00:00`);
+  group.forEach(shift => {
+    const item = document.createElement('div');
+    item.className = `drag-ghost-card ${shift.status}`;
+    const color = FILM_COLORS[shift.color] || FILM_COLORS.blue;
+    item.style.setProperty('--accent-rgb', color.rgb);
+    const shiftDate = new Date(`${shift.date}T12:00:00`);
+    const dayOffset = Math.round((shiftDate - sourceDate) / 86400000);
+    item.style.transform = `translateX(${Math.max(-3, Math.min(3, dayOffset)) * 8}px)`;
+    item.innerHTML = `
+      <strong>${escapeHtml(shift.production || 'Turno')}</strong>
+      <span>${escapeHtml(shift.film || '')}</span>
+      <small>${escapeHtml(shift.start)}–${escapeHtml(shift.end)} · ${dayOffset === 0 ? 'giorno origine' : `${dayOffset > 0 ? '+' : ''}${dayOffset}g`}</small>
+    `;
+    dragGhost.appendChild(item);
+  });
+  document.body.appendChild(dragGhost);
 }
-function moveDragGhost(event) { if (dragGhost) { dragGhost.style.left=`${event.clientX+14}px`; dragGhost.style.top=`${event.clientY+14}px`; } }
-function removeDragGhost() { dragGhost?.remove(); dragGhost=null; document.querySelectorAll('.group-drop-target').forEach(e=>e.classList.remove('group-drop-target')); }
+
+function moveDragGhost(event) {
+  if (dragGhost) {
+    dragGhost.style.left = `${event.clientX + 16}px`;
+    dragGhost.style.top = `${event.clientY + 16}px`;
+  }
+}
+
+function clearDragTargets() {
+  document.querySelectorAll('.group-drop-target, .group-drop-invalid').forEach(element => {
+    element.classList.remove('group-drop-target', 'group-drop-invalid');
+  });
+}
+
+function updateDragTargets(targetRoom, targetDate) {
+  clearDragTargets();
+  const candidates = buildMovedGroup(targetRoom, targetDate);
+  const invalid = !candidates.length || groupHasConflict(candidates);
+
+  candidates.forEach(candidate => {
+    const cell = document.querySelector(
+      `.planning-cell[data-room="${candidate.room}"][data-date="${candidate.date}"]`
+    );
+    if (cell) cell.classList.add(invalid ? 'group-drop-invalid' : 'group-drop-target');
+  });
+  return { candidates, invalid };
+}
+
+function removeDragGhost() {
+  dragGhost?.remove();
+  dragGhost = null;
+  clearDragTargets();
+}
+
 
 function isHoliday(date) {
   const key = `${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
@@ -550,7 +702,7 @@ function renderCard(shift) {
 
   return `
     <article
-      class="shift-card ${shift.status} ${selectedShiftIds.has(shift.id) ? "selected" : ""}"
+      class="shift-card ${shift.status} ${selectedShiftIds.has(shift.id) ? "selected" : ""} ${cutShiftIds.has(shift.id) ? "cut-pending" : ""}"
       data-shift-id="${shift.id}"
       draggable="true"
       style="--accent-rgb:${color.rgb}">
@@ -686,7 +838,7 @@ function bindPlanningEvents() {
       const image = new Image();
       image.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
       event.dataTransfer.setDragImage(image, 0, 0);
-      createDragGhost(group.length);
+      createDragGhost(group);
       updateSelectionBadge();
     });
 
@@ -700,16 +852,44 @@ function bindPlanningEvents() {
 
   document.querySelectorAll(".planning-cell").forEach(cell => {
     cell.addEventListener("click", event => {
-      if (event.detail>1) return;
-      hideContextMenu(); selectedShiftIds.clear(); selectionAnchorId=null; selectedCell={room:cell.dataset.room,date:cell.dataset.date}; renderPlanning();
+      if (event.target.closest('.shift-card')) return;
+      if (suppressNextClick) {
+        suppressNextClick = false;
+        return;
+      }
+      if (event.detail > 1) return;
+      clearTimeout(cellClickTimer);
+      cellClickTimer = setTimeout(() => {
+        hideContextMenu();
+        selectedShiftIds.clear();
+        selectionAnchorId = null;
+        selectedCell = { room: cell.dataset.room, date: cell.dataset.date };
+        renderPlanning();
+      }, 220);
     });
-    cell.addEventListener("dblclick", event => { if (!event.target.closest('.shift-card')) openNewShift(cell.dataset.room,cell.dataset.date); });
-    cell.addEventListener("mousedown", event => { if (!event.target.closest('.shift-card')) startMarquee(event,cell); });
-    cell.addEventListener("contextmenu", event => { selectedCell={room:cell.dataset.room,date:cell.dataset.date}; showContextMenu(event,cell); });
-    cell.addEventListener("dragover", event => { event.preventDefault(); event.dataTransfer.dropEffect='move'; cell.classList.add('group-drop-target'); moveDragGhost(event); });
-    cell.addEventListener("dragleave",()=>cell.classList.remove('group-drop-target'));
+    cell.addEventListener("dblclick", event => {
+      if (event.target.closest('.shift-card')) return;
+      clearTimeout(cellClickTimer);
+      cellClickTimer = null;
+      openNewShift(cell.dataset.room, cell.dataset.date);
+    });
+    cell.addEventListener("mousedown", event => {
+      if (!event.target.closest('.shift-card')) prepareMarquee(event, cell);
+    });
+    cell.addEventListener("contextmenu", event => {
+      clearTimeout(cellClickTimer);
+      selectedCell = { room: cell.dataset.room, date: cell.dataset.date };
+      showContextMenu(event, cell);
+    });
+    cell.addEventListener("dragover", event => {
+      event.preventDefault();
+      const { invalid } = updateDragTargets(cell.dataset.room, cell.dataset.date);
+      event.dataTransfer.dropEffect = invalid ? 'none' : 'move';
+      moveDragGhost(event);
+    });
     cell.addEventListener("drop", event => {
-      event.preventDefault(); cell.classList.remove('group-drop-target');
+      event.preventDefault();
+      clearDragTargets();
       const sourceId = dragSourceShiftId || event.dataTransfer.getData('text/plain');
       if (!activeDragGroup.length) captureDragGroup(sourceId);
 
@@ -745,8 +925,13 @@ function bindPlanningEvents() {
   });
 }
 
-document.addEventListener('mousemove',event=>{ if (marqueeState) updateMarquee(event); if (dragGhost) moveDragGhost(event); });
-document.addEventListener('mouseup',()=>{ if (marqueeState) finishMarquee(); });
+document.addEventListener('mousemove', event => {
+  if (pendingMarquee || marqueeState) updateMarquee(event);
+  if (dragGhost) moveDragGhost(event);
+});
+document.addEventListener('mouseup', () => {
+  if (pendingMarquee || marqueeState) finishMarquee();
+});
 document.addEventListener('click',event=>{ if (!contextMenu.contains(event.target)) hideContextMenu(); });
 
 contextMenu.addEventListener('click',event=>{
@@ -754,6 +939,7 @@ contextMenu.addEventListener('click',event=>{
   const action=button.dataset.action, targetCell=contextTargetCell; hideContextMenu();
   if (action==='edit') { const s=selectedShiftList(); if (s.length===1) openEditShift(s[0].id); }
   else if (action==='copy') copySelectedShifts();
+  else if (action==='cut') cutSelectedShifts();
   else if (action==='paste'&&targetCell) { selectedCell={room:targetCell.dataset.room,date:targetCell.dataset.date}; pasteCopiedShifts(); }
   else if (action==='make-definitive') setSelectedStatus('definitivo');
   else if (action==='make-provisional') setSelectedStatus('provvisorio');
@@ -972,6 +1158,10 @@ document.addEventListener("keydown", event => {
 
   if (!isTyping && (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "c") {
     if (copySelectedShifts()) event.preventDefault();
+  }
+
+  if (!isTyping && (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "x") {
+    if (cutSelectedShifts()) event.preventDefault();
   }
 
   if (!isTyping && (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "v") {
