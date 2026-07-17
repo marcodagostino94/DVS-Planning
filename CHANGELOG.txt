@@ -1,4 +1,4 @@
-DVS Planning — Build 8.0.2
+DVS Planning — Build 8.0.5
 - Corretto popup Nuovo dipendente e Modifica dipendente.
 - Aggiunto fallback sicuro per apertura/chiusura dialog.
 - Modifica dipendente anche con click singolo sulla riga.

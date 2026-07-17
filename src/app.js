@@ -1356,49 +1356,40 @@ async function deleteEditorFromSupabase(id) {
 async function loadSupabaseData() {
   if (!db) return;
 
-  const [editorsResult, shiftsResult] = await Promise.all([
-    db.from("staff").select("*").order("last_name"),
-    db.from("shifts").select("*").order("shift_date")
-  ]);
+  // Build 8: Supabase gestisce soltanto la rubrica Dipendenti.
+  // I turni restano nel salvataggio locale finché non verrà introdotta
+  // esplicitamente la tabella `shifts` in una build successiva.
+  const staffResult = await db
+    .from("staff")
+    .select("*")
+    .order("last_name")
+    .order("first_name");
 
-  if (!editorsResult.error && editorsResult.data?.length) {
-    editors = editorsResult.data.map(row => ({
-      id: String(row.id),
-      firstName: row.first_name,
-      lastName: row.last_name,
-      role: row.role || "Altro",
-      phone: row.phone || "",
-      email: row.email || "",
-      notes: row.notes || ""
-    }));
+  if (staffResult.error) {
+    console.error("Errore caricamento staff:", staffResult.error);
+    showToast(`Supabase staff: ${staffResult.error.message}`);
+    return;
   }
 
-  if (!shiftsResult.error && shiftsResult.data?.length) {
-    shifts = shiftsResult.data.map(row => ({
-      id: String(row.id),
-      room: row.room_code,
-      date: row.shift_date,
-      production: row.production,
-      film: row.film,
-      start: String(row.start_time).slice(0, 5),
-      end: row.end_is_24 ? "24:00" : String(row.end_time).slice(0, 5),
-      workType: row.work_type,
-      editorId: row.editor_id ? String(row.editor_id) : null,
-      status: row.status,
-      color: row.color_key
-    }));
-  }
+  editors = (staffResult.data || []).map(row => ({
+    id: String(row.id),
+    firstName: row.first_name,
+    lastName: row.last_name,
+    role: row.role || "Altro",
+    phone: row.phone || "",
+    email: row.email || "",
+    notes: row.notes || ""
+  }));
 
   saveLocal();
-  renderPlanning();
   renderEditors();
+  renderPlanning();
 }
 
 function enableRealtime() {
   if (!db) return;
 
-  db.channel("dvs-planning")
-    .on("postgres_changes", { event: "*", schema: "public", table: "shifts" }, loadSupabaseData)
+  db.channel("dvs-planning-staff")
     .on("postgres_changes", { event: "*", schema: "public", table: "staff" }, loadSupabaseData)
     .subscribe();
 }
