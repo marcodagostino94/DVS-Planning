@@ -1,6 +1,12 @@
 -- DVS Planning — Build 8.0 / Import iniziale da X MARCO.xlsx
 -- Eseguire dopo 003_staff_build_8.sql.
 begin;
+
+-- IMPORTAZIONE PULITA: elimina tutti i dipendenti presenti in staff,
+-- inclusi i nominativi dimostrativi/test, prima di caricare l’Excel.
+-- Grazie alla FK ON DELETE SET NULL, eventuali turni collegati non vengono eliminati.
+delete from public.staff;
+
 insert into public.staff (id, first_name, last_name, role, phone, email, notes) values ('staff-import-001', 'Filippo', 'Giovannelli', 'Montatore', '339/ 8497535', null, null) on conflict (first_name, last_name) do update set role=excluded.role, phone=excluded.phone, notes=excluded.notes;
 insert into public.staff (id, first_name, last_name, role, phone, email, notes) values ('staff-import-002', 'Valentina', 'Barletta', 'Montatore', '327/ 2819132', null, null) on conflict (first_name, last_name) do update set role=excluded.role, phone=excluded.phone, notes=excluded.notes;
 insert into public.staff (id, first_name, last_name, role, phone, email, notes) values ('staff-import-003', 'Francesca', 'Quaglietta', 'Montatore', '327/ 7959632', null, 'Una bella scassacazzi') on conflict (first_name, last_name) do update set role=excluded.role, phone=excluded.phone, notes=excluded.notes;

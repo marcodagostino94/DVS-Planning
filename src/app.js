@@ -37,7 +37,7 @@ const ITALIAN_FIXED_HOLIDAYS = new Set([
 ]);
 
 const SHIFT_STORAGE = "dvs-planning-build-5-shifts";
-const EDITOR_STORAGE = "dvs-planning-build-8-staff";
+const EDITOR_STORAGE = "dvs-planning-build-8.0.2-staff";
 const ZOOM_STORAGE = "dvs-planning-build-5-zoom";
 
 const hasSupabaseConfig = Boolean(
@@ -102,7 +102,10 @@ const seedShifts = [
   { id:"13", room:"remoto-grafica", date:"2026-07-02", production:"RAI", film:"VITA IN DIRETTA", start:"09:00", end:"17:00", workType:"GRAFICA", editorId:"ed-7", status:"definitivo", color:"coral" }
 ];
 
-let editors = loadLocal(EDITOR_STORAGE, seedEditors.map(item => ({ ...item, role: "Montatore", phone: "", email: "", notes: "" })));
+let editors = loadLocal(EDITOR_STORAGE, []);
+// Build 8.0.1: elimina automaticamente i soli nominativi dimostrativi della vecchia interfaccia.
+const prototypeStaffIds = new Set(seedEditors.map(item => item.id));
+editors = editors.filter(item => !prototypeStaffIds.has(item.id));
 let shifts = loadLocal(SHIFT_STORAGE, seedShifts);
 
 const planningGrid = document.getElementById("planningGrid");
@@ -1134,11 +1137,14 @@ function renderEditors() {
   `).join("") : `<div class="employees-empty">Nessun dipendente trovato.</div>`;
 
   document.querySelectorAll(".editor-row").forEach(row => {
-    row.addEventListener("dblclick", event => {
-      if (!event.target.closest("[data-stop-open]")) openEditEditor(row.dataset.editorId);
+    row.addEventListener("click", event => {
+      if (!event.target.closest("[data-stop-open], .editor-edit-btn")) openEditEditor(row.dataset.editorId);
     });
     row.addEventListener("keydown", event => {
-      if (event.key === "Enter") openEditEditor(row.dataset.editorId);
+      if (event.key === "Enter" || event.key === " ") {
+        event.preventDefault();
+        openEditEditor(row.dataset.editorId);
+      }
     });
   });
   document.querySelectorAll(".editor-edit-btn").forEach(button => {
@@ -1158,11 +1164,32 @@ function setEmployeeDialogValues(editor = null) {
   document.getElementById("editorFormError").textContent = "";
 }
 
+function openDialogSafely(dialog) {
+  if (!dialog) return;
+  try {
+    if (!dialog.open && typeof dialog.showModal === "function") dialog.showModal();
+    else dialog.setAttribute("open", "");
+  } catch {
+    dialog.setAttribute("open", "");
+  }
+}
+
+function closeDialogSafely(dialog) {
+  if (!dialog) return;
+  try {
+    if (dialog.open && typeof dialog.close === "function") dialog.close();
+    else dialog.removeAttribute("open");
+  } catch {
+    dialog.removeAttribute("open");
+  }
+}
+
 function openNewEditor() {
   editingEditorId = null;
   document.getElementById("editorDialogTitle").textContent = "Nuovo dipendente";
   setEmployeeDialogValues();
-  editorDialog.showModal();
+  openDialogSafely(editorDialog);
+  requestAnimationFrame(() => document.getElementById("editorFirstName")?.focus());
 }
 
 function openEditEditor(id) {
@@ -1171,11 +1198,12 @@ function openEditEditor(id) {
   editingEditorId = id;
   document.getElementById("editorDialogTitle").textContent = "Modifica dipendente";
   setEmployeeDialogValues(editor);
-  editorDialog.showModal();
+  openDialogSafely(editorDialog);
+  requestAnimationFrame(() => document.getElementById("editorFirstName")?.focus());
 }
 
 function closeEditorDialog() {
-  editorDialog.close();
+  closeDialogSafely(editorDialog);
   document.getElementById("editorFormError").textContent = "";
 }
 
@@ -1237,11 +1265,34 @@ async function deleteCurrentEditor() {
   showToast("Dipendente eliminato");
 }
 
-document.getElementById("newEditorBtn").addEventListener("click", openNewEditor);
-document.getElementById("closeEditorDialog").addEventListener("click", closeEditorDialog);
-document.getElementById("cancelEditorBtn").addEventListener("click", closeEditorDialog);
-document.getElementById("deleteEditorBtn").addEventListener("click", deleteCurrentEditor);
-document.getElementById("editorSearch").addEventListener("input", renderEditors);
+const newEditorBtn = document.getElementById("newEditorBtn");
+const closeEditorDialogBtn = document.getElementById("closeEditorDialog");
+const cancelEditorBtn = document.getElementById("cancelEditorBtn");
+const deleteEditorBtn = document.getElementById("deleteEditorBtn");
+const editorSearch = document.getElementById("editorSearch");
+
+newEditorBtn?.addEventListener("click", openNewEditor);
+closeEditorDialogBtn?.addEventListener("click", closeEditorDialog);
+cancelEditorBtn?.addEventListener("click", closeEditorDialog);
+deleteEditorBtn?.addEventListener("click", deleteCurrentEditor);
+editorSearch?.addEventListener("input", renderEditors);
+
+// Fallback delegato: mantiene funzionanti apertura e modifica anche dopo render dinamici o cache parziali.
+document.addEventListener("click", event => {
+  const newButton = event.target.closest("#newEditorBtn");
+  if (newButton) {
+    event.preventDefault();
+    openNewEditor();
+    return;
+  }
+
+  const editButton = event.target.closest(".editor-edit-btn[data-editor-id]");
+  if (editButton) {
+    event.preventDefault();
+    event.stopPropagation();
+    openEditEditor(editButton.dataset.editorId);
+  }
+});
 
 document.querySelectorAll(".nav-item[data-view]").forEach(button => {
   button.addEventListener("click", () => {

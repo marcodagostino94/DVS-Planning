@@ -1,3 +1,11 @@
+DVS Planning — Build 8.0.2
+- Corretto popup Nuovo dipendente e Modifica dipendente.
+- Aggiunto fallback sicuro per apertura/chiusura dialog.
+- Modifica dipendente anche con click singolo sulla riga.
+- Rimossi i dipendenti dimostrativi locali della Build precedente.
+- Lo script 004 elimina prima tutti i record test dalla tabella staff.
+- Cache busting per evitare vecchi JavaScript su GitHub Pages.
+
 BUILD 7.0
 - Celle vuote: pallino azzurro, rimozione focus visivo, doppio clic Nuovo turno senza conflitto con clic singolo.
 - Taglia: ⌘X e menu contestuale, stato visivo persistente, incolla con controllo conflitti.
