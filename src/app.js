@@ -1718,13 +1718,13 @@ function renderDashboard() {
   }).join("") : '<div class="empty-dashboard">Nessun turno programmato per oggi.</div>';
 
   const roomsList = document.getElementById("todayRoomsList");
-  roomsList.innerHTML = ROOMS.filter(room => /^sala-/.test(room.id)).slice(0,8).map(room => {
+  roomsList.innerHTML = ROOMS.filter(room => /^sala-/.test(room.id)).map(room => {
     const shift = todays.find(item => item.room === room.id);
     return `<div class="compact-row"><span><i class="room-dot ${shift ? "busy" : ""}"></i>${room.label}</span><span>${shift ? escapeHtml(shift.film || "Occupata") : "Libera"}</span></div>`;
   }).join("");
 
   const employeesList = document.getElementById("todayEmployeesList");
-  employeesList.innerHTML = people.length ? people.slice(0,8).map(id => {
+  employeesList.innerHTML = people.length ? people.map(id => {
     const first = todays.find(item => item.editorId === id);
     const room = ROOMS.find(item => item.id === first?.room)?.label || "—";
     return `<div class="compact-row"><span>${escapeHtml(employeeNameById(id))}</span><span>${escapeHtml(room)}</span></div>`;
