@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <title>DVS Planning — Build 13.1</title>
+  <title>DVS Planning — Build 13.2</title>
   <meta name="theme-color" content="#09090b">
   <link rel="icon" type="image/png" sizes="64x64" href="./assets/icons/dvs-planning-64.png">
   <link rel="apple-touch-icon" href="./assets/icons/dvs-planning-180.png">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./src/styles.css?v=13.1">
+  <link rel="stylesheet" href="./src/styles.css?v=13.2">
 </head>
 <body>
   <section id="profileGate" class="profile-gate" aria-label="Selezione profilo">
@@ -74,7 +74,7 @@
           <span class="nav-icon"><svg class="sf-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 5H5.5A2.5 2.5 0 0 0 3 7.5v9A2.5 2.5 0 0 0 5.5 19H10M14 8l4 4-4 4M8 12h10"/></svg></span><span>Esci</span>
         </button>
         <span id="activeProfileLabel" class="active-profile-label"></span>
-        <span class="build-pill">Build 13.1</span>
+        <span class="build-pill">Build 13.2</span>
       </div>
     </aside>
 
@@ -215,6 +215,21 @@
             <span class="settings-card-copy"><strong>Gestione Profili</strong><small>Aggiungi, modifica o elimina i profili registrati</small></span>
             <span class="settings-card-chevron">›</span>
           </button>
+          <button class="settings-liquid-card" type="button" data-settings-section="backup">
+            <span class="settings-symbol" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 18a5 5 0 0 1-.6-9.96A6.5 6.5 0 0 1 19 10.5 3.75 3.75 0 0 1 18.25 18H7Z"/><path d="M12 15V9m0 0-2.5 2.5M12 9l2.5 2.5"/></svg></span>
+            <span class="settings-card-copy"><strong>Backup</strong><small>Salvataggio e ripristino dei dati dell’applicazione</small></span>
+            <span class="settings-card-chevron">›</span>
+          </button>
+          <button class="settings-liquid-card" type="button" data-settings-section="print">
+            <span class="settings-symbol" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 9V4h10v5M7 17H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><path d="M7 14h10v6H7z"/><path d="M17.5 12h.01"/></svg></span>
+            <span class="settings-card-copy"><strong>Stampa</strong><small>Preferenze e layout per la stampa del Planning</small></span>
+            <span class="settings-card-chevron">›</span>
+          </button>
+          <button class="settings-liquid-card" type="button" data-settings-section="info">
+            <span class="settings-symbol" aria-hidden="true"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M12 10v6M12 7.25h.01"/></svg></span>
+            <span class="settings-card-copy"><strong>Informazioni</strong><small>Versione, progetto e dettagli dell’applicazione</small></span>
+            <span class="settings-card-chevron">›</span>
+          </button>
         </div>
 
         <div id="profilesSettingsSection" class="settings-detail" hidden>
@@ -223,6 +238,11 @@
             <div class="management-heading"><div><small>ACCESSO</small><h2>Profili registrati</h2></div><button id="newProfileBtn" class="primary-btn" type="button">+ Nuovo profilo</button></div>
             <div id="registeredProfilesList" class="registered-profiles-list"></div>
           </div>
+        </div>
+
+        <div id="genericSettingsSection" class="settings-detail" hidden>
+          <div class="settings-detail-toolbar"><button id="backFromGenericSettings" class="toolbar-btn" type="button">‹ Impostazioni</button></div>
+          <div id="genericSettingsContent" class="management-card settings-generic-card"></div>
         </div>
       </section>
     </main>
@@ -452,6 +472,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="./src/config.js?v=11.0"></script>
-  <script src="./src/app.js?v=13.1"></script>
+  <script src="./src/app.js?v=13.2"></script>
 </body>
 </html>

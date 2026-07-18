@@ -1820,8 +1820,10 @@ function openView(viewName) {
 function showSettingsHome() {
   const home = document.getElementById("settingsHome");
   const detail = document.getElementById("profilesSettingsSection");
+  const generic = document.getElementById("genericSettingsSection");
   if (home) home.hidden = false;
   if (detail) detail.hidden = true;
+  if (generic) generic.hidden = true;
   const title = document.getElementById("settingsPageTitle");
   const subtitle = document.getElementById("settingsPageSubtitle");
   if (title) title.textContent = "Impostazioni";
@@ -1831,8 +1833,10 @@ function showSettingsHome() {
 function showProfilesSettings() {
   const home = document.getElementById("settingsHome");
   const detail = document.getElementById("profilesSettingsSection");
+  const generic = document.getElementById("genericSettingsSection");
   if (home) home.hidden = true;
   if (detail) detail.hidden = false;
+  if (generic) generic.hidden = true;
   const title = document.getElementById("settingsPageTitle");
   const subtitle = document.getElementById("settingsPageSubtitle");
   if (title) title.textContent = "Gestione Profili";
@@ -1842,6 +1846,30 @@ function showProfilesSettings() {
 
 document.getElementById("openProfilesSettings")?.addEventListener("click", showProfilesSettings);
 document.getElementById("backToSettings")?.addEventListener("click", showSettingsHome);
+document.getElementById("backFromGenericSettings")?.addEventListener("click", showSettingsHome);
+
+document.querySelectorAll("[data-settings-section]").forEach(button => button.addEventListener("click", () => {
+  const section = button.dataset.settingsSection;
+  const home = document.getElementById("settingsHome");
+  const profilesDetail = document.getElementById("profilesSettingsSection");
+  const generic = document.getElementById("genericSettingsSection");
+  const content = document.getElementById("genericSettingsContent");
+  const title = document.getElementById("settingsPageTitle");
+  const subtitle = document.getElementById("settingsPageSubtitle");
+  if (home) home.hidden = true;
+  if (profilesDetail) profilesDetail.hidden = true;
+  if (generic) generic.hidden = false;
+  const sections = {
+    backup: { title:"Backup", subtitle:"Salvataggio e ripristino", html:`<h2>Backup</h2><p>La funzione di backup verrà configurata in una prossima build. La sezione è già predisposta per il salvataggio e il ripristino dei dati condivisi.</p>` },
+    print: { title:"Stampa", subtitle:"Preferenze di stampa", html:`<h2>Stampa</h2><p>La gestione dei layout e delle preferenze di stampa verrà sviluppata in una prossima build.</p>` },
+    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service.</p><div class="settings-info-meta"><div><span>Versione</span><strong>Build 13.2</strong></div><div><span>Realizzazione</span><strong>Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div>` }
+  };
+  const selected = sections[section];
+  if (!selected) return;
+  if (title) title.textContent = selected.title;
+  if (subtitle) subtitle.textContent = selected.subtitle;
+  if (content) content.innerHTML = selected.html;
+}));
 
 function openPlanningToday() {
   const now = new Date();
