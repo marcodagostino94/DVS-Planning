@@ -1,4 +1,2 @@
-v_10_CORREZIONI ULTIME 2
-Calendario unico Dal–Al, conferma multipla e saturazione confermati aumentata.
-
-Versione: v_10_CORREZIONI_ULTIME_3
+DVS Planning v_10 CORREZIONI ULTIME 5
+Due calendari compatti separati Dal/Al. Nessuna nuova migrazione SQL richiesta.

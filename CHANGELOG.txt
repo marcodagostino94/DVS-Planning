@@ -18,3 +18,9 @@ v_10_CORREZIONI_ULTIME_3
 - Evidenziazione continua dell'intervallo sullo stesso calendario.
 - Nome/CLIENTE evidenziato in giallo quando il turno è confermato.
 - Conferma e annullamento conferma disponibili su selezioni multiple.
+
+
+v_10 CORREZIONI ULTIME 5
+- Ripristinati due selettori separati Dal e Al.
+- Ogni selettore apre un calendario compatto in stile Apple e si chiude dopo la scelta.
+- Rimossa la selezione intervallo sullo stesso calendario.

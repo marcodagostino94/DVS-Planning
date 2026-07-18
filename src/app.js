@@ -1027,8 +1027,8 @@ function resolveEditorInput(showError = false) {
 }
 
 
-let rangeCalendarMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
-let rangeSelectionPhase = "start";
+let dateCalendarMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+let activeDateField = null;
 
 function formatRangeDate(value) {
   if (!value) return "—";
@@ -1042,86 +1042,108 @@ function updateDateRangeDisplay() {
   document.getElementById("dateToDisplay").textContent = formatRangeDate(to);
 }
 
-function renderRangeCalendar() {
-  const title = document.getElementById("rangeCalendarTitle");
-  const grid = document.getElementById("rangeCalendarGrid");
+function renderDateCalendar() {
+  const title = document.getElementById("dateCalendarTitle");
+  const grid = document.getElementById("dateCalendarGrid");
   if (!title || !grid) return;
-  title.textContent = rangeCalendarMonth.toLocaleDateString("it-IT", { month:"long", year:"numeric" });
-  const first = new Date(rangeCalendarMonth.getFullYear(), rangeCalendarMonth.getMonth(), 1);
+
+  title.textContent = dateCalendarMonth.toLocaleDateString("it-IT", { month:"long", year:"numeric" });
+  const first = new Date(dateCalendarMonth.getFullYear(), dateCalendarMonth.getMonth(), 1);
   const mondayOffset = (first.getDay() + 6) % 7;
   const gridStart = addDays(first, -mondayOffset);
-  const fromValue = document.getElementById("dateFrom").value;
-  const toValue = document.getElementById("dateTo").value;
+  const selectedValue = activeDateField ? document.getElementById(activeDateField).value : "";
   const today = isoFromDate(new Date());
+
   grid.innerHTML = Array.from({length:42}, (_,index) => {
     const date = addDays(gridStart,index);
     const value = isoFromDate(date);
-    const outside = date.getMonth() !== rangeCalendarMonth.getMonth();
-    const hasCompleteRange = Boolean(fromValue && toValue && toValue !== fromValue);
-    const inRange = hasCompleteRange && value > fromValue && value < toValue;
-    const classes = ["range-calendar-day", outside?"outside":"", inRange?"in-range":"", value===fromValue?"range-start":"", hasCompleteRange && value===toValue?"range-end":"", value===today?"today":""].filter(Boolean).join(" ");
-    return `<button type="button" class="${classes}" data-range-date="${value}">${date.getDate()}</button>`;
+    const outside = date.getMonth() !== dateCalendarMonth.getMonth();
+    const classes = [
+      "compact-calendar-day",
+      outside ? "outside" : "",
+      value === selectedValue ? "selected" : "",
+      value === today ? "today" : ""
+    ].filter(Boolean).join(" ");
+    return `<button type="button" class="${classes}" data-calendar-date="${value}">${date.getDate()}</button>`;
   }).join("");
-  grid.querySelectorAll("[data-range-date]").forEach(button => button.addEventListener("click", () => selectRangeCalendarDate(button.dataset.rangeDate)));
+
+  grid.querySelectorAll("[data-calendar-date]").forEach(button => {
+    button.addEventListener("click", event => {
+      event.stopPropagation();
+      selectCalendarDate(button.dataset.calendarDate);
+    });
+  });
 }
 
-function selectRangeCalendarDate(value) {
+function selectCalendarDate(value) {
+  if (!activeDateField) return;
   const from = document.getElementById("dateFrom");
   const to = document.getElementById("dateTo");
+  const error = document.getElementById("shiftFormError");
 
-  if (rangeSelectionPhase === "start") {
+  if (activeDateField === "dateFrom") {
     from.value = value;
-    to.value = "";
-    rangeSelectionPhase = "end";
+    if (!to.value || to.value < value) to.value = value;
   } else {
-    if (value < from.value) {
-      to.value = from.value;
-      from.value = value;
-    } else {
-      to.value = value;
+    if (from.value && value < from.value) {
+      if (error) error.textContent = "La data finale non può essere precedente alla data iniziale.";
+      return;
     }
-    rangeSelectionPhase = "start";
+    to.value = value;
   }
 
+  if (error) error.textContent = "";
   updateDateRangeDisplay();
-  renderRangeCalendar();
+  closeDateCalendar();
+}
 
-  if (rangeSelectionPhase === "start") {
-    setTimeout(closeRangeCalendar, 180);
+function openDateCalendar(fieldId) {
+  const popover = document.getElementById("dateCalendarPopover");
+  const trigger = document.getElementById(fieldId === "dateFrom" ? "dateFromTrigger" : "dateToTrigger");
+  const value = document.getElementById(fieldId).value || document.getElementById("dateFrom").value;
+  activeDateField = fieldId;
+
+  if (value) {
+    const date = new Date(`${value}T12:00:00`);
+    dateCalendarMonth = new Date(date.getFullYear(), date.getMonth(), 1);
   }
+
+  popover.classList.toggle("align-to", fieldId === "dateTo");
+  popover.classList.toggle("align-from", fieldId === "dateFrom");
+  document.getElementById("dateFromTrigger")?.classList.toggle("active", fieldId === "dateFrom");
+  document.getElementById("dateToTrigger")?.classList.toggle("active", fieldId === "dateTo");
+  document.getElementById("dateFromTrigger")?.setAttribute("aria-expanded", String(fieldId === "dateFrom"));
+  document.getElementById("dateToTrigger")?.setAttribute("aria-expanded", String(fieldId === "dateTo"));
+
+  renderDateCalendar();
+  popover.classList.remove("hidden");
+  trigger?.focus({preventScroll:true});
 }
 
-function openRangeCalendar() {
-  const calendar = document.getElementById("rangeCalendar");
-  const trigger = document.getElementById("dateRangeTrigger");
-  const from = document.getElementById("dateFrom").value;
-  if (from) {
-    const date = new Date(`${from}T12:00:00`);
-    rangeCalendarMonth = new Date(date.getFullYear(), date.getMonth(), 1);
-  }
-  rangeSelectionPhase = "start";
-  renderRangeCalendar();
-  calendar?.classList.remove("hidden");
-  trigger?.setAttribute("aria-expanded", "true");
+function closeDateCalendar() {
+  document.getElementById("dateCalendarPopover")?.classList.add("hidden");
+  document.getElementById("dateFromTrigger")?.classList.remove("active");
+  document.getElementById("dateToTrigger")?.classList.remove("active");
+  document.getElementById("dateFromTrigger")?.setAttribute("aria-expanded", "false");
+  document.getElementById("dateToTrigger")?.setAttribute("aria-expanded", "false");
+  activeDateField = null;
 }
 
-function closeRangeCalendar() {
-  document.getElementById("rangeCalendar")?.classList.add("hidden");
-  document.getElementById("dateRangeTrigger")?.setAttribute("aria-expanded", "false");
+function toggleDateCalendar(fieldId) {
+  const popover = document.getElementById("dateCalendarPopover");
+  const sameFieldOpen = !popover?.classList.contains("hidden") && activeDateField === fieldId;
+  if (sameFieldOpen) closeDateCalendar();
+  else openDateCalendar(fieldId);
 }
 
-function toggleRangeCalendar() {
-  const calendar = document.getElementById("rangeCalendar");
-  if (calendar?.classList.contains("hidden")) openRangeCalendar();
-  else closeRangeCalendar();
-}
-
-document.getElementById("dateRangeTrigger")?.addEventListener("click", toggleRangeCalendar);
-document.getElementById("rangePrevMonth")?.addEventListener("click", event => { event.stopPropagation(); rangeCalendarMonth = new Date(rangeCalendarMonth.getFullYear(),rangeCalendarMonth.getMonth()-1,1); renderRangeCalendar(); });
-document.getElementById("rangeNextMonth")?.addEventListener("click", event => { event.stopPropagation(); rangeCalendarMonth = new Date(rangeCalendarMonth.getFullYear(),rangeCalendarMonth.getMonth()+1,1); renderRangeCalendar(); });
+document.getElementById("dateFromTrigger")?.addEventListener("click", event => { event.stopPropagation(); toggleDateCalendar("dateFrom"); });
+document.getElementById("dateToTrigger")?.addEventListener("click", event => { event.stopPropagation(); toggleDateCalendar("dateTo"); });
+document.getElementById("datePrevMonth")?.addEventListener("click", event => { event.stopPropagation(); dateCalendarMonth = new Date(dateCalendarMonth.getFullYear(),dateCalendarMonth.getMonth()-1,1); renderDateCalendar(); });
+document.getElementById("dateNextMonth")?.addEventListener("click", event => { event.stopPropagation(); dateCalendarMonth = new Date(dateCalendarMonth.getFullYear(),dateCalendarMonth.getMonth()+1,1); renderDateCalendar(); });
+document.getElementById("dateCalendarPopover")?.addEventListener("click", event => event.stopPropagation());
 document.addEventListener("click", event => {
   const field = document.querySelector(".date-range-field");
-  if (field && !field.contains(event.target)) closeRangeCalendar();
+  if (field && !field.contains(event.target)) closeDateCalendar();
 });
 
 function resetShiftForm(shift = {}) {
@@ -1132,8 +1154,8 @@ function resetShiftForm(shift = {}) {
   document.getElementById("dateFrom").value = date;
   document.getElementById("dateTo").value = shift.dateTo || date;
   updateDateRangeDisplay();
-  rangeCalendarMonth = new Date(`${date}T12:00:00`);
-  renderRangeCalendar();
+  dateCalendarMonth = new Date(`${date}T12:00:00`);
+  renderDateCalendar();
   document.getElementById("room").value = shift.room || "sala-1";
   document.getElementById("start").value = shift.start || "10:00";
   document.getElementById("end").value = shift.end || "18:00";
@@ -1154,7 +1176,7 @@ function openNewShift(room = "sala-1", date = "") {
   document.getElementById("shiftDialogTitle").textContent = "Nuovo turno";
   document.getElementById("deleteShiftBtn").classList.add("hidden");
   document.querySelector(".date-range-field").classList.remove("calendar-disabled");
-  document.querySelectorAll("#rangeCalendar button").forEach(button => button.disabled = false);
+  document.querySelectorAll("#dateCalendarPopover button").forEach(button => button.disabled = false);
   document.getElementById("weekdayPicker").classList.remove("disabled");
   resetShiftForm({ room, date: date || isoDate(currentMonth.getFullYear(), currentMonth.getMonth(), 1) });
   shiftDialog.showModal();
@@ -1169,7 +1191,7 @@ function openEditShift(id) {
   document.getElementById("deleteShiftBtn").classList.remove("hidden");
   resetShiftForm(shift);
   document.querySelector(".date-range-field").classList.add("calendar-disabled");
-  document.querySelectorAll("#rangeCalendar button").forEach(button => button.disabled = true);
+  document.querySelectorAll("#dateCalendarPopover button").forEach(button => button.disabled = true);
   document.getElementById("weekdayPicker").classList.add("disabled");
   shiftDialog.showModal();
 }
