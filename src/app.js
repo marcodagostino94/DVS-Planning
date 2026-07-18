@@ -1712,20 +1712,29 @@ function renderDashboard() {
   document.getElementById("todayRoomCount").textContent = `${rooms.length} / 15`;
 
   const planningList = document.getElementById("todayPlanningList");
-  planningList.style.justifyContent='flex-start';
-  employeesList?.style?.setProperty?.('justify-content','flex-start');
+  const employeesList = document.getElementById("todayEmployeesList");
+  if (planningList) {
+    planningList.style.justifyContent = "flex-start";
+    planningList.style.alignContent = "flex-start";
+  }
+  if (employeesList) {
+    employeesList.style.justifyContent = "flex-start";
+    employeesList.style.alignContent = "flex-start";
+  }
   planningList.innerHTML = todays.length ? todays.map(shift => {
     const room = ROOMS.find(item => item.id === shift.room)?.label || shift.room;
     return `<div class="today-shift-row"><time>${escapeHtml(shift.start)}–${escapeHtml(shift.end)}</time><span class="room">${escapeHtml(room)}</span><strong>${escapeHtml(shift.film || shift.production || "Turno")}</strong><span>${escapeHtml(employeeNameById(shift.editorId))}</span></div>`;
   }).join("") : '<div class="empty-dashboard">Nessun turno programmato per oggi.</div>';
 
   const roomsList = document.getElementById("todayRoomsList");
-  roomsList.innerHTML = ROOMS.filter(room => /^sala-/.test(room.id)).map(room => {
+  const numberedRooms = ROOMS
+    .filter(room => /^sala-\d+$/.test(room.id))
+    .sort((a, b) => Number(a.id.replace("sala-", "")) - Number(b.id.replace("sala-", "")));
+  roomsList.innerHTML = numberedRooms.map(room => {
     const shift = todays.find(item => item.room === room.id);
-    return `<div class="compact-room"><span><i class="room-dot ${shift ? "busy" : ""}"></i>${room.label}</span></div>`;
+    return `<div class="compact-room"><i class="room-dot ${shift ? "busy" : ""}" aria-hidden="true"></i><span>${escapeHtml(room.label)}</span></div>`;
   }).join("");
 
-  const employeesList = document.getElementById("todayEmployeesList");
   employeesList.innerHTML = people.length ? people.map(id => {
     const first = todays.find(item => item.editorId === id);
     const room = ROOMS.find(item => item.id === first?.room)?.label || "—";

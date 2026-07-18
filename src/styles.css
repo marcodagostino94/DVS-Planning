@@ -1275,3 +1275,108 @@ button.dashboard-kpi { cursor:pointer; }
 .compact-room{display:flex;align-items:center;padding:9px 10px;border-radius:11px;background:rgba(255,255,255,.035);font-size:10px;}
 #todayRoomsList{display:grid;grid-template-columns:1fr 1fr;gap:8px 12px;}
 #todayPlanningList,#todayEmployeesList,#remindersList{overflow:auto;justify-content:flex-start;align-items:stretch;}
+
+
+/* Build 12.5 — Dashboard definitiva: viewport fisso, liste in alto, stato sale visibile */
+.dashboard-view{
+  height:100%;
+  overflow:hidden;
+}
+.dashboard-header{
+  flex:0 0 auto;
+  padding-top:20px;
+  padding-bottom:6px;
+}
+.dashboard-content{
+  flex:1 1 auto;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  padding-top:10px;
+  padding-bottom:18px;
+  overflow:hidden;
+}
+.dashboard-kpis{
+  flex:0 0 auto;
+  margin-bottom:14px;
+}
+.dashboard-kpi{
+  min-height:122px;
+  padding:18px 20px;
+}
+.dashboard-grid{
+  flex:1 1 auto;
+  min-height:0;
+  grid-template-rows:minmax(0,1fr) minmax(0,1fr);
+}
+.dashboard-panel{
+  min-height:0;
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+}
+.today-planning-panel{grid-row:1 / span 2;}
+.panel-heading{flex:0 0 auto;}
+.today-planning-list,
+.compact-dashboard-list,
+.reminders-list{
+  flex:1 1 auto;
+  min-height:0;
+  justify-content:flex-start !important;
+  align-content:flex-start;
+  align-items:stretch;
+  overflow-y:auto;
+  overflow-x:hidden;
+}
+.today-shift-row,
+.compact-row,
+.compact-room,
+.reminder-row{
+  flex:0 0 auto;
+}
+#todayRoomsList{
+  display:grid;
+  grid-template-columns:repeat(2,minmax(0,1fr));
+  grid-auto-rows:min-content;
+  align-content:start;
+  gap:7px 12px;
+  overflow:visible;
+  padding-right:0;
+}
+.compact-room{
+  min-width:0;
+  display:flex;
+  align-items:center;
+  justify-content:flex-start;
+  gap:8px;
+  padding:7px 9px;
+  white-space:nowrap;
+  color:#fff;
+}
+.compact-room .room-dot{
+  flex:0 0 8px;
+  width:8px;
+  height:8px;
+  margin-right:0;
+}
+.compact-room span{
+  display:block;
+  min-width:0;
+  color:#fff;
+  font-size:10px;
+  font-weight:650;
+  line-height:1.2;
+}
+@media(max-height:820px){
+  .dashboard-header{padding-top:14px;}
+  .dashboard-header h1{font-size:24px;}
+  .dashboard-content{padding-top:7px;padding-bottom:12px;}
+  .dashboard-kpis{margin-bottom:10px;}
+  .dashboard-kpi{min-height:104px;padding:14px 17px;}
+  .kpi-icon{width:48px;height:48px;}
+  .kpi-copy strong{font-size:34px;}
+  .dashboard-panel{padding:14px;}
+  .panel-heading{margin-bottom:9px;}
+  .today-shift-row{padding:8px 10px;}
+  .compact-row,.compact-room{padding-top:6px;padding-bottom:6px;}
+}

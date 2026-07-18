@@ -24,3 +24,6 @@ v_10 CORREZIONI ULTIME 5
 - Ripristinati due selettori separati Dal e Al.
 - Ogni selettore apre un calendario compatto in stile Apple e si chiude dopo la scelta.
 - Rimossa la selezione intervallo sullo stesso calendario.
+
+Build 12.5
+- Dashboard definitiva: fix rendering sale, liste allineate in alto, scroll interni, pagina senza scroll.
