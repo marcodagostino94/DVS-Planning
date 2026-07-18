@@ -435,8 +435,8 @@ function showContextMenu(event, targetCell) {
   contextMenu.querySelector('[data-action="edit"]').disabled = !exactlyOne || hasConfirmed;
   contextMenu.querySelector('[data-action="confirm"]').hidden = !hasUnconfirmed;
   contextMenu.querySelector('[data-action="confirm"]').disabled = !hasUnconfirmed;
-  contextMenu.querySelector('[data-action="unconfirm"]').hidden = !exactlyOne || !selected[0]?.confirmed;
-  contextMenu.querySelector('[data-action="unconfirm"]').disabled = !exactlyOne || !selected[0]?.confirmed;
+  contextMenu.querySelector('[data-action="unconfirm"]').hidden = !hasConfirmed;
+  contextMenu.querySelector('[data-action="unconfirm"]').disabled = !hasConfirmed;
   contextMenu.querySelector('[data-action="copy"]').disabled = !selected.length;
   contextMenu.querySelector('[data-action="cut"]').disabled = !selected.length || hasConfirmed;
   contextMenu.querySelector('[data-action="paste"]').disabled = !copiedShifts.length || !targetCell;
@@ -518,11 +518,25 @@ async function confirmSelectedShift() {
     : `${selected.length} turni confermati e bloccati`);
 }
 
-function unconfirmSelectedShift() {
-  const [shift] = selectedShiftList();
-  if (!shift || !shift.confirmed) return;
-  if (!confirm("Vuoi annullare la conferma del turno?")) return;
-  setShiftConfirmed(shift, false);
+async function unconfirmSelectedShift() {
+  const selected = selectedShiftList().filter(shift => shift.confirmed);
+  if (!selected.length) return;
+  const message = selected.length === 1
+    ? "Vuoi annullare la conferma del turno?"
+    : `Vuoi annullare la conferma di ${selected.length} turni?`;
+  if (!confirm(message)) return;
+
+  selected.forEach(shift => {
+    shift.confirmed = false;
+    shift.confirmedAt = null;
+  });
+
+  saveLocal();
+  await Promise.all(selected.map(shift => syncShiftToSupabase(shift)));
+  renderPlanning();
+  showToast(selected.length === 1
+    ? "Conferma annullata"
+    : `Conferma annullata per ${selected.length} turni`);
 }
 
 function captureDragGroup(sourceId) {
@@ -744,7 +758,7 @@ function renderCard(shift) {
         <div class="shift-type">${escapeHtml(shift.workType)}${shift.isDoubleStation ? '<span class="double-station-label">DOPPIA POSTAZIONE</span>' : ""}</div>
       </div>
       <div class="shift-editor">
-        <span class="editor-name">${escapeHtml(assignment)}</span>
+        <span class="editor-name${shift.confirmed ? " confirmed-name" : ""}">${escapeHtml(assignment)}</span>
         ${shift.confirmed ? '<span class="confirmed-lock" title="Turno confermato">●</span>' : ""}
         ${warning ? '<span class="editor-warning" title="Dipendente presente su più turni sovrapposti">▲</span>' : ""}
       </div>
@@ -1061,32 +1075,22 @@ function selectRangeCalendarDate(value) {
     if (value < from.value) { to.value = from.value; from.value = value; }
     else to.value = value;
     rangeSelectionPhase = "start";
-    document.getElementById("rangeCalendar").classList.add("hidden");
-    document.getElementById("dateRangeTrigger").setAttribute("aria-expanded","false");
   }
   updateDateRangeDisplay();
   renderRangeCalendar();
 }
 
 function openRangeCalendar() {
-  const panel = document.getElementById("rangeCalendar");
   const from = document.getElementById("dateFrom").value;
-  if (from) { const date = new Date(`${from}T12:00:00`); rangeCalendarMonth = new Date(date.getFullYear(),date.getMonth(),1); }
+  if (from) {
+    const date = new Date(`${from}T12:00:00`);
+    rangeCalendarMonth = new Date(date.getFullYear(), date.getMonth(), 1);
+  }
   rangeSelectionPhase = "start";
-  panel.classList.toggle("hidden");
-  document.getElementById("dateRangeTrigger").setAttribute("aria-expanded", String(!panel.classList.contains("hidden")));
   renderRangeCalendar();
 }
-
-document.getElementById("dateRangeTrigger")?.addEventListener("click", openRangeCalendar);
 document.getElementById("rangePrevMonth")?.addEventListener("click", () => { rangeCalendarMonth = new Date(rangeCalendarMonth.getFullYear(),rangeCalendarMonth.getMonth()-1,1); renderRangeCalendar(); });
 document.getElementById("rangeNextMonth")?.addEventListener("click", () => { rangeCalendarMonth = new Date(rangeCalendarMonth.getFullYear(),rangeCalendarMonth.getMonth()+1,1); renderRangeCalendar(); });
-document.addEventListener("click", event => {
-  const panel = document.getElementById("rangeCalendar");
-  if (!panel || panel.classList.contains("hidden")) return;
-  if (!event.target.closest(".date-range-field")) { panel.classList.add("hidden"); document.getElementById("dateRangeTrigger").setAttribute("aria-expanded","false"); }
-});
-
 function resetShiftForm(shift = {}) {
   const date = shift.date || isoDate(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
   document.getElementById("shiftId").value = shift.id || "";
@@ -1116,7 +1120,8 @@ function openNewShift(room = "sala-1", date = "") {
   populateShiftSelects(); editingShiftId = null;
   document.getElementById("shiftDialogTitle").textContent = "Nuovo turno";
   document.getElementById("deleteShiftBtn").classList.add("hidden");
-  document.getElementById("dateRangeTrigger").disabled = false;
+  document.querySelector(".date-range-field").classList.remove("calendar-disabled");
+  document.querySelectorAll("#rangeCalendar button").forEach(button => button.disabled = false);
   document.getElementById("weekdayPicker").classList.remove("disabled");
   resetShiftForm({ room, date: date || isoDate(currentMonth.getFullYear(), currentMonth.getMonth(), 1) });
   shiftDialog.showModal();
@@ -1130,7 +1135,8 @@ function openEditShift(id) {
   document.getElementById("shiftDialogTitle").textContent = "Modifica turno";
   document.getElementById("deleteShiftBtn").classList.remove("hidden");
   resetShiftForm(shift);
-  document.getElementById("dateRangeTrigger").disabled = true;
+  document.querySelector(".date-range-field").classList.add("calendar-disabled");
+  document.querySelectorAll("#rangeCalendar button").forEach(button => button.disabled = true);
   document.getElementById("weekdayPicker").classList.add("disabled");
   shiftDialog.showModal();
 }

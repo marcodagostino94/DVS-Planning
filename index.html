@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
   <title>DVS Planning — v_10_CORREZIONI ULTIME</title>
   <meta name="theme-color" content="#e8eaed">
-  <link rel="stylesheet" href="./src/styles.css?v=10.0-correzioni-ultime-2">
+  <link rel="stylesheet" href="./src/styles.css?v=10.0-correzioni-ultime-3">
 </head>
 <body>
   <div class="app-shell">
@@ -138,23 +138,24 @@
         </label>
 
         <fieldset class="date-range-field form-wide">
-          <legend>Periodo · calendario unico Dal–Al</legend>
-          <button id="dateRangeTrigger" class="date-range-trigger" type="button" aria-expanded="false">
+          <legend>Periodo · seleziona Dal–Al sullo stesso calendario</legend>
+          <div class="date-range-summary" aria-live="polite">
             <span><small>Dal</small><strong id="dateFromDisplay">—</strong></span>
             <span class="date-arrow">→</span>
             <span><small>Al</small><strong id="dateToDisplay">—</strong></span>
-          </button>
+          </div>
           <input id="dateFrom" type="hidden" required>
           <input id="dateTo" type="hidden" required>
-          <div id="rangeCalendar" class="range-calendar hidden" aria-label="Calendario intervallo">
+          <div id="rangeCalendar" class="range-calendar" aria-label="Calendario unico per intervallo Dal–Al">
+            <div class="range-calendar-caption">Calendario</div>
             <div class="range-calendar-toolbar">
               <button id="rangePrevMonth" type="button" aria-label="Mese precedente">‹</button>
               <strong id="rangeCalendarTitle"></strong>
               <button id="rangeNextMonth" type="button" aria-label="Mese successivo">›</button>
             </div>
-            <div class="range-calendar-weekdays"><span>L</span><span>M</span><span>M</span><span>G</span><span>V</span><span>S</span><span>D</span></div>
+            <div class="range-calendar-weekdays"><span>lun</span><span>mar</span><span>mer</span><span>gio</span><span>ven</span><span>sab</span><span>dom</span></div>
             <div id="rangeCalendarGrid" class="range-calendar-grid"></div>
-            <div class="range-calendar-hint">Seleziona il primo e l’ultimo giorno dell’intervallo.</div>
+            <div class="range-calendar-hint">Primo clic: data iniziale · secondo clic: data finale.</div>
           </div>
           <div id="weekdayPicker" class="weekday-picker" aria-label="Giorni della settimana">
             <button type="button" data-weekday="all" class="active">T</button>
@@ -316,6 +317,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="./src/config.js?v=10.0"></script>
-  <script src="./src/app.js?v=10.0-correzioni-ultime-2"></script>
+  <script src="./src/app.js?v=10.0-correzioni-ultime-3"></script>
 </body>
 </html>

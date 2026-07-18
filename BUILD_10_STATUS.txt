@@ -1,2 +1,4 @@
 v_10_CORREZIONI ULTIME 2
 Calendario unico Dal–Al, conferma multipla e saturazione confermati aumentata.
+
+Versione: v_10_CORREZIONI_ULTIME_3

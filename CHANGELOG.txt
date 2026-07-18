@@ -12,3 +12,9 @@ v_10_CORREZIONI ULTIME 2
 - Saturazione dei turni confermati aumentata.
 - Selettore periodo confermato come calendario unico Dal–Al.
 - Versionamento asset aggiornato per evitare cache della versione precedente.
+
+v_10_CORREZIONI_ULTIME_3
+- Calendario unico Dal–Al sempre visibile nel popup: primo clic inizio, secondo clic fine.
+- Evidenziazione continua dell'intervallo sullo stesso calendario.
+- Nome/CLIENTE evidenziato in giallo quando il turno è confermato.
+- Conferma e annullamento conferma disponibili su selezioni multiple.
