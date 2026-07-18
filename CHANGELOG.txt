@@ -1,3 +1,9 @@
+
+BUILD 13.0
+- Profili dinamici da Supabase.
+- Gestione profili in Impostazioni.
+- Utenti collegati con presenza, heartbeat e timeout inattività.
+- Realtime esteso a turni, dipendenti, promemoria, profili e presenza.
 BUILD 12.9
 - Unica correzione: scroll verticale interno nel riquadro “Stato sale”.
 - Nessuna modifica a Planning di oggi, Dipendenti presenti, Promemoria, KPI o logica dati.

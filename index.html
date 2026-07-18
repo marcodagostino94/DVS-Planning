@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <title>DVS Planning — Build 12.11</title>
+  <title>DVS Planning — Build 13.0</title>
   <meta name="theme-color" content="#09090b">
   <link rel="icon" type="image/png" sizes="64x64" href="./assets/icons/dvs-planning-64.png">
   <link rel="apple-touch-icon" href="./assets/icons/dvs-planning-180.png">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./src/styles.css?v=12.11">
+  <link rel="stylesheet" href="./src/styles.css?v=13.0">
 </head>
 <body>
   <section id="profileGate" class="profile-gate" aria-label="Selezione profilo">
@@ -56,14 +56,14 @@
           <span class="status-card-chevron">›</span>
         </section>
 
-        <section class="status-card users-card" aria-label="Utenti collegati">
+        <button id="connectedUsersCard" class="status-card users-card" type="button" aria-label="Apri utenti collegati">
           <div class="status-card-icon"><svg class="sf-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="9" cy="8" r="3"/><circle cx="17" cy="9" r="2.5"/><path d="M3.5 20c.5-4 2.4-6 5.5-6s5 2 5.5 6M14 15c3.7-.4 5.8 1.3 6.5 5"/></svg></div>
           <div class="status-card-copy">
             <strong>Utenti collegati</strong>
-            <span id="sidebarOnlineCount">3 online</span>
+            <span id="sidebarOnlineCount">0 utenti connessi</span>
           </div>
-          <div class="mini-avatars" aria-hidden="true"><i>MD</i><i>SG</i><i>HR</i></div>
-        </section>
+          <div id="sidebarOnlineAvatars" class="mini-avatars" aria-hidden="true"></div>
+        </button>
       </div>
 
       <div class="sidebar-footer">
@@ -74,7 +74,7 @@
           <span class="nav-icon"><svg class="sf-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 5H5.5A2.5 2.5 0 0 0 3 7.5v9A2.5 2.5 0 0 0 5.5 19H10M14 8l4 4-4 4M8 12h10"/></svg></span><span>Esci</span>
         </button>
         <span id="activeProfileLabel" class="active-profile-label"></span>
-        <span class="build-pill">Build 12.11</span>
+        <span class="build-pill">Build 13.0</span>
       </div>
     </aside>
 
@@ -195,8 +195,26 @@
       <section id="summariesView" class="app-view placeholder-view">
         <div class="placeholder-card"><span>▥</span><h1>Riepiloghi</h1><p>La sezione sarà sviluppata in una build successiva.</p></div>
       </section>
-      <section id="settingsView" class="app-view placeholder-view">
-        <div class="placeholder-card"><span>⚙</span><h1>Impostazioni</h1><p>La gestione delle impostazioni sarà sviluppata in una build successiva.</p></div>
+
+      <section id="connectedView" class="app-view management-view">
+        <header class="topbar"><div class="page-title"><h1>Utenti collegati</h1><p>Presenza aggiornata automaticamente</p></div></header>
+        <div class="management-content">
+          <div class="management-card">
+            <div class="management-heading"><div><small>ONLINE</small><h2 id="connectedUsersTitle">0 utenti connessi</h2></div></div>
+            <div id="connectedUsersList" class="connected-users-list"></div>
+          </div>
+        </div>
+      </section>
+
+      <section id="settingsView" class="app-view management-view">
+        <header class="topbar"><div class="page-title"><h1>Impostazioni</h1><p>Gestione applicazione</p></div></header>
+        <div class="settings-layout">
+          <nav class="settings-tabs" aria-label="Sezioni impostazioni"><button class="settings-tab active" type="button">Profili</button></nav>
+          <div class="management-card profiles-settings-card">
+            <div class="management-heading"><div><small>ACCESSO</small><h2>Profili registrati</h2></div><button id="newProfileBtn" class="primary-btn" type="button">+ Nuovo profilo</button></div>
+            <div id="registeredProfilesList" class="registered-profiles-list"></div>
+          </div>
+        </div>
       </section>
     </main>
   </div>
@@ -406,10 +424,25 @@
     <button type="button" class="danger-action" data-action="delete">Elimina</button>
   </div>
 
+  <dialog id="profileDialog" class="app-dialog profile-dialog">
+    <form id="profileForm">
+      <div class="dialog-header"><div><span class="dialog-eyebrow">PROFILO</span><h2 id="profileDialogTitle">Nuovo profilo</h2></div><button id="closeProfileDialog" class="dialog-close" type="button" aria-label="Chiudi">×</button></div>
+      <input id="profileId" type="hidden">
+      <div class="form-grid profile-form-grid">
+        <label>Nome<input id="profileFirstName" required maxlength="60" autocomplete="off"></label>
+        <label>Cognome<input id="profileLastName" required maxlength="60" autocomplete="off"></label>
+        <label>Iniziali<input id="profileInitials" maxlength="4" placeholder="MD" autocomplete="off"></label>
+        <label>Colore<select id="profileTone"><option value="red">Rosso</option><option value="blue">Blu</option><option value="purple">Viola</option><option value="orange">Arancione</option><option value="green">Verde</option><option value="cyan">Azzurro</option></select></label>
+        <label class="profile-active-field"><input id="profileActive" type="checkbox" checked><span>Profilo attivo</span></label>
+      </div>
+      <div class="dialog-actions"><button id="deleteProfileBtn" class="danger-btn" type="button">Elimina</button><span class="dialog-spacer"></span><button id="cancelProfileBtn" class="secondary-btn" type="button">Annulla</button><button class="primary-btn" type="submit">Salva</button></div>
+    </form>
+  </dialog>
+
   <div id="toast" class="toast" aria-live="polite"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="./src/config.js?v=11.0"></script>
-  <script src="./src/app.js?v=12.11"></script>
+  <script src="./src/app.js?v=13.0"></script>
 </body>
 </html>

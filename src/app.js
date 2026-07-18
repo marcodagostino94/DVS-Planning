@@ -85,6 +85,11 @@ let emptyCellClickTimer = null;
 let highlightedDropCells = new Set();
 let planningZoom = Number(localStorage.getItem(ZOOM_STORAGE)) || 1;
 let activeProfile = null;
+let profiles = structuredClone(DEFAULT_PROFILES);
+let onlineProfiles = [];
+let presenceHeartbeatTimer = null;
+let lastUserActivityAt = Date.now();
+let editingProfileId = null;
 let reminders = loadLocal(REMINDER_STORAGE, []);
 
 const seedEditors = [
@@ -143,7 +148,7 @@ const contextMenu = document.getElementById("contextMenu");
 const selectionBadge = document.getElementById("selectionBadge");
 
 function renderProfiles() {
-  profileGrid.innerHTML = DEFAULT_PROFILES.map(profile => `
+  profileGrid.innerHTML = profiles.filter(profile => profile.active !== false).map(profile => `
     <button class="profile-card profile-${profile.tone}" type="button" data-profile-id="${profile.id}">
       <span class="profile-avatar"><span class="profile-head"></span><span class="profile-body"></span></span>
       <strong>${escapeHtml(profile.name)}</strong>
@@ -158,8 +163,8 @@ function updateActiveProfileUI() {
   activeProfileLabel.textContent = activeProfile ? `Profilo: ${activeProfile.name}` : "";
 }
 
-function selectProfile(profileId) {
-  activeProfile = DEFAULT_PROFILES.find(profile => profile.id === profileId) || null;
+async function selectProfile(profileId) {
+  activeProfile = profiles.find(profile => profile.id === profileId) || null;
   if (!activeProfile) return;
   if (rememberProfile.checked) {
     localStorage.setItem(PROFILE_STORAGE, activeProfile.id);
@@ -170,6 +175,9 @@ function selectProfile(profileId) {
   }
   updateActiveProfileUI();
   profileGate.classList.add("hidden");
+  await setCurrentProfileOnline();
+  startPresenceTracking();
+  renderDashboard();
 }
 
 function initializeProfileGate() {
@@ -178,13 +186,15 @@ function initializeProfileGate() {
   const rememberedId = localStorage.getItem(PROFILE_STORAGE);
   rememberProfile.checked = remembered;
   if (remembered && rememberedId) {
-    activeProfile = DEFAULT_PROFILES.find(profile => profile.id === rememberedId) || null;
+    activeProfile = profiles.find(profile => profile.id === rememberedId) || null;
     if (activeProfile) profileGate.classList.add("hidden");
   }
   updateActiveProfileUI();
 }
 
-function logoutProfile() {
+async function logoutProfile() {
+  await setCurrentProfileOffline();
+  stopPresenceTracking();
   activeProfile = null;
   localStorage.removeItem(PROFILE_STORAGE);
   localStorage.removeItem(REMEMBER_PROFILE_STORAGE);
@@ -1674,12 +1684,137 @@ function italianLongDate(date = new Date()) {
   return new Intl.DateTimeFormat("it-IT", { weekday:"long", day:"numeric", month:"long", year:"numeric" }).format(date);
 }
 
+
+function profileFullName(profile) {
+  if (profile.firstName || profile.lastName) return `${profile.firstName || ""} ${profile.lastName || ""}`.trim();
+  return profile.name || "Profilo";
+}
+
+function normalizeProfile(row) {
+  const displayName = row.display_name || row.name || "Profilo";
+  const parts = displayName.trim().split(/\s+/);
+  return {
+    id: String(row.id),
+    name: displayName,
+    firstName: row.first_name || parts.shift() || "",
+    lastName: row.last_name || parts.join(" "),
+    initials: (row.initials || displayName.split(/\s+/).map(p => p[0]).join("").slice(0, 3)).toUpperCase(),
+    tone: row.tone || row.color_key || "red",
+    active: row.active !== false
+  };
+}
+
+async function loadProfilesFromSupabase() {
+  if (!db) { renderProfiles(); return; }
+  const { data, error } = await db.from("planning_profiles").select("*").order("sort_order").order("display_name");
+  if (error) { console.warn("Profili Build 13 non ancora configurati:", error.message); renderProfiles(); return; }
+  profiles = (data || []).map(normalizeProfile);
+  if (!profiles.length) profiles = structuredClone(DEFAULT_PROFILES);
+  if (activeProfile) activeProfile = profiles.find(p => p.id === activeProfile.id) || activeProfile;
+  renderProfiles();
+  updateActiveProfileUI();
+  renderRegisteredProfiles();
+}
+
+async function saveProfileToSupabase(profile) {
+  if (!db) return false;
+  const row = { id:profile.id, display_name:profileFullName(profile), first_name:profile.firstName, last_name:profile.lastName, initials:profile.initials, tone:profile.tone, active:profile.active !== false };
+  const { error } = await db.from("planning_profiles").upsert(row);
+  if (error) { showToast(`Profili: ${error.message}`); return false; }
+  return true;
+}
+
+async function deleteProfileFromSupabase(profileId) {
+  if (!db) return false;
+  const { error } = await db.from("planning_profiles").delete().eq("id", profileId);
+  if (error) { showToast(`Profili: ${error.message}`); return false; }
+  return true;
+}
+
+function renderRegisteredProfiles() {
+  const list = document.getElementById("registeredProfilesList");
+  if (!list) return;
+  list.innerHTML = profiles.length ? profiles.map(profile => `
+    <button class="registered-profile-row" type="button" data-profile-edit="${escapeHtml(profile.id)}">
+      <span class="profile-mini-avatar profile-${escapeHtml(profile.tone)}">${escapeHtml(profile.initials)}</span>
+      <span class="registered-profile-copy"><strong>${escapeHtml(profileFullName(profile))}</strong><small>${profile.active === false ? "Disattivato" : "Attivo"}</small></span>
+      <span class="row-chevron">›</span>
+    </button>`).join("") : '<div class="empty-dashboard">Nessun profilo registrato.</div>';
+}
+
+function openProfileDialog(profileId = null) {
+  editingProfileId = profileId;
+  const profile = profiles.find(p => p.id === profileId);
+  document.getElementById("profileDialogTitle").textContent = profile ? "Modifica profilo" : "Nuovo profilo";
+  document.getElementById("profileId").value = profile?.id || "";
+  document.getElementById("profileFirstName").value = profile?.firstName || "";
+  document.getElementById("profileLastName").value = profile?.lastName || "";
+  document.getElementById("profileInitials").value = profile?.initials || "";
+  document.getElementById("profileTone").value = profile?.tone || "red";
+  document.getElementById("profileActive").checked = profile?.active !== false;
+  document.getElementById("deleteProfileBtn").hidden = !profile;
+  document.getElementById("profileDialog").showModal();
+}
+function closeProfileDialog(){ document.getElementById("profileDialog")?.close(); editingProfileId = null; }
+
+function renderConnectedUsers() {
+  const count = onlineProfiles.length;
+  const countText = `${count} ${count === 1 ? "utente connesso" : "utenti connessi"}`;
+  const title = document.getElementById("connectedUsersTitle");
+  const list = document.getElementById("connectedUsersList");
+  const sidebarCount = document.getElementById("sidebarOnlineCount");
+  const avatars = document.getElementById("sidebarOnlineAvatars");
+  if (title) title.textContent = countText;
+  if (sidebarCount) sidebarCount.textContent = countText;
+  if (avatars) avatars.innerHTML = onlineProfiles.slice(0,3).map(p => `<i class="profile-${escapeHtml(p.tone)}">${escapeHtml(p.initials)}</i>`).join("");
+  if (list) list.innerHTML = count ? onlineProfiles.map(profile => `<div class="connected-user-row"><span class="profile-mini-avatar profile-${escapeHtml(profile.tone)}">${escapeHtml(profile.initials)}</span><span><strong>${escapeHtml(profileFullName(profile))}</strong><small>Online</small></span><i class="online-green-dot" aria-label="Online"></i></div>`).join("") : '<div class="empty-dashboard">Nessun utente collegato.</div>';
+}
+
+async function loadOnlineProfiles() {
+  if (!db) { onlineProfiles = activeProfile ? [activeProfile] : []; renderConnectedUsers(); return; }
+  const cutoff = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+  const { data, error } = await db.from("profile_presence").select("profile_id,last_seen,is_online,planning_profiles(*)").eq("is_online", true).gte("last_seen", cutoff).order("last_seen", { ascending:false });
+  if (error) { console.warn("Presenza Build 13 non ancora configurata:", error.message); return; }
+  onlineProfiles = (data || []).filter(row => row.planning_profiles).map(row => normalizeProfile(row.planning_profiles));
+  renderConnectedUsers();
+}
+
+async function setCurrentProfileOnline() {
+  if (!activeProfile) return;
+  if (!db) { onlineProfiles = [activeProfile]; renderConnectedUsers(); return; }
+  await db.from("profile_presence").upsert({ profile_id:activeProfile.id, is_online:true, last_seen:new Date().toISOString() });
+  await loadOnlineProfiles();
+}
+async function setCurrentProfileOffline() {
+  if (!activeProfile || !db) return;
+  await db.from("profile_presence").upsert({ profile_id:activeProfile.id, is_online:false, last_seen:new Date().toISOString() });
+}
+function noteUserActivity(){
+  const wasInactive = Date.now() - lastUserActivityAt >= 5 * 60 * 1000;
+  lastUserActivityAt = Date.now();
+  if (wasInactive && activeProfile) setCurrentProfileOnline();
+}
+function stopPresenceTracking(){ if (presenceHeartbeatTimer) clearInterval(presenceHeartbeatTimer); presenceHeartbeatTimer = null; }
+function startPresenceTracking(){
+  stopPresenceTracking();
+  noteUserActivity();
+  presenceHeartbeatTimer = setInterval(async () => {
+    if (!activeProfile) return;
+    if (Date.now() - lastUserActivityAt >= 5 * 60 * 1000) await setCurrentProfileOffline();
+    else await setCurrentProfileOnline();
+  }, 30000);
+}
+["pointerdown","keydown","mousemove","touchstart","scroll"].forEach(type => window.addEventListener(type, noteUserActivity, { passive:true }));
+window.addEventListener("pagehide", () => { setCurrentProfileOffline(); });
+
 function openView(viewName) {
   document.querySelectorAll(".nav-item[data-view]").forEach(item => item.classList.toggle("active", item.dataset.view === viewName));
   document.querySelectorAll(".app-view").forEach(view => view.classList.remove("active"));
   document.getElementById(`${viewName}View`)?.classList.add("active");
   if (viewName === "editors") renderEditors();
   if (viewName === "dashboard") renderDashboard();
+  if (viewName === "connected") renderConnectedUsers();
+  if (viewName === "settings") renderRegisteredProfiles();
 }
 
 function openPlanningToday() {
@@ -1823,6 +1958,34 @@ document.querySelectorAll(".nav-item[data-view]").forEach(button => {
   button.addEventListener("click", () => openView(button.dataset.view));
 });
 
+
+document.getElementById("connectedUsersCard")?.addEventListener("click", () => openView("connected"));
+document.getElementById("newProfileBtn")?.addEventListener("click", () => openProfileDialog());
+document.getElementById("registeredProfilesList")?.addEventListener("click", event => {
+  const row = event.target.closest("[data-profile-edit]"); if (row) openProfileDialog(row.dataset.profileEdit);
+});
+document.getElementById("closeProfileDialog")?.addEventListener("click", closeProfileDialog);
+document.getElementById("cancelProfileBtn")?.addEventListener("click", closeProfileDialog);
+document.getElementById("profileForm")?.addEventListener("submit", async event => {
+  event.preventDefault();
+  const firstName = document.getElementById("profileFirstName").value.trim();
+  const lastName = document.getElementById("profileLastName").value.trim();
+  const initialsInput = document.getElementById("profileInitials").value.trim().toUpperCase();
+  const profile = { id: editingProfileId || crypto.randomUUID(), firstName, lastName, name:`${firstName} ${lastName}`.trim(), initials:initialsInput || `${firstName[0] || ""}${lastName[0] || ""}`.toUpperCase(), tone:document.getElementById("profileTone").value, active:document.getElementById("profileActive").checked };
+  const existingIndex = profiles.findIndex(p => p.id === profile.id);
+  if (existingIndex >= 0) profiles[existingIndex] = profile; else profiles.push(profile);
+  renderProfiles(); renderRegisteredProfiles(); closeProfileDialog();
+  if (db) await saveProfileToSupabase(profile);
+});
+document.getElementById("deleteProfileBtn")?.addEventListener("click", async () => {
+  if (!editingProfileId) return;
+  if (activeProfile?.id === editingProfileId) { showToast("Non puoi eliminare il profilo attualmente connesso."); return; }
+  if (!confirm("Eliminare definitivamente questo profilo?")) return;
+  const id = editingProfileId;
+  if (db && !(await deleteProfileFromSupabase(id))) return;
+  profiles = profiles.filter(p => p.id !== id); renderProfiles(); renderRegisteredProfiles(); closeProfileDialog();
+});
+
 async function syncShiftSuggestions(shift) {
   if (!db) return;
   const operations = [];
@@ -1949,10 +2112,12 @@ function enableRealtime() {
     .on("postgres_changes", { event: "*", schema: "public", table: "staff" }, loadSupabaseData)
     .on("postgres_changes", { event: "*", schema: "public", table: "shifts" }, loadSupabaseData)
     .on("postgres_changes", { event: "*", schema: "public", table: "reminders" }, loadRemindersFromSupabase)
+    .on("postgres_changes", { event: "*", schema: "public", table: "planning_profiles" }, loadProfilesFromSupabase)
+    .on("postgres_changes", { event: "*", schema: "public", table: "profile_presence" }, loadOnlineProfiles)
     .subscribe();
 }
 
-initializeProfileGate();
+loadProfilesFromSupabase().then(() => { initializeProfileGate(); if (activeProfile) { setCurrentProfileOnline(); startPresenceTracking(); } });
 populateShiftSelects();
 zoomSelect.value = String(nearestZoomOption(planningZoom));
 applyPlanningZoom(false);
@@ -1961,4 +2126,5 @@ renderEditors();
 renderDashboard();
 loadRemindersFromSupabase();
 loadSupabaseData();
+loadOnlineProfiles();
 enableRealtime();
