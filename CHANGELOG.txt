@@ -1,3 +1,8 @@
+BUILD 12.8
+- Allargati e centrati i tre riquadri superiori della Dashboard.
+- Il rapporto Sale occupate è visualizzato senza spazi, ad esempio 1/15, e non va a capo.
+- Seconda e terza riga lasciate invariate.
+
 BUILD 12.7
 - Dashboard: turni ordinati per sala e orario.
 - Liste Turni e Dipendenti ancorate in alto con scroll interno.

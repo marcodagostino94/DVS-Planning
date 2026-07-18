@@ -1465,3 +1465,27 @@ button.dashboard-kpi { cursor:pointer; }
   font-size:10px;
   font-weight:650;
 }
+
+
+/* Build 12.8 — KPI superiori più larghi, centrati e rapporto sale su una riga */
+.dashboard-kpis{
+  width:min(1040px,100%);
+  margin-left:auto;
+  margin-right:auto;
+  justify-content:center;
+  gap:16px;
+}
+.dashboard-kpi{
+  flex:1 1 0;
+  width:auto;
+  min-width:0;
+  max-width:none;
+}
+#todayRoomCount{
+  white-space:nowrap;
+  word-break:keep-all;
+}
+@media(max-width:1100px){
+  .dashboard-kpis{width:100%;}
+  .dashboard-kpi{width:auto;}
+}

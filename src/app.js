@@ -1726,7 +1726,7 @@ function renderDashboard() {
   const roomCount = document.getElementById("todayRoomCount");
   if (shiftCount) shiftCount.textContent = String(todays.length);
   if (peopleCount) peopleCount.textContent = String(people.length);
-  if (roomCount) roomCount.textContent = `${occupiedPhysicalRooms.size} / 15`;
+  if (roomCount) roomCount.textContent = `${occupiedPhysicalRooms.size}/15`;
 
   const planningList = document.getElementById("todayPlanningList");
   if (planningList) {
