@@ -430,10 +430,11 @@ function showContextMenu(event, targetCell) {
   contextTargetCell = targetCell || null;
   const selected = selectedShiftList();
   const hasConfirmed = selected.some(shift => shift.confirmed);
+  const hasUnconfirmed = selected.some(shift => !shift.confirmed);
   const exactlyOne = selected.length === 1;
   contextMenu.querySelector('[data-action="edit"]').disabled = !exactlyOne || hasConfirmed;
-  contextMenu.querySelector('[data-action="confirm"]').hidden = !exactlyOne || Boolean(selected[0]?.confirmed);
-  contextMenu.querySelector('[data-action="confirm"]').disabled = !exactlyOne || Boolean(selected[0]?.confirmed);
+  contextMenu.querySelector('[data-action="confirm"]').hidden = !hasUnconfirmed;
+  contextMenu.querySelector('[data-action="confirm"]').disabled = !hasUnconfirmed;
   contextMenu.querySelector('[data-action="unconfirm"]').hidden = !exactlyOne || !selected[0]?.confirmed;
   contextMenu.querySelector('[data-action="unconfirm"]').disabled = !exactlyOne || !selected[0]?.confirmed;
   contextMenu.querySelector('[data-action="copy"]').disabled = !selected.length;
@@ -499,10 +500,22 @@ async function setShiftConfirmed(shift, confirmed) {
   showToast(confirmed ? "Turno confermato e bloccato" : "Conferma annullata");
 }
 
-function confirmSelectedShift() {
-  const [shift] = selectedShiftList();
-  if (!shift || shift.confirmed) return;
-  setShiftConfirmed(shift, true);
+async function confirmSelectedShift() {
+  const selected = selectedShiftList().filter(shift => !shift.confirmed);
+  if (!selected.length) return;
+
+  const confirmedAt = new Date().toISOString();
+  selected.forEach(shift => {
+    shift.confirmed = true;
+    shift.confirmedAt = confirmedAt;
+  });
+
+  saveLocal();
+  await Promise.all(selected.map(shift => syncShiftToSupabase(shift)));
+  renderPlanning();
+  showToast(selected.length === 1
+    ? "Turno confermato e bloccato"
+    : `${selected.length} turni confermati e bloccati`);
 }
 
 function unconfirmSelectedShift() {

@@ -1,1 +1,2 @@
-v_10_CORREZIONI ULTIME implementation complete
+v_10_CORREZIONI ULTIME 2
+Calendario unico Dal–Al, conferma multipla e saturazione confermati aumentata.

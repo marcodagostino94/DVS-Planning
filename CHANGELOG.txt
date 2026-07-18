@@ -5,3 +5,10 @@ DVS Planning · v_10_CORREZIONI ULTIME
 - Aggiunta migrazione 007 con i turni del Planning di luglio 2026 (incluse le date di bordo 29–30 giugno e 1–2 agosto presenti nella vista).
 - Turni confermati importati in base alla cella dipendente gialla.
 - Configurazione Supabase preservata dalla versione allegata.
+
+
+v_10_CORREZIONI ULTIME 2
+- Conferma disponibile anche con selezione multipla.
+- Saturazione dei turni confermati aumentata.
+- Selettore periodo confermato come calendario unico Dal–Al.
+- Versionamento asset aggiornato per evitare cache della versione precedente.

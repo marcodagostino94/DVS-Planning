@@ -1012,7 +1012,7 @@ input,textarea,select,.app-dialog{-webkit-user-select:text;user-select:text}
 .day-head.outside-month,.planning-cell.outside-month { background-color:rgba(220,224,229,.48); }
 .day-head.outside-month .num { color:#8d959d; }
 .month-mini { display:block; margin-top:1px; color:#9199a1; font-size:7px; font-weight:800; }
-.shift-card.confirmed { cursor:default; filter:saturate(1.65) contrast(1.03); border-width:1.5px; box-shadow:0 9px 21px rgba(var(--accent-rgb),.23),inset 0 1px 0 rgba(255,255,255,.9); }
+.shift-card.confirmed { cursor:default; filter:saturate(2.35) contrast(1.10) brightness(.98); border-width:1.5px; box-shadow:0 10px 24px rgba(var(--accent-rgb),.34),inset 0 1px 0 rgba(255,255,255,.92); }
 .shift-card.confirmed:hover { animation:none; transform:none; }
 .shift-card.confirmed.provvisorio { filter:saturate(.35) contrast(1.05); }
 .confirmed-lock { margin-left:auto; color:rgba(var(--accent-rgb),.95); font-size:8px; text-shadow:0 0 5px rgba(var(--accent-rgb),.5); }
