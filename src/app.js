@@ -1739,10 +1739,9 @@ function renderDashboard() {
 
   const roomsList = document.getElementById("todayRoomsList");
   if (roomsList) {
-    const physicalRooms = ROOMS.filter(room => /^sala-\d+$/.test(room.id));
-    const activeRemoteIds = new Set(todays.filter(shift => /^remoto-\d+$/.test(shift.room)).map(shift => shift.room));
-    const activeRemoteRooms = ROOMS.filter(room => activeRemoteIds.has(room.id));
-    const dashboardRooms = [...physicalRooms, ...activeRemoteRooms].sort((a, b) => a.sortOrder - b.sortOrder);
+    // Mostra sempre tutte le 15 sale e le 3 postazioni remote.
+    // Il semaforo dipende esclusivamente dalla presenza di un turno odierno.
+    const dashboardRooms = [...ROOMS].sort((a, b) => a.sortOrder - b.sortOrder);
     const rowsPerColumn = Math.ceil(dashboardRooms.length / 2);
     roomsList.style.setProperty("--dashboard-room-rows", String(rowsPerColumn));
     roomsList.innerHTML = dashboardRooms.map(room => {

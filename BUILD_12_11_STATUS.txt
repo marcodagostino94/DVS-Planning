@@ -1,0 +1,8 @@
+DVS Planning — Build 12.11
+
+Correzioni:
+- Ogni tab occupa l’intera area principale; nessuna vista affiancata al Dashboard.
+- Stato sale mostra sempre Sale 1–15 e Remoto 1–3.
+- Semaforo verde/rosso calcolato dai turni del giorno.
+- Elenco su due colonne con scroll verticale interno.
+- Nessun’altra sezione della Dashboard modificata.
