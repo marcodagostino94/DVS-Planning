@@ -1499,3 +1499,31 @@ button.dashboard-kpi { cursor:pointer; }
   scrollbar-width:thin;
   scrollbar-color:rgba(255,255,255,.18) transparent;
 }
+
+/* Build 12.10 — unica correzione: Stato sale sempre scorribile e Sala 8 raggiungibile */
+#todayRoomsList{
+  flex:1 1 0 !important;
+  min-height:0 !important;
+  height:0;
+  display:grid !important;
+  grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+  grid-template-rows:repeat(var(--dashboard-room-rows,8),min-content) !important;
+  grid-auto-flow:column !important;
+  align-content:start !important;
+  align-items:start !important;
+  column-gap:12px !important;
+  row-gap:7px !important;
+  overflow-y:scroll !important;
+  overflow-x:hidden !important;
+  overscroll-behavior:contain;
+  scrollbar-gutter:stable;
+  padding-right:6px !important;
+}
+#todayRoomsList > .compact-room{
+  min-width:0;
+  width:100%;
+}
+#todayRoomsList::-webkit-scrollbar{width:8px;}
+#todayRoomsList::-webkit-scrollbar-track{background:rgba(255,255,255,.035);border-radius:999px;}
+#todayRoomsList::-webkit-scrollbar-thumb{background:rgba(255,255,255,.22);border-radius:999px;}
+#todayRoomsList::-webkit-scrollbar-thumb:hover{background:rgba(255,255,255,.32);}

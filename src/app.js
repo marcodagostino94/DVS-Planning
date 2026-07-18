@@ -1743,14 +1743,14 @@ function renderDashboard() {
     const activeRemoteIds = new Set(todays.filter(shift => /^remoto-\d+$/.test(shift.room)).map(shift => shift.room));
     const activeRemoteRooms = ROOMS.filter(room => activeRemoteIds.has(room.id));
     const dashboardRooms = [...physicalRooms, ...activeRemoteRooms].sort((a, b) => a.sortOrder - b.sortOrder);
-    const splitIndex = Math.ceil(dashboardRooms.length / 2);
-    const roomColumns = [dashboardRooms.slice(0, splitIndex), dashboardRooms.slice(splitIndex)];
-
-    roomsList.innerHTML = roomColumns.map(column => `<div class="room-status-column">${column.map(room => {
+    const rowsPerColumn = Math.ceil(dashboardRooms.length / 2);
+    roomsList.style.setProperty("--dashboard-room-rows", String(rowsPerColumn));
+    roomsList.innerHTML = dashboardRooms.map(room => {
       const isBusy = todays.some(shift => shift.room === room.id);
       const label = room.label.replace(/^Remote\s+/i, "Remoto ");
       return `<div class="compact-room"><i class="room-dot ${isBusy ? "busy" : ""}" aria-hidden="true"></i><span>${escapeHtml(label)}</span></div>`;
-    }).join("")}</div>`).join("");
+    }).join("");
+    roomsList.scrollTop = 0;
   }
 
   const employeesList = document.getElementById("todayEmployeesList");
