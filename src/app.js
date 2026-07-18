@@ -1057,8 +1057,9 @@ function renderRangeCalendar() {
     const date = addDays(gridStart,index);
     const value = isoFromDate(date);
     const outside = date.getMonth() !== rangeCalendarMonth.getMonth();
-    const inRange = fromValue && toValue && value > fromValue && value < toValue;
-    const classes = ["range-calendar-day", outside?"outside":"", inRange?"in-range":"", value===fromValue?"range-start":"", value===toValue?"range-end":"", value===today?"today":""].filter(Boolean).join(" ");
+    const hasCompleteRange = Boolean(fromValue && toValue && toValue !== fromValue);
+    const inRange = hasCompleteRange && value > fromValue && value < toValue;
+    const classes = ["range-calendar-day", outside?"outside":"", inRange?"in-range":"", value===fromValue?"range-start":"", hasCompleteRange && value===toValue?"range-end":"", value===today?"today":""].filter(Boolean).join(" ");
     return `<button type="button" class="${classes}" data-range-date="${value}">${date.getDate()}</button>`;
   }).join("");
   grid.querySelectorAll("[data-range-date]").forEach(button => button.addEventListener("click", () => selectRangeCalendarDate(button.dataset.rangeDate)));
@@ -1067,20 +1068,32 @@ function renderRangeCalendar() {
 function selectRangeCalendarDate(value) {
   const from = document.getElementById("dateFrom");
   const to = document.getElementById("dateTo");
-  if (rangeSelectionPhase === "start" || !from.value || (from.value && to.value)) {
+
+  if (rangeSelectionPhase === "start") {
     from.value = value;
-    to.value = value;
+    to.value = "";
     rangeSelectionPhase = "end";
   } else {
-    if (value < from.value) { to.value = from.value; from.value = value; }
-    else to.value = value;
+    if (value < from.value) {
+      to.value = from.value;
+      from.value = value;
+    } else {
+      to.value = value;
+    }
     rangeSelectionPhase = "start";
   }
+
   updateDateRangeDisplay();
   renderRangeCalendar();
+
+  if (rangeSelectionPhase === "start") {
+    setTimeout(closeRangeCalendar, 180);
+  }
 }
 
 function openRangeCalendar() {
+  const calendar = document.getElementById("rangeCalendar");
+  const trigger = document.getElementById("dateRangeTrigger");
   const from = document.getElementById("dateFrom").value;
   if (from) {
     const date = new Date(`${from}T12:00:00`);
@@ -1088,9 +1101,29 @@ function openRangeCalendar() {
   }
   rangeSelectionPhase = "start";
   renderRangeCalendar();
+  calendar?.classList.remove("hidden");
+  trigger?.setAttribute("aria-expanded", "true");
 }
-document.getElementById("rangePrevMonth")?.addEventListener("click", () => { rangeCalendarMonth = new Date(rangeCalendarMonth.getFullYear(),rangeCalendarMonth.getMonth()-1,1); renderRangeCalendar(); });
-document.getElementById("rangeNextMonth")?.addEventListener("click", () => { rangeCalendarMonth = new Date(rangeCalendarMonth.getFullYear(),rangeCalendarMonth.getMonth()+1,1); renderRangeCalendar(); });
+
+function closeRangeCalendar() {
+  document.getElementById("rangeCalendar")?.classList.add("hidden");
+  document.getElementById("dateRangeTrigger")?.setAttribute("aria-expanded", "false");
+}
+
+function toggleRangeCalendar() {
+  const calendar = document.getElementById("rangeCalendar");
+  if (calendar?.classList.contains("hidden")) openRangeCalendar();
+  else closeRangeCalendar();
+}
+
+document.getElementById("dateRangeTrigger")?.addEventListener("click", toggleRangeCalendar);
+document.getElementById("rangePrevMonth")?.addEventListener("click", event => { event.stopPropagation(); rangeCalendarMonth = new Date(rangeCalendarMonth.getFullYear(),rangeCalendarMonth.getMonth()-1,1); renderRangeCalendar(); });
+document.getElementById("rangeNextMonth")?.addEventListener("click", event => { event.stopPropagation(); rangeCalendarMonth = new Date(rangeCalendarMonth.getFullYear(),rangeCalendarMonth.getMonth()+1,1); renderRangeCalendar(); });
+document.addEventListener("click", event => {
+  const field = document.querySelector(".date-range-field");
+  if (field && !field.contains(event.target)) closeRangeCalendar();
+});
+
 function resetShiftForm(shift = {}) {
   const date = shift.date || isoDate(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
   document.getElementById("shiftId").value = shift.id || "";

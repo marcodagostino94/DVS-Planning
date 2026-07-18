@@ -1072,3 +1072,9 @@ input,textarea,select,.app-dialog{-webkit-user-select:text;user-select:text}
 @media (max-width:680px){ .range-calendar{padding-left:8px;padding-right:8px}.range-calendar-caption{margin-left:-8px;margin-right:-8px}.range-calendar-day{height:40px;font-size:13px} }
 .date-range-field.calendar-disabled .range-calendar { opacity:.72; }
 .date-range-field.calendar-disabled .range-calendar button { cursor:not-allowed; }
+
+/* Correzione intervallo Dal–Al: calendario a comparsa */
+.date-range-summary { appearance:none; cursor:pointer; color:inherit; text-align:left; }
+.date-range-summary:hover { border-color:rgba(var(--accent-rgb),.38); background:rgba(var(--accent-rgb),.045); }
+.date-range-summary:focus-visible { outline:2px solid rgba(var(--accent-rgb),.55); outline-offset:2px; }
+.range-calendar { top:72px; }
