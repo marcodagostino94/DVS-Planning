@@ -1380,3 +1380,88 @@ button.dashboard-kpi { cursor:pointer; }
   .today-shift-row{padding:8px 10px;}
   .compact-row,.compact-room{padding-top:6px;padding-bottom:6px;}
 }
+
+
+/* Build 12.7 — Dashboard verificata: ordine sale, liste dall'alto, scroll solo interno */
+#dashboardView.dashboard-view{
+  height:100%;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  overflow:hidden !important;
+}
+#dashboardView .dashboard-content{
+  flex:1 1 auto;
+  min-height:0;
+  overflow:hidden !important;
+}
+#dashboardView .dashboard-grid{
+  flex:1 1 auto;
+  min-height:0;
+  overflow:hidden;
+}
+#dashboardView .dashboard-panel{
+  min-height:0;
+  overflow:hidden;
+}
+#todayPlanningList,
+#todayEmployeesList{
+  flex:1 1 auto;
+  min-height:0;
+  display:flex;
+  flex-direction:column;
+  justify-content:flex-start !important;
+  align-items:stretch !important;
+  align-content:flex-start !important;
+  overflow-y:auto !important;
+  overflow-x:hidden !important;
+  overscroll-behavior:contain;
+}
+#todayPlanningList > *,
+#todayEmployeesList > *{
+  flex:0 0 auto;
+}
+#todayRoomsList{
+  flex:1 1 auto;
+  min-height:0;
+  display:grid !important;
+  grid-template-columns:repeat(2,minmax(0,1fr)) !important;
+  align-items:start;
+  align-content:start !important;
+  gap:0 12px !important;
+  overflow:hidden !important;
+}
+#todayRoomsList .room-status-column{
+  min-width:0;
+  display:flex;
+  flex-direction:column;
+  align-items:stretch;
+  gap:7px;
+}
+#todayRoomsList .compact-room{
+  min-width:0;
+  flex:0 0 auto;
+  display:flex !important;
+  align-items:center !important;
+  justify-content:flex-start !important;
+  gap:8px;
+  padding:7px 9px;
+  color:#fff !important;
+  white-space:nowrap;
+}
+#todayRoomsList .compact-room .room-dot{
+  display:block !important;
+  visibility:visible !important;
+  opacity:1 !important;
+  flex:0 0 8px;
+  width:8px;
+  height:8px;
+}
+#todayRoomsList .compact-room span{
+  display:block !important;
+  visibility:visible !important;
+  opacity:1 !important;
+  color:#fff !important;
+  font-size:10px;
+  font-weight:650;
+}

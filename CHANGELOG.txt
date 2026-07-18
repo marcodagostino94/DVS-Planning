@@ -1,3 +1,9 @@
+BUILD 12.7
+- Dashboard: turni ordinati per sala e orario.
+- Liste Turni e Dipendenti ancorate in alto con scroll interno.
+- Stato sale: 15 sale + eventuali Remoto attivi, due colonne reali, indicatori visibili.
+- Dashboard senza scroll pagina.
+
 DVS Planning · v_10_CORREZIONI ULTIME
 
 - Selettore periodo Dal–Al su un unico calendario.

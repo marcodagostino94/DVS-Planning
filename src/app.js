@@ -1698,48 +1698,74 @@ function employeeNameById(id) {
   return editor ? fullEmployeeName(editor) : "CLIENTE";
 }
 
+function dashboardRoomOrder(roomId) {
+  const room = ROOMS.find(item => item.id === roomId);
+  return room?.sortOrder ?? Number.MAX_SAFE_INTEGER;
+}
+
 function renderDashboard() {
   const today = localTodayIso();
-  const todays = shifts.filter(shift => shift.date === today).sort((a,b) => a.start.localeCompare(b.start));
-  const people = [...new Set(todays.filter(s => s.editorId).map(s => s.editorId))];
-  const rooms = [...new Set(todays.filter(s => /^sala-/.test(s.room)).map(s => s.room))];
+  const todays = shifts
+    .filter(shift => shift.date === today)
+    .sort((a, b) => {
+      const roomDifference = dashboardRoomOrder(a.room) - dashboardRoomOrder(b.room);
+      return roomDifference || String(a.start || "").localeCompare(String(b.start || ""));
+    });
+
+  const people = [...new Set(todays.filter(shift => shift.editorId).map(shift => shift.editorId))]
+    .sort((a, b) => employeeNameById(a).localeCompare(employeeNameById(b), "it", { sensitivity:"base" }));
+  const occupiedPhysicalRooms = new Set(todays.filter(shift => /^sala-\d+$/.test(shift.room)).map(shift => shift.room));
+
   const greeting = document.getElementById("dashboardGreeting");
   if (greeting) greeting.textContent = `Buongiorno${activeProfile?.name ? `, ${activeProfile.name.split(" ")[0]}` : ""}`;
   const dateLabel = document.getElementById("dashboardDate");
   if (dateLabel) dateLabel.textContent = italianLongDate();
-  document.getElementById("todayShiftCount").textContent = String(todays.length);
-  document.getElementById("todayPeopleCount").textContent = String(people.length);
-  document.getElementById("todayRoomCount").textContent = `${rooms.length} / 15`;
+
+  const shiftCount = document.getElementById("todayShiftCount");
+  const peopleCount = document.getElementById("todayPeopleCount");
+  const roomCount = document.getElementById("todayRoomCount");
+  if (shiftCount) shiftCount.textContent = String(todays.length);
+  if (peopleCount) peopleCount.textContent = String(people.length);
+  if (roomCount) roomCount.textContent = `${occupiedPhysicalRooms.size} / 15`;
 
   const planningList = document.getElementById("todayPlanningList");
-  const employeesList = document.getElementById("todayEmployeesList");
   if (planningList) {
-    planningList.style.justifyContent = "flex-start";
-    planningList.style.alignContent = "flex-start";
+    planningList.innerHTML = todays.length ? todays.map(shift => {
+      const room = ROOMS.find(item => item.id === shift.room)?.label || shift.room;
+      return `<div class="today-shift-row"><time>${escapeHtml(shift.start)}–${escapeHtml(shift.end)}</time><span class="room">${escapeHtml(room)}</span><strong>${escapeHtml(shift.film || shift.production || "Turno")}</strong><span>${escapeHtml(employeeNameById(shift.editorId))}</span></div>`;
+    }).join("") : '<div class="empty-dashboard">Nessun turno programmato per oggi.</div>';
+    planningList.scrollTop = 0;
   }
-  if (employeesList) {
-    employeesList.style.justifyContent = "flex-start";
-    employeesList.style.alignContent = "flex-start";
-  }
-  planningList.innerHTML = todays.length ? todays.map(shift => {
-    const room = ROOMS.find(item => item.id === shift.room)?.label || shift.room;
-    return `<div class="today-shift-row"><time>${escapeHtml(shift.start)}–${escapeHtml(shift.end)}</time><span class="room">${escapeHtml(room)}</span><strong>${escapeHtml(shift.film || shift.production || "Turno")}</strong><span>${escapeHtml(employeeNameById(shift.editorId))}</span></div>`;
-  }).join("") : '<div class="empty-dashboard">Nessun turno programmato per oggi.</div>';
 
   const roomsList = document.getElementById("todayRoomsList");
-  const numberedRooms = ROOMS
-    .filter(room => /^sala-\d+$/.test(room.id))
-    .sort((a, b) => Number(a.id.replace("sala-", "")) - Number(b.id.replace("sala-", "")));
-  roomsList.innerHTML = numberedRooms.map(room => {
-    const shift = todays.find(item => item.room === room.id);
-    return `<div class="compact-room"><i class="room-dot ${shift ? "busy" : ""}" aria-hidden="true"></i><span>${escapeHtml(room.label)}</span></div>`;
-  }).join("");
+  if (roomsList) {
+    const physicalRooms = ROOMS.filter(room => /^sala-\d+$/.test(room.id));
+    const activeRemoteIds = new Set(todays.filter(shift => /^remoto-\d+$/.test(shift.room)).map(shift => shift.room));
+    const activeRemoteRooms = ROOMS.filter(room => activeRemoteIds.has(room.id));
+    const dashboardRooms = [...physicalRooms, ...activeRemoteRooms].sort((a, b) => a.sortOrder - b.sortOrder);
+    const splitIndex = Math.ceil(dashboardRooms.length / 2);
+    const roomColumns = [dashboardRooms.slice(0, splitIndex), dashboardRooms.slice(splitIndex)];
 
-  employeesList.innerHTML = people.length ? people.map(id => {
-    const first = todays.find(item => item.editorId === id);
-    const room = ROOMS.find(item => item.id === first?.room)?.label || "—";
-    return `<div class="compact-row"><span>${escapeHtml(employeeNameById(id))}</span><span>${escapeHtml(room)}</span></div>`;
-  }).join("") : '<div class="empty-dashboard">Nessun dipendente presente oggi.</div>';
+    roomsList.innerHTML = roomColumns.map(column => `<div class="room-status-column">${column.map(room => {
+      const isBusy = todays.some(shift => shift.room === room.id);
+      const label = room.label.replace(/^Remote\s+/i, "Remoto ");
+      return `<div class="compact-room"><i class="room-dot ${isBusy ? "busy" : ""}" aria-hidden="true"></i><span>${escapeHtml(label)}</span></div>`;
+    }).join("")}</div>`).join("");
+  }
+
+  const employeesList = document.getElementById("todayEmployeesList");
+  if (employeesList) {
+    employeesList.innerHTML = people.length ? people.map(id => {
+      const employeeShifts = todays.filter(shift => shift.editorId === id);
+      const roomLabels = [...new Set(employeeShifts.map(shift => {
+        const label = ROOMS.find(item => item.id === shift.room)?.label || shift.room || "—";
+        return label.replace(/^Remote\s+/i, "Remoto ");
+      }))];
+      return `<div class="compact-row"><span>${escapeHtml(employeeNameById(id))}</span><span>${escapeHtml(roomLabels.join(", "))}</span></div>`;
+    }).join("") : '<div class="empty-dashboard">Nessun dipendente presente oggi.</div>';
+    employeesList.scrollTop = 0;
+  }
+
   renderReminders();
 }
 

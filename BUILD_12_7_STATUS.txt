@@ -1,0 +1,8 @@
+DVS Planning — Build 12.7
+
+Dashboard corretta e verificata:
+- Turni di oggi ordinati per sala e poi per orario, sempre allineati in alto, con scroll interno.
+- Stato sale con tutte le 15 sale e soltanto gli eventuali Remoto occupati, disposto realmente su due colonne.
+- Pallini verde/rosso e nomi delle sale sempre visibili.
+- Dipendenti presenti allineati in alto, ordinati alfabeticamente, con scroll interno.
+- Dashboard senza scroll verticale della pagina.
