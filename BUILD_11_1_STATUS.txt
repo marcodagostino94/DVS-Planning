@@ -1,0 +1,7 @@
+DVS Planning — Build 11.1
+
+Correzioni richieste:
+- Profili della schermata iniziale ridotti e resi più eleganti.
+- Icona definitiva rifinita con sagoma trasparente e angoli smussati, senza cornice quadrata nera esterna.
+- Zoom invariato e confermato.
+- Nota dipendenti mantenuta a destra.
