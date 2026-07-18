@@ -1,7 +1,0 @@
-DVS Planning — Build 12.10
-
-Correzione esclusiva del riquadro Stato sale:
-- scrollbar verticale interna sempre disponibile
-- Sala 8 e tutte le sale successive raggiungibili
-- ordine colonne: Sale 1–8 a sinistra, Sale 9–15 a destra
-- nessun altro riquadro o comportamento modificato

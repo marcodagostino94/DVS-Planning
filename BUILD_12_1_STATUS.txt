@@ -1,8 +1,0 @@
-DVS Planning — Build 12.1
-
-Correzioni Dashboard:
-- Stato sale mostra tutte le sale disponibili, non soltanto le prime 8.
-- Dipendenti presenti mostra tutti i dipendenti della giornata.
-- Planning di oggi mostra tutti i turni con scorrimento interno quando necessario.
-- Sostituiti i simboli testuali con icone vettoriali lineari in stile Apple/SF Symbols.
-- Aggiornate anche le icone di Backup e Utenti collegati.

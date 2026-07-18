@@ -1,2 +1,0 @@
-DVS Planning v_10 CORREZIONI ULTIME 5
-Due calendari compatti separati Dal/Al. Nessuna nuova migrazione SQL richiesta.

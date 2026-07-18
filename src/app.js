@@ -149,7 +149,7 @@ const selectionBadge = document.getElementById("selectionBadge");
 
 function renderProfiles() {
   profileGrid.innerHTML = profiles.filter(profile => profile.active !== false).map(profile => `
-    <button class="profile-card profile-${profile.tone}" type="button" data-profile-id="${profile.id}">
+    <button class="profile-card profile-${profile.tone || "red"}" type="button" data-profile-id="${profile.id}">
       <span class="profile-avatar"><span class="profile-head"></span><span class="profile-body"></span></span>
       <strong>${escapeHtml(profile.name)}</strong>
     </button>
@@ -1814,8 +1814,34 @@ function openView(viewName) {
   if (viewName === "editors") renderEditors();
   if (viewName === "dashboard") renderDashboard();
   if (viewName === "connected") renderConnectedUsers();
-  if (viewName === "settings") renderRegisteredProfiles();
+  if (viewName === "settings") { showSettingsHome(); }
 }
+
+function showSettingsHome() {
+  const home = document.getElementById("settingsHome");
+  const detail = document.getElementById("profilesSettingsSection");
+  if (home) home.hidden = false;
+  if (detail) detail.hidden = true;
+  const title = document.getElementById("settingsPageTitle");
+  const subtitle = document.getElementById("settingsPageSubtitle");
+  if (title) title.textContent = "Impostazioni";
+  if (subtitle) subtitle.textContent = "Gestione applicazione";
+}
+
+function showProfilesSettings() {
+  const home = document.getElementById("settingsHome");
+  const detail = document.getElementById("profilesSettingsSection");
+  if (home) home.hidden = true;
+  if (detail) detail.hidden = false;
+  const title = document.getElementById("settingsPageTitle");
+  const subtitle = document.getElementById("settingsPageSubtitle");
+  if (title) title.textContent = "Gestione Profili";
+  if (subtitle) subtitle.textContent = "Profili registrati e accesso";
+  renderRegisteredProfiles();
+}
+
+document.getElementById("openProfilesSettings")?.addEventListener("click", showProfilesSettings);
+document.getElementById("backToSettings")?.addEventListener("click", showSettingsHome);
 
 function openPlanningToday() {
   const now = new Date();

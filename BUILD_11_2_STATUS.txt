@@ -1,4 +1,0 @@
-DVS Planning Build 11.2
-- Rimossa la cornice nera esterna dall'icona.
-- Icona ritagliata e adattata con bordi smussati in stile Apple.
-- Aggiornate tutte le dimensioni delle icone PWA, browser e Apple Touch.

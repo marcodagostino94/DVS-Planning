@@ -1,8 +1,0 @@
-DVS Planning — Build 12.5 DEFINITIVA
-
-Correzioni dashboard:
-- Stato sale visibile in due colonne, ordinato numericamente, con pallino verde/rosso e nome sala.
-- Risolto errore JavaScript che interrompeva il rendering dello stato sale.
-- Planning di oggi sempre allineato in alto, con scorrimento interno.
-- Dipendenti presenti sempre allineati in alto, con scorrimento interno.
-- Dashboard bloccata nel viewport senza scorrimento verticale della pagina.

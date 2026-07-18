@@ -1,3 +1,7 @@
+BUILD 13.1
+- Rifiniture profili, Planning e navigazione Impostazioni.
+- Pulizia file obsoleti.
+
 
 BUILD 13.0
 - Profili dinamici da Supabase.

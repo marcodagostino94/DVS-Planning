@@ -1,0 +1,9 @@
+DVS Planning — Build 13.1
+
+- Card profilo login ridotte e ripristinate in stile Liquid Glass con bordo colorato.
+- Colore del profilo visibile come riempimento leggero solo al passaggio del mouse.
+- Aggiunti colori mancanti (incluso verde), così i nuovi profili mostrano sempre l’avatar.
+- Etichette Sala e Remoto centrate nelle celle del Planning.
+- Impostazioni ora apre una home con card Liquid Glass “Gestione Profili”.
+- La gestione completa dei profili si apre solo dopo il clic sulla card.
+- Rimossi file STATUS delle build precedenti e il seed SQL duplicato nella radice.

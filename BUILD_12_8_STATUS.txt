@@ -1,6 +1,0 @@
-DVS Planning — Build 12.8
-
-Modifica mirata alla prima riga della Dashboard:
-- tre riquadri KPI più larghi e centrati;
-- contatore Sale occupate nel formato 1/15 su una sola riga;
-- nessuna modifica alla seconda e alla terza riga della Dashboard.
