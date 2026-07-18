@@ -1712,6 +1712,8 @@ function renderDashboard() {
   document.getElementById("todayRoomCount").textContent = `${rooms.length} / 15`;
 
   const planningList = document.getElementById("todayPlanningList");
+  planningList.style.justifyContent='flex-start';
+  employeesList?.style?.setProperty?.('justify-content','flex-start');
   planningList.innerHTML = todays.length ? todays.map(shift => {
     const room = ROOMS.find(item => item.id === shift.room)?.label || shift.room;
     return `<div class="today-shift-row"><time>${escapeHtml(shift.start)}–${escapeHtml(shift.end)}</time><span class="room">${escapeHtml(room)}</span><strong>${escapeHtml(shift.film || shift.production || "Turno")}</strong><span>${escapeHtml(employeeNameById(shift.editorId))}</span></div>`;
@@ -1720,7 +1722,7 @@ function renderDashboard() {
   const roomsList = document.getElementById("todayRoomsList");
   roomsList.innerHTML = ROOMS.filter(room => /^sala-/.test(room.id)).map(room => {
     const shift = todays.find(item => item.room === room.id);
-    return `<div class="compact-row"><span><i class="room-dot ${shift ? "busy" : ""}"></i>${room.label}</span></div>`;
+    return `<div class="compact-room"><span><i class="room-dot ${shift ? "busy" : ""}"></i>${room.label}</span></div>`;
   }).join("");
 
   const employeesList = document.getElementById("todayEmployeesList");
