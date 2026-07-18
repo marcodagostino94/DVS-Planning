@@ -1489,3 +1489,13 @@ button.dashboard-kpi { cursor:pointer; }
   .dashboard-kpis{width:100%;}
   .dashboard-kpi{width:auto;}
 }
+
+/* Build 12.9 — unica correzione: scroll interno nello Stato sale */
+#todayRoomsList{
+  overflow-y:auto !important;
+  overflow-x:hidden !important;
+  overscroll-behavior:contain;
+  padding-right:4px;
+  scrollbar-width:thin;
+  scrollbar-color:rgba(255,255,255,.18) transparent;
+}

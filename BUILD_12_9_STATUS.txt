@@ -1,0 +1,6 @@
+DVS Planning — Build 12.9
+
+Unica modifica rispetto alla Build 12.8:
+- aggiunto lo scroll verticale interno al riquadro “Stato sale”, così tutte le 15 sale (compresa Sala 8) e gli eventuali Remoto restano accessibili.
+
+Nessun'altra sezione o logica è stata modificata.

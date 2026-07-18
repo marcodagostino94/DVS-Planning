@@ -1,3 +1,7 @@
+BUILD 12.9
+- Unica correzione: scroll verticale interno nel riquadro “Stato sale”.
+- Nessuna modifica a Planning di oggi, Dipendenti presenti, Promemoria, KPI o logica dati.
+
 BUILD 12.8
 - Allargati e centrati i tre riquadri superiori della Dashboard.
 - Il rapporto Sale occupate è visualizzato senza spazi, ad esempio 1/15, e non va a capo.
