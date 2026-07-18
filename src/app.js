@@ -39,7 +39,15 @@ const ITALIAN_FIXED_HOLIDAYS = new Set([
 
 const SHIFT_STORAGE = "dvs-planning-build-10-shifts";
 const EDITOR_STORAGE = "dvs-planning-build-9-staff";
-const ZOOM_STORAGE = "dvs-planning-build-5-zoom";
+const ZOOM_STORAGE = "dvs-planning-build-11-zoom";
+const PROFILE_STORAGE = "dvs-planning-build-11-profile";
+const REMEMBER_PROFILE_STORAGE = "dvs-planning-build-11-remember";
+const DEFAULT_PROFILES = [
+  { id: "alessio-iuso", name: "Alessio Iuso", initials: "AI", tone: "red" },
+  { id: "nicola-iuso", name: "Nicola Iuso", initials: "NI", tone: "blue" },
+  { id: "sara-dal-pont", name: "Sara Dal Pont", initials: "SD", tone: "purple" },
+  { id: "marco-dagostino", name: "Marco D'Agostino", initials: "MD", tone: "orange" }
+];
 
 const hasSupabaseConfig = Boolean(
   window.DVS_SUPABASE?.url &&
@@ -75,6 +83,7 @@ let suppressNextClick = false;
 let emptyCellClickTimer = null;
 let highlightedDropCells = new Set();
 let planningZoom = Number(localStorage.getItem(ZOOM_STORAGE)) || 1;
+let activeProfile = null;
 
 const seedEditors = [
   { id:"ed-1", firstName:"Marco", lastName:"D'Agostino", active:true },
@@ -118,7 +127,11 @@ const planningGrid = document.getElementById("planningGrid");
 const planningCanvas = document.getElementById("planningCanvas");
 const planningScroller = document.getElementById("planningScroller");
 const monthLabel = document.getElementById("monthLabel");
-const zoomLabel = document.getElementById("zoomLabel");
+const zoomSelect = document.getElementById("zoomSelect");
+const profileGate = document.getElementById("profileGate");
+const profileGrid = document.getElementById("profileGrid");
+const rememberProfile = document.getElementById("rememberProfile");
+const activeProfileLabel = document.getElementById("activeProfileLabel");
 const shiftDialog = document.getElementById("shiftDialog");
 const editorDialog = document.getElementById("editorDialog");
 const shiftForm = document.getElementById("shiftForm");
@@ -126,6 +139,57 @@ const editorForm = document.getElementById("editorForm");
 const toast = document.getElementById("toast");
 const contextMenu = document.getElementById("contextMenu");
 const selectionBadge = document.getElementById("selectionBadge");
+
+function renderProfiles() {
+  profileGrid.innerHTML = DEFAULT_PROFILES.map(profile => `
+    <button class="profile-card profile-${profile.tone}" type="button" data-profile-id="${profile.id}">
+      <span class="profile-avatar"><span class="profile-head"></span><span class="profile-body"></span></span>
+      <strong>${escapeHtml(profile.name)}</strong>
+    </button>
+  `).join("");
+  profileGrid.querySelectorAll(".profile-card").forEach(card => {
+    card.addEventListener("click", () => selectProfile(card.dataset.profileId));
+  });
+}
+
+function updateActiveProfileUI() {
+  activeProfileLabel.textContent = activeProfile ? `Profilo: ${activeProfile.name}` : "";
+}
+
+function selectProfile(profileId) {
+  activeProfile = DEFAULT_PROFILES.find(profile => profile.id === profileId) || null;
+  if (!activeProfile) return;
+  if (rememberProfile.checked) {
+    localStorage.setItem(PROFILE_STORAGE, activeProfile.id);
+    localStorage.setItem(REMEMBER_PROFILE_STORAGE, "true");
+  } else {
+    localStorage.removeItem(PROFILE_STORAGE);
+    localStorage.removeItem(REMEMBER_PROFILE_STORAGE);
+  }
+  updateActiveProfileUI();
+  profileGate.classList.add("hidden");
+}
+
+function initializeProfileGate() {
+  renderProfiles();
+  const remembered = localStorage.getItem(REMEMBER_PROFILE_STORAGE) === "true";
+  const rememberedId = localStorage.getItem(PROFILE_STORAGE);
+  rememberProfile.checked = remembered;
+  if (remembered && rememberedId) {
+    activeProfile = DEFAULT_PROFILES.find(profile => profile.id === rememberedId) || null;
+    if (activeProfile) profileGate.classList.add("hidden");
+  }
+  updateActiveProfileUI();
+}
+
+function logoutProfile() {
+  activeProfile = null;
+  localStorage.removeItem(PROFILE_STORAGE);
+  localStorage.removeItem(REMEMBER_PROFILE_STORAGE);
+  rememberProfile.checked = false;
+  updateActiveProfileUI();
+  profileGate.classList.remove("hidden");
+}
 
 function loadLocal(key, fallback) {
   const saved = localStorage.getItem(key);
@@ -1309,13 +1373,27 @@ document.getElementById("todayBtn").addEventListener("click", () => {
 });
 
 function clampZoom(value) {
-  return Math.min(1.6, Math.max(.55, value));
+  return Math.min(2, Math.max(.5, value));
+}
+
+function nearestZoomOption(value) {
+  const options = [.5, .75, 1, 1.25, 1.5, 1.75, 2];
+  return options.reduce((best, option) => Math.abs(option - value) < Math.abs(best - value) ? option : best, 1);
+}
+
+function fitPlanningToWindow() {
+  planningCanvas.style.zoom = 1;
+  const naturalWidth = planningCanvas.scrollWidth || 1;
+  const availableWidth = Math.max(1, planningScroller.clientWidth - 4);
+  planningZoom = clampZoom(availableWidth / naturalWidth);
+  applyPlanningZoom();
+  zoomSelect.value = "fit";
 }
 
 function applyPlanningZoom(save = true) {
   planningZoom = clampZoom(planningZoom);
   planningCanvas.style.zoom = planningZoom;
-  zoomLabel.textContent = `${Math.round(planningZoom * 100)}%`;
+  if (zoomSelect && zoomSelect.value !== "fit") zoomSelect.value = String(nearestZoomOption(planningZoom));
   if (save) localStorage.setItem(ZOOM_STORAGE, String(planningZoom));
 }
 
@@ -1367,8 +1445,14 @@ document.addEventListener("keydown", event => {
   if ((event.metaKey || event.ctrlKey) && ["+", "=", "-"].includes(event.key)) {
     if (isTyping) return;
     event.preventDefault();
-    planningZoom = clampZoom(planningZoom + (event.key === "-" ? -.08 : .08));
+    planningZoom = nearestZoomOption(planningZoom + (event.key === "-" ? -.2 : .2));
+    zoomSelect.value = String(planningZoom);
     applyPlanningZoom();
+  }
+
+  if ((event.metaKey || event.ctrlKey) && event.key === "0" && !isTyping) {
+    event.preventDefault();
+    fitPlanningToWindow();
   }
 
   if (event.key === "Escape" && !shiftDialog.open && !editorDialog.open) {
@@ -1403,8 +1487,8 @@ function renderEditors() {
           ${editor.phone ? `<a class="employee-contact" href="tel:${escapeHtml(editor.phone.replace(/[^+\d]/g, ""))}" data-stop-open>☎ ${escapeHtml(editor.phone)}</a>` : ""}
           ${editor.email ? `<a class="employee-contact" href="mailto:${escapeHtml(editor.email)}" data-stop-open>✉ ${escapeHtml(editor.email)}</a>` : ""}
         </div>
-        ${editor.notes ? `<div class="employee-notes">${escapeHtml(editor.notes)}</div>` : ""}
       </div>
+      <div class="employee-note-column"><span>Nota</span><div class="employee-notes">${editor.notes ? escapeHtml(editor.notes) : "—"}</div></div>
       <button class="editor-edit-btn" type="button" data-editor-id="${editor.id}" title="Modifica" aria-label="Modifica ${escapeHtml(fullEmployeeName(editor))}">✎</button>
     </article>
   `).join("") : `<div class="employees-empty">Nessun dipendente trovato.</div>`;
@@ -1568,6 +1652,16 @@ document.addEventListener("click", event => {
   }
 });
 
+zoomSelect?.addEventListener("change", () => {
+  if (zoomSelect.value === "fit") fitPlanningToWindow();
+  else {
+    planningZoom = Number(zoomSelect.value);
+    applyPlanningZoom();
+  }
+});
+
+document.getElementById("logoutBtn")?.addEventListener("click", logoutProfile);
+
 document.querySelectorAll(".nav-item[data-view]").forEach(button => {
   button.addEventListener("click", () => {
     document.querySelectorAll(".nav-item[data-view]").forEach(item => item.classList.remove("active"));
@@ -1705,7 +1799,9 @@ function enableRealtime() {
     .subscribe();
 }
 
+initializeProfileGate();
 populateShiftSelects();
+zoomSelect.value = String(nearestZoomOption(planningZoom));
 applyPlanningZoom(false);
 renderPlanning();
 renderEditors();

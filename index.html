@@ -3,11 +3,28 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <title>DVS Planning — v_10_CORREZIONI ULTIME</title>
-  <meta name="theme-color" content="#e8eaed">
-  <link rel="stylesheet" href="./src/styles.css?v=10.0-correzioni-ultime-5">
+  <title>DVS Planning — Build 11</title>
+  <meta name="theme-color" content="#09090b">
+  <link rel="icon" type="image/png" sizes="64x64" href="./assets/icons/dvs-planning-64.png">
+  <link rel="apple-touch-icon" href="./assets/icons/dvs-planning-180.png">
+  <link rel="manifest" href="./manifest.webmanifest">
+  <link rel="stylesheet" href="./src/styles.css?v=11.0">
 </head>
 <body>
+  <section id="profileGate" class="profile-gate" aria-label="Selezione profilo">
+    <div class="profile-gate-content">
+      <div class="profile-brand">
+        <img src="./assets/logos/digital-video-full.png" alt="Digital Video">
+        <div class="planning-word">PLANNING</div>
+        <div class="planning-glow"></div>
+      </div>
+      <h1>Scegli il tuo profilo</h1>
+      <div id="profileGrid" class="profile-grid"></div>
+      <label class="remember-profile"><input id="rememberProfile" type="checkbox"><span class="checkmark">✓</span><span>Rimani connesso</span></label>
+      <div class="profile-footer">© Digital Video Service · Tutti i diritti riservati</div>
+    </div>
+  </section>
+
   <div class="app-shell">
     <aside class="sidebar">
       <div class="brand">
@@ -43,7 +60,11 @@
         <button class="nav-item" type="button" disabled>
           <span class="nav-icon">⚙</span><span>Impostazioni</span>
         </button>
-        <span class="build-pill">v_10 CORREZIONI ULTIME</span>
+        <button id="logoutBtn" class="nav-item logout-item" type="button">
+          <span class="nav-icon">↪</span><span>Esci</span>
+        </button>
+        <span id="activeProfileLabel" class="active-profile-label"></span>
+        <span class="build-pill">Build 11</span>
       </div>
     </aside>
 
@@ -64,9 +85,14 @@
               <button id="nextMonth" class="icon-btn" type="button" aria-label="Mese successivo">›</button>
             </div>
 
-            <div class="zoom-indicator" title="Lo zoom agisce soltanto sul planning">
-              <span id="zoomLabel">100%</span>
-            </div>
+            <label class="zoom-control" title="Lo zoom agisce soltanto sul planning">
+              <span>Zoom</span>
+              <select id="zoomSelect" aria-label="Zoom planning">
+                <option value="fit">Adatta finestra</option>
+                <option value="0.5">50%</option><option value="0.75">75%</option><option value="1" selected>100%</option>
+                <option value="1.25">125%</option><option value="1.5">150%</option><option value="1.75">175%</option><option value="2">200%</option>
+              </select>
+            </label>
 
             <button id="newShiftBtn" class="primary-btn" type="button">+ Nuovo turno</button>
           </div>
@@ -320,7 +346,7 @@
   <div id="toast" class="toast" aria-live="polite"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="./src/config.js?v=10.0"></script>
-  <script src="./src/app.js?v=10.0-correzioni-ultime-5"></script>
+  <script src="./src/config.js?v=11.0"></script>
+  <script src="./src/app.js?v=11.0"></script>
 </body>
 </html>

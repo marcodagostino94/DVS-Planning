@@ -1,0 +1,13 @@
+DVS PLANNING — BUILD 11
+
+Implementato:
+- Pagina iniziale profili in stile Apple/Netflix.
+- Profili locali: Alessio Iuso, Nicola Iuso, Sara Dal Pont, Marco D'Agostino.
+- Opzione Rimani connesso tramite localStorage.
+- Pulsante Esci nel menu laterale.
+- Icona Planning definitiva inserita come favicon, Apple Touch Icon e PWA icon.
+- Menu zoom: Adatta finestra, 50%, 75%, 100%, 125%, 150%, 175%, 200%.
+- Supporto pinch trackpad, Cmd+, Cmd-, Cmd0.
+- Nota dipendente spostata nella colonna destra.
+
+Nota: la gestione aggiunta/eliminazione profili sarà integrata nella futura sezione Impostazioni; la struttura attuale è locale e predisposta alla successiva migrazione online.
