@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <title>DVS Planning — Build 11.1</title>
+  <title>DVS Planning — Build 12</title>
   <meta name="theme-color" content="#09090b">
   <link rel="icon" type="image/png" sizes="64x64" href="./assets/icons/dvs-planning-64.png">
   <link rel="apple-touch-icon" href="./assets/icons/dvs-planning-180.png">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./src/styles.css?v=11.1">
+  <link rel="stylesheet" href="./src/styles.css?v=12">
 </head>
 <body>
   <section id="profileGate" class="profile-gate" aria-label="Selezione profilo">
@@ -32,44 +32,100 @@
       </div>
 
       <nav class="sidebar-nav" aria-label="Navigazione principale">
-        <button class="nav-item active" data-view="planning" type="button">
+        <button class="nav-item active" data-view="dashboard" type="button">
+          <span class="nav-icon">⌘</span><span>Dashboard</span>
+        </button>
+        <button class="nav-item" data-view="planning" type="button">
           <span class="nav-icon">▦</span><span>Planning</span>
         </button>
         <button class="nav-item" data-view="editors" type="button">
-          <span class="nav-icon">◉</span><span>Dipendenti</span>
+          <span class="nav-icon">♙</span><span>Dipendenti</span>
         </button>
-        <button class="nav-item" type="button" disabled>
-          <span class="nav-icon">≡</span><span>Riepiloghi</span>
+        <button class="nav-item" data-view="summaries" type="button">
+          <span class="nav-icon">▥</span><span>Riepiloghi</span>
         </button>
       </nav>
 
-      <section class="online-panel" aria-label="Utenti collegati">
-        <div class="online-title">
-          <span class="presence-dot"></span>
-          <span>Utenti collegati</span>
-        </div>
-        <div class="online-users">
-          <span class="online-avatar" title="Marco D'Agostino">MD</span>
-          <span class="online-avatar" title="Segreteria">SG</span>
-          <span class="online-avatar" title="Responsabile HR">HR</span>
-        </div>
-        <div class="online-count">3 online</div>
-      </section>
+      <div class="sidebar-status-stack">
+        <section class="status-card backup-card" aria-label="Stato backup">
+          <div class="status-card-icon">↥</div>
+          <div class="status-card-copy">
+            <strong>Backup</strong>
+            <span>Configurazione futura</span>
+          </div>
+          <span class="status-card-chevron">›</span>
+        </section>
+
+        <section class="status-card users-card" aria-label="Utenti collegati">
+          <div class="status-card-icon">●</div>
+          <div class="status-card-copy">
+            <strong>Utenti collegati</strong>
+            <span id="sidebarOnlineCount">3 online</span>
+          </div>
+          <div class="mini-avatars" aria-hidden="true"><i>MD</i><i>SG</i><i>HR</i></div>
+        </section>
+      </div>
 
       <div class="sidebar-footer">
-        <button class="nav-item" type="button" disabled>
+        <button class="nav-item" data-view="settings" type="button">
           <span class="nav-icon">⚙</span><span>Impostazioni</span>
         </button>
         <button id="logoutBtn" class="nav-item logout-item" type="button">
           <span class="nav-icon">↪</span><span>Esci</span>
         </button>
         <span id="activeProfileLabel" class="active-profile-label"></span>
-        <span class="build-pill">Build 11.1</span>
+        <span class="build-pill">Build 12</span>
       </div>
     </aside>
 
     <main class="main-area">
-      <section id="planningView" class="app-view active">
+      <section id="dashboardView" class="app-view active dashboard-view">
+        <header class="dashboard-header">
+          <div>
+            <h1 id="dashboardGreeting">Buongiorno</h1>
+            <p id="dashboardDate"></p>
+          </div>
+        </header>
+
+        <section class="dashboard-content">
+          <div class="dashboard-kpis">
+            <button id="todayShiftsCard" class="dashboard-kpi is-clickable" type="button">
+              <span class="kpi-icon">▦</span><span class="kpi-copy"><small>Turni oggi</small><strong id="todayShiftCount">0</strong></span><span class="kpi-action">Apri Planning&nbsp; →</span>
+            </button>
+            <article class="dashboard-kpi">
+              <span class="kpi-icon">♙</span><span class="kpi-copy"><small>Persone presenti</small><strong id="todayPeopleCount">0</strong></span>
+            </article>
+            <article class="dashboard-kpi">
+              <span class="kpi-icon">▣</span><span class="kpi-copy"><small>Sale occupate</small><strong id="todayRoomCount">0 / 15</strong></span>
+            </article>
+          </div>
+
+          <div class="dashboard-grid">
+            <article class="dashboard-panel today-planning-panel">
+              <div class="panel-heading"><div><small>OGGI</small><h2>Planning di oggi</h2></div><button id="openTodayPlanning" type="button">Apri</button></div>
+              <div id="todayPlanningList" class="today-planning-list"></div>
+            </article>
+
+            <article class="dashboard-panel rooms-panel">
+              <div class="panel-heading"><div><small>DISPONIBILITÀ</small><h2>Stato sale</h2></div></div>
+              <div id="todayRoomsList" class="compact-dashboard-list"></div>
+            </article>
+
+            <article class="dashboard-panel employees-panel">
+              <div class="panel-heading"><div><small>PRESENZE</small><h2>Dipendenti presenti</h2></div></div>
+              <div id="todayEmployeesList" class="compact-dashboard-list"></div>
+            </article>
+
+            <article class="dashboard-panel reminders-panel">
+              <div class="panel-heading"><div><small>CONDIVISI</small><h2>Promemoria</h2></div><span id="remindersCount" class="panel-badge">0</span></div>
+              <form id="reminderForm" class="reminder-form"><input id="reminderInput" maxlength="180" placeholder="Scrivi un promemoria condiviso…" autocomplete="off"><button type="submit">+</button></form>
+              <div id="remindersList" class="reminders-list"></div>
+            </article>
+          </div>
+        </section>
+      </section>
+
+      <section id="planningView" class="app-view">
         <header class="topbar">
           <div class="page-title">
             <h1>Planning sale</h1>
@@ -134,6 +190,13 @@
             <div id="editorsList" class="editors-list"></div>
           </div>
         </section>
+      </section>
+
+      <section id="summariesView" class="app-view placeholder-view">
+        <div class="placeholder-card"><span>▥</span><h1>Riepiloghi</h1><p>La sezione sarà sviluppata in una build successiva.</p></div>
+      </section>
+      <section id="settingsView" class="app-view placeholder-view">
+        <div class="placeholder-card"><span>⚙</span><h1>Impostazioni</h1><p>La gestione delle impostazioni sarà sviluppata in una build successiva.</p></div>
       </section>
     </main>
   </div>

@@ -42,6 +42,7 @@ const EDITOR_STORAGE = "dvs-planning-build-9-staff";
 const ZOOM_STORAGE = "dvs-planning-build-11-zoom";
 const PROFILE_STORAGE = "dvs-planning-build-11-profile";
 const REMEMBER_PROFILE_STORAGE = "dvs-planning-build-11-remember";
+const REMINDER_STORAGE = "dvs-planning-build-12-reminders";
 const DEFAULT_PROFILES = [
   { id: "alessio-iuso", name: "Alessio Iuso", initials: "AI", tone: "red" },
   { id: "nicola-iuso", name: "Nicola Iuso", initials: "NI", tone: "blue" },
@@ -84,6 +85,7 @@ let emptyCellClickTimer = null;
 let highlightedDropCells = new Set();
 let planningZoom = Number(localStorage.getItem(ZOOM_STORAGE)) || 1;
 let activeProfile = null;
+let reminders = loadLocal(REMINDER_STORAGE, []);
 
 const seedEditors = [
   { id:"ed-1", firstName:"Marco", lastName:"D'Agostino", active:true },
@@ -1662,14 +1664,127 @@ zoomSelect?.addEventListener("change", () => {
 
 document.getElementById("logoutBtn")?.addEventListener("click", logoutProfile);
 
-document.querySelectorAll(".nav-item[data-view]").forEach(button => {
-  button.addEventListener("click", () => {
-    document.querySelectorAll(".nav-item[data-view]").forEach(item => item.classList.remove("active"));
-    button.classList.add("active");
-    document.querySelectorAll(".app-view").forEach(view => view.classList.remove("active"));
-    document.getElementById(`${button.dataset.view}View`).classList.add("active");
-    if (button.dataset.view === "editors") renderEditors();
+
+function localTodayIso() {
+  const now = new Date();
+  return isoDate(now.getFullYear(), now.getMonth(), now.getDate());
+}
+
+function italianLongDate(date = new Date()) {
+  return new Intl.DateTimeFormat("it-IT", { weekday:"long", day:"numeric", month:"long", year:"numeric" }).format(date);
+}
+
+function openView(viewName) {
+  document.querySelectorAll(".nav-item[data-view]").forEach(item => item.classList.toggle("active", item.dataset.view === viewName));
+  document.querySelectorAll(".app-view").forEach(view => view.classList.remove("active"));
+  document.getElementById(`${viewName}View`)?.classList.add("active");
+  if (viewName === "editors") renderEditors();
+  if (viewName === "dashboard") renderDashboard();
+}
+
+function openPlanningToday() {
+  const now = new Date();
+  currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  openView("planning");
+  renderPlanning();
+  requestAnimationFrame(() => {
+    const todayCell = document.querySelector(`[data-date="${localTodayIso()}"]`);
+    todayCell?.scrollIntoView({ behavior:"smooth", inline:"center", block:"nearest" });
   });
+}
+
+function employeeNameById(id) {
+  const editor = editors.find(item => item.id === id);
+  return editor ? fullEmployeeName(editor) : "CLIENTE";
+}
+
+function renderDashboard() {
+  const today = localTodayIso();
+  const todays = shifts.filter(shift => shift.date === today).sort((a,b) => a.start.localeCompare(b.start));
+  const people = [...new Set(todays.filter(s => s.editorId).map(s => s.editorId))];
+  const rooms = [...new Set(todays.filter(s => /^sala-/.test(s.room)).map(s => s.room))];
+  const greeting = document.getElementById("dashboardGreeting");
+  if (greeting) greeting.textContent = `Buongiorno${activeProfile?.name ? `, ${activeProfile.name.split(" ")[0]}` : ""}`;
+  const dateLabel = document.getElementById("dashboardDate");
+  if (dateLabel) dateLabel.textContent = italianLongDate();
+  document.getElementById("todayShiftCount").textContent = String(todays.length);
+  document.getElementById("todayPeopleCount").textContent = String(people.length);
+  document.getElementById("todayRoomCount").textContent = `${rooms.length} / 15`;
+
+  const planningList = document.getElementById("todayPlanningList");
+  planningList.innerHTML = todays.length ? todays.map(shift => {
+    const room = ROOMS.find(item => item.id === shift.room)?.label || shift.room;
+    return `<div class="today-shift-row"><time>${escapeHtml(shift.start)}–${escapeHtml(shift.end)}</time><span class="room">${escapeHtml(room)}</span><strong>${escapeHtml(shift.film || shift.production || "Turno")}</strong><span>${escapeHtml(employeeNameById(shift.editorId))}</span></div>`;
+  }).join("") : '<div class="empty-dashboard">Nessun turno programmato per oggi.</div>';
+
+  const roomsList = document.getElementById("todayRoomsList");
+  roomsList.innerHTML = ROOMS.filter(room => /^sala-/.test(room.id)).slice(0,8).map(room => {
+    const shift = todays.find(item => item.room === room.id);
+    return `<div class="compact-row"><span><i class="room-dot ${shift ? "busy" : ""}"></i>${room.label}</span><span>${shift ? escapeHtml(shift.film || "Occupata") : "Libera"}</span></div>`;
+  }).join("");
+
+  const employeesList = document.getElementById("todayEmployeesList");
+  employeesList.innerHTML = people.length ? people.slice(0,8).map(id => {
+    const first = todays.find(item => item.editorId === id);
+    const room = ROOMS.find(item => item.id === first?.room)?.label || "—";
+    return `<div class="compact-row"><span>${escapeHtml(employeeNameById(id))}</span><span>${escapeHtml(room)}</span></div>`;
+  }).join("") : '<div class="empty-dashboard">Nessun dipendente presente oggi.</div>';
+  renderReminders();
+}
+
+function renderReminders() {
+  const list = document.getElementById("remindersList");
+  const count = document.getElementById("remindersCount");
+  if (!list || !count) return;
+  count.textContent = String(reminders.length);
+  list.innerHTML = reminders.length ? reminders.map(item => `<div class="reminder-row"><span>${escapeHtml(item.text)}</span><button class="reminder-delete" type="button" data-reminder-id="${escapeHtml(item.id)}" aria-label="Elimina promemoria">×</button></div>`).join("") : '<div class="empty-dashboard">Nessun promemoria condiviso.</div>';
+}
+
+async function syncReminderToSupabase(reminder) {
+  if (!db) return;
+  const { error } = await db.from("reminders").upsert({ id:reminder.id, text:reminder.text, created_by:activeProfile?.name || null, created_at:reminder.createdAt });
+  if (error) showToast(`Promemoria: ${error.message}`);
+}
+async function deleteReminderFromSupabase(id) {
+  if (!db) return;
+  const { error } = await db.from("reminders").delete().eq("id", id);
+  if (error) showToast(`Promemoria: ${error.message}`);
+}
+async function loadRemindersFromSupabase() {
+  if (!db) return;
+  const { data, error } = await db.from("reminders").select("*").order("created_at", { ascending:false });
+  if (error) { console.warn("Tabella reminders non ancora configurata:", error.message); return; }
+  reminders = (data || []).map(row => ({ id:String(row.id), text:row.text, createdAt:row.created_at }));
+  localStorage.setItem(REMINDER_STORAGE, JSON.stringify(reminders));
+  renderReminders();
+}
+
+document.getElementById("todayShiftsCard")?.addEventListener("click", openPlanningToday);
+document.getElementById("openTodayPlanning")?.addEventListener("click", openPlanningToday);
+document.getElementById("reminderForm")?.addEventListener("submit", async event => {
+  event.preventDefault();
+  const input = document.getElementById("reminderInput");
+  const text = input.value.trim();
+  if (!text) return;
+  const reminder = { id: crypto.randomUUID(), text, createdAt:new Date().toISOString() };
+  reminders.unshift(reminder);
+  localStorage.setItem(REMINDER_STORAGE, JSON.stringify(reminders));
+  input.value = "";
+  renderReminders();
+  await syncReminderToSupabase(reminder);
+});
+document.getElementById("remindersList")?.addEventListener("click", async event => {
+  const button = event.target.closest(".reminder-delete");
+  if (!button) return;
+  const id = button.dataset.reminderId;
+  reminders = reminders.filter(item => item.id !== id);
+  localStorage.setItem(REMINDER_STORAGE, JSON.stringify(reminders));
+  renderReminders();
+  await deleteReminderFromSupabase(id);
+});
+
+document.querySelectorAll(".nav-item[data-view]").forEach(button => {
+  button.addEventListener("click", () => openView(button.dataset.view));
 });
 
 async function syncShiftSuggestions(shift) {
@@ -1788,6 +1903,7 @@ async function loadSupabaseData() {
   saveLocal();
   renderEditors();
   renderPlanning();
+  renderDashboard();
 }
 
 function enableRealtime() {
@@ -1796,6 +1912,7 @@ function enableRealtime() {
   db.channel("dvs-planning-realtime")
     .on("postgres_changes", { event: "*", schema: "public", table: "staff" }, loadSupabaseData)
     .on("postgres_changes", { event: "*", schema: "public", table: "shifts" }, loadSupabaseData)
+    .on("postgres_changes", { event: "*", schema: "public", table: "reminders" }, loadRemindersFromSupabase)
     .subscribe();
 }
 
@@ -1805,5 +1922,7 @@ zoomSelect.value = String(nearestZoomOption(planningZoom));
 applyPlanningZoom(false);
 renderPlanning();
 renderEditors();
+renderDashboard();
+loadRemindersFromSupabase();
 loadSupabaseData();
 enableRealtime();
