@@ -1720,7 +1720,7 @@ function renderDashboard() {
   const roomsList = document.getElementById("todayRoomsList");
   roomsList.innerHTML = ROOMS.filter(room => /^sala-/.test(room.id)).map(room => {
     const shift = todays.find(item => item.room === room.id);
-    return `<div class="compact-row"><span><i class="room-dot ${shift ? "busy" : ""}"></i>${room.label}</span><span>${shift ? escapeHtml(shift.film || "Occupata") : "Libera"}</span></div>`;
+    return `<div class="compact-row"><span><i class="room-dot ${shift ? "busy" : ""}"></i>${room.label}</span></div>`;
   }).join("");
 
   const employeesList = document.getElementById("todayEmployeesList");

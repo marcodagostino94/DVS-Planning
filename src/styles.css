@@ -1271,3 +1271,12 @@ button.dashboard-kpi { cursor:pointer; }
 .today-planning-panel,.rooms-panel,.employees-panel{display:flex;flex-direction:column;min-height:0}
 .today-planning-panel .today-planning-list,.rooms-panel .compact-dashboard-list,.employees-panel .compact-dashboard-list{flex:1;min-height:0}
 .dashboard-grid{grid-template-rows:minmax(265px,1fr) minmax(245px,1fr);min-height:610px}
+
+.today-planning-list,.compact-dashboard-list,.reminders-list{overflow-y:auto;}
+.today-planning-list{max-height:520px;}
+.compact-dashboard-list{max-height:220px;}
+.reminders-list{max-height:170px;}
+.dashboard-view{overflow:hidden!important;}
+#todayRoomsList{display:grid;grid-template-columns:1fr 1fr;column-gap:12px;row-gap:8px;}
+#todayRoomsList .compact-row{justify-content:flex-start;}
+#todayRoomsList .compact-row span:last-child{display:none;}
