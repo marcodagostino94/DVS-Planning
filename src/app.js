@@ -127,6 +127,7 @@ let shifts = loadLocal(SHIFT_STORAGE, seedShifts).map(shift => ({
   ...shift,
   isClient: Boolean(shift.isClient),
   isDoubleStation: Boolean(shift.isDoubleStation),
+  isVariable: Boolean(shift.isVariable),
   confirmed: Boolean(shift.confirmed)
 }));
 
@@ -831,7 +832,7 @@ function renderCard(shift) {
         <div class="shift-production">${escapeHtml(shift.production)}</div>
         <div class="shift-time">${escapeHtml(shift.start)} – ${escapeHtml(shift.end)}</div>
         <div class="shift-film">${escapeHtml(shift.film)}</div>
-        <div class="shift-type">${escapeHtml(shift.workType)}${shift.isDoubleStation ? '<span class="double-station-label">DOPPIA POSTAZIONE</span>' : ""}</div>
+        <div class="shift-type">${escapeHtml(shift.workType)}${shift.isVariable ? '<span class="variable-label"> - VARIABILE</span>' : ""}${shift.isDoubleStation ? '<span class="double-station-label">DOPPIA POSTAZIONE</span>' : ""}</div>
       </div>
       <div class="shift-editor">
         <span class="editor-name${shift.confirmed ? " confirmed-name" : ""}">${escapeHtml(assignment)}</span>
@@ -1240,6 +1241,7 @@ function resetShiftForm(shift = {}) {
   document.getElementById("editorSearchInput").value = shift.editorId ? fullEmployeeName(getEditor(shift.editorId)) : "";
   document.getElementById("isClient").checked = Boolean(shift.isClient);
   document.getElementById("isDoubleStation").checked = Boolean(shift.isDoubleStation);
+  document.getElementById("isVariable").checked = Boolean(shift.isVariable);
   document.getElementById("color").value = shift.color || "blue";
   setStatusUI(shift.status || "definitivo");
   setWeekdaySelection(["all"]);
@@ -1305,6 +1307,7 @@ shiftForm.addEventListener("submit", event => {
     editorId: document.getElementById("editor").value || null,
     isClient: document.getElementById("isClient").checked,
     isDoubleStation: document.getElementById("isDoubleStation").checked,
+    isVariable: document.getElementById("isVariable").checked,
     status: document.getElementById("status").value,
     color: document.getElementById("color").value,
     confirmed: false
@@ -1862,7 +1865,7 @@ document.querySelectorAll("[data-settings-section]").forEach(button => button.ad
   const sections = {
     backup: { title:"Backup", subtitle:"Stato e autorizzazione", html:backupSettingsHtml() },
     print: { title:"Stampa", subtitle:"Preferenze di stampa", html:`<h2>Stampa</h2><p>La gestione dei layout e delle preferenze di stampa verrà sviluppata in una prossima build.</p>` },
-    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service.</p><div class="settings-info-meta"><div><span>Versione</span><strong>Build 13.3.1</strong></div><div><span>Realizzazione</span><strong>Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div>` }
+    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service.</p><div class="settings-info-meta"><div><span>Versione</span><strong>Build 14.0</strong></div><div><span>Realizzazione</span><strong>Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div>` }
   };
   const selected = sections[section];
   if (!selected) return;
@@ -2067,6 +2070,7 @@ async function syncShiftToSupabase(shift) {
     staff_id: shift.editorId,
     is_client: Boolean(shift.isClient),
     is_double_station: Boolean(shift.isDoubleStation),
+    is_variable: Boolean(shift.isVariable),
     status: shift.status,
     confirmed: Boolean(shift.confirmed),
     confirmed_at: shift.confirmed ? (shift.confirmedAt || new Date().toISOString()) : null,
@@ -2148,6 +2152,7 @@ async function loadSupabaseData() {
     editorId: row.staff_id ? String(row.staff_id) : null,
     isClient: Boolean(row.is_client),
     isDoubleStation: Boolean(row.is_double_station),
+    isVariable: Boolean(row.is_variable),
     status: row.status,
     color: row.color_key,
     confirmed: Boolean(row.confirmed),
@@ -2175,7 +2180,7 @@ function enableRealtime() {
 
 
 
-// Build 13.3.1 — stato Backup Agent condiviso tramite Supabase.
+// Build 14.0 — stato Backup Agent condiviso tramite Supabase.
 let backupAgentStatus = null;
 let backupStatusTimer = null;
 

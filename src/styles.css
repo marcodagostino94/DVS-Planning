@@ -1018,6 +1018,7 @@ input,textarea,select,.app-dialog{-webkit-user-select:text;user-select:text}
 .shift-card.confirmed:hover { animation:none; transform:none; }
 .shift-card.confirmed.provvisorio { filter:saturate(.35) contrast(1.05); }
 .confirmed-lock { margin-left:auto; color:rgba(var(--accent-rgb),.95); font-size:8px; text-shadow:0 0 5px rgba(var(--accent-rgb),.5); }
+.variable-label { color:#d22334; font-weight:900; white-space:nowrap; }
 .double-station-label { margin-left:4px; color:#d22334; font-size:6px; font-weight:900; letter-spacing:.035em; white-space:nowrap; }
 .shift-card { position:relative; }
 .context-menu button[hidden] { display:none; }
@@ -1675,3 +1676,6 @@ button.dashboard-kpi { cursor:pointer; }
 .danger-outline-btn:hover:not(:disabled){background:rgba(198,38,50,.11);}.danger-outline-btn:disabled{opacity:.48;cursor:default;}
 .backup-utility-note{margin-top:16px!important;padding:13px 15px;border-radius:12px;background:rgba(44,52,61,.055);font-size:12px!important;}
 @media(max-width:760px){.backup-page-header{display:grid}.backup-details-grid{grid-template-columns:1fr}}
+
+
+/* Build 14.0 — opzione turno VARIABILE */

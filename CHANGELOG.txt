@@ -1,3 +1,12 @@
+DVS Planning — Build 14.0
+
+- Aggiunta l’opzione VARIABILE nelle finestre Nuovo turno e Modifica turno.
+- Il flag funziona anche con inserimento tramite doppio tap e modifica tramite doppio tap.
+- Sulla card la lavorazione appare come “EDIT - VARIABILE”, con “VARIABILE” in rosso.
+- Persistenza locale e sincronizzazione Supabase tramite il nuovo campo `is_variable`.
+- Aggiunto lo script `database/011_shift_variabile_build_14.sql`.
+- Aggiornati numero build e cache-busting a 14.0.
+
 DVS Planning — Build 13.3
 
 - Attivata la pagina Backup già predisposta.
