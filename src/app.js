@@ -64,6 +64,8 @@ const db = hasSupabaseConfig
   : null;
 
 let currentMonth = new Date(2026, 6, 1);
+let summaryMonth = new Date(2026, 6, 1);
+let selectedSummaryEditorId = null;
 let editingShiftId = null;
 let editingEditorId = null;
 let selectedShiftIds = new Set();
@@ -1687,6 +1689,11 @@ cancelEditorBtn?.addEventListener("click", closeEditorDialog);
 deleteEditorBtn?.addEventListener("click", deleteCurrentEditor);
 editorSearch?.addEventListener("input", renderEditors);
 document.getElementById("editorRoleFilter")?.addEventListener("change", renderEditors);
+document.getElementById("summarySearch")?.addEventListener("input", renderSummaries);
+document.getElementById("summaryPrevMonth")?.addEventListener("click", () => { summaryMonth = new Date(summaryMonth.getFullYear(), summaryMonth.getMonth() - 1, 1); selectedSummaryEditorId = null; renderSummaries(); });
+document.getElementById("summaryNextMonth")?.addEventListener("click", () => { summaryMonth = new Date(summaryMonth.getFullYear(), summaryMonth.getMonth() + 1, 1); selectedSummaryEditorId = null; renderSummaries(); });
+document.getElementById("summaryMonthLabel")?.addEventListener("click", () => { summaryMonth = new Date(); summaryMonth.setDate(1); selectedSummaryEditorId = null; renderSummaries(); });
+document.getElementById("summaryPdfBtn")?.addEventListener("click", exportSummaryPdf);
 
 // Fallback delegato: mantiene funzionanti apertura e modifica anche dopo render dinamici o cache parziali.
 document.addEventListener("click", event => {
@@ -1848,11 +1855,143 @@ function startPresenceTracking(){
 ["pointerdown","keydown","mousemove","touchstart","scroll"].forEach(type => window.addEventListener(type, noteUserActivity, { passive:true }));
 window.addEventListener("pagehide", () => { setCurrentProfileOffline(); });
 
+
+function summaryMonthBounds() {
+  const start = isoDate(summaryMonth.getFullYear(), summaryMonth.getMonth(), 1);
+  const end = isoDate(summaryMonth.getFullYear(), summaryMonth.getMonth(), daysInMonth(summaryMonth));
+  return { start, end };
+}
+
+function shiftDurationHours(shift) {
+  const parse = value => {
+    if (value === "24:00") return 24 * 60;
+    const [hours, minutes] = String(value || "0:0").split(":").map(Number);
+    return (hours || 0) * 60 + (minutes || 0);
+  };
+  let minutes = parse(shift.end) - parse(shift.start);
+  if (minutes < 0) minutes += 24 * 60;
+  return minutes / 60;
+}
+
+function formatHours(value) {
+  const rounded = Math.round(value * 100) / 100;
+  return Number.isInteger(rounded) ? String(rounded) : String(rounded).replace(".", ",");
+}
+
+function summaryRows() {
+  const { start, end } = summaryMonthBounds();
+  const grouped = new Map();
+  shifts.filter(shift => shift.editorId && shift.date >= start && shift.date <= end).forEach(shift => {
+    if (!grouped.has(shift.editorId)) grouped.set(shift.editorId, []);
+    grouped.get(shift.editorId).push(shift);
+  });
+  return [...grouped.entries()].map(([editorId, employeeShifts]) => ({
+    editorId,
+    editor: editors.find(editor => editor.id === editorId),
+    shifts: employeeShifts.sort((a, b) => a.date.localeCompare(b.date) || a.start.localeCompare(b.start)),
+    totalShifts: employeeShifts.length,
+    totalHours: employeeShifts.reduce((sum, shift) => sum + shiftDurationHours(shift), 0)
+  })).filter(row => row.editor).sort((a, b) => fullEmployeeName(a.editor).localeCompare(fullEmployeeName(b.editor), "it", { sensitivity:"base" }));
+}
+
+function formatSummaryDate(dateString) {
+  return new Intl.DateTimeFormat("it-IT", { weekday:"short", day:"2-digit", month:"long" }).format(new Date(`${dateString}T12:00:00`));
+}
+
+function renderSummaryDetail(row) {
+  const empty = document.getElementById("summaryDetailEmpty");
+  const content = document.getElementById("summaryDetailContent");
+  if (!row) {
+    selectedSummaryEditorId = null;
+    empty.hidden = false;
+    content.hidden = true;
+    content.innerHTML = "";
+    return;
+  }
+  selectedSummaryEditorId = row.editorId;
+  const pending = row.shifts.filter(shift => !shift.confirmed);
+  empty.hidden = true;
+  content.hidden = false;
+  content.innerHTML = `
+    <div class="summary-detail-header">
+      <small>${escapeHtml(monthName(summaryMonth))}</small>
+      <h2>${escapeHtml(fullEmployeeName(row.editor))}</h2>
+      <div class="summary-totals">
+        <div class="summary-total"><span>Totale turni</span><strong>${row.totalShifts}</strong></div>
+        <div class="summary-total"><span>Totale ore</span><strong>${escapeHtml(formatHours(row.totalHours))}</strong></div>
+      </div>
+      <div class="summary-detail-actions">
+        <button id="confirmSummaryShifts" class="primary-btn summary-confirm-btn" type="button" ${pending.length ? "" : "disabled"}>${pending.length ? `Conferma ${pending.length} ${pending.length === 1 ? "turno" : "turni"}` : "Tutti i turni sono confermati"}</button>
+      </div>
+    </div>
+    <div class="summary-shift-list">${row.shifts.map(shift => {
+      const room = ROOMS.find(item => item.id === shift.room)?.label || shift.room || "—";
+      return `<article class="summary-shift-item">
+        <div class="summary-shift-top"><div><div class="summary-shift-date">${escapeHtml(formatSummaryDate(shift.date))}</div><div class="summary-shift-room">${escapeHtml(room)}</div></div><div class="summary-shift-time">${escapeHtml(shift.start)}–${escapeHtml(shift.end)}</div></div>
+        <div class="summary-shift-production">${escapeHtml(shift.production || "—")}</div>
+        <div class="summary-shift-meta">${escapeHtml(shift.film || "—")} · ${escapeHtml(shift.workType || "—")}</div>
+        <div class="${shift.confirmed ? "summary-confirmed-mark" : "summary-confirmed-mark summary-unconfirmed-mark"}">${shift.confirmed ? "✓ Confermato" : "○ Da confermare"}</div>
+      </article>`;
+    }).join("")}</div>`;
+  document.getElementById("confirmSummaryShifts")?.addEventListener("click", () => confirmSummaryShifts(row.editorId));
+}
+
+function renderSummaries() {
+  const label = document.getElementById("summaryMonthLabel");
+  if (!label) return;
+  label.textContent = monthName(summaryMonth);
+  const query = (document.getElementById("summarySearch")?.value || "").trim().toLocaleLowerCase("it");
+  const rows = summaryRows().filter(row => fullEmployeeName(row.editor).toLocaleLowerCase("it").includes(query));
+  const list = document.getElementById("summaryEmployeesList");
+  list.innerHTML = rows.length ? rows.map(row => `<button class="summary-employee-row${row.editorId === selectedSummaryEditorId ? " is-active" : ""}" type="button" data-summary-editor-id="${escapeHtml(row.editorId)}"><span class="summary-employee-name">${escapeHtml(fullEmployeeName(row.editor))}</span><span class="summary-number">${row.totalShifts}</span><span class="summary-number">${escapeHtml(formatHours(row.totalHours))}</span></button>`).join("") : `<div class="summary-empty">Nessun dipendente ha turni nel mese selezionato.</div>`;
+  list.querySelectorAll("[data-summary-editor-id]").forEach(button => button.addEventListener("click", () => {
+    selectedSummaryEditorId = button.dataset.summaryEditorId;
+    renderSummaries();
+  }));
+  const selected = rows.find(row => row.editorId === selectedSummaryEditorId) || null;
+  renderSummaryDetail(selected);
+}
+
+async function confirmSummaryShifts(editorId) {
+  const row = summaryRows().find(item => item.editorId === editorId);
+  if (!row) return;
+  const pending = row.shifts.filter(shift => !shift.confirmed);
+  if (!pending.length) return;
+  const message = `Confermare ${pending.length} ${pending.length === 1 ? "turno" : "turni"} di ${fullEmployeeName(row.editor)} per ${monthName(summaryMonth)}? I turni verranno confermati indipendentemente dalla sala.`;
+  if (!window.confirm(message)) return;
+  const confirmedAt = new Date().toISOString();
+  pending.forEach(shift => { shift.confirmed = true; shift.confirmedAt = confirmedAt; });
+  saveLocal();
+  if (db) await Promise.all(pending.map(shift => syncShiftToSupabase(shift)));
+  renderSummaries();
+  renderPlanning();
+  renderDashboard();
+  showToast(`${pending.length} ${pending.length === 1 ? "turno confermato" : "turni confermati"}`);
+}
+
+function exportSummaryPdf() {
+  const rows = summaryRows();
+  if (!rows.length) return showToast("Nessun turno da esportare nel mese selezionato");
+  const selected = rows.find(row => row.editorId === selectedSummaryEditorId);
+  const exportRows = selected ? [selected] : rows;
+  const detail = exportRows.map(row => `
+    <section class="employee">
+      <h2>${escapeHtml(fullEmployeeName(row.editor))}</h2>
+      <p class="totals"><strong>${row.totalShifts}</strong> turni · <strong>${escapeHtml(formatHours(row.totalHours))}</strong> ore</p>
+      <table><thead><tr><th>Data</th><th>Sala</th><th>Orario</th><th>Produzione</th><th>Lavorazione</th><th>Conferma</th></tr></thead><tbody>${row.shifts.map(shift => `<tr><td>${escapeHtml(formatSummaryDate(shift.date))}</td><td>${escapeHtml(ROOMS.find(item => item.id === shift.room)?.label || shift.room || "—")}</td><td>${escapeHtml(shift.start)}–${escapeHtml(shift.end)}</td><td>${escapeHtml(shift.production || "—")}</td><td>${escapeHtml(shift.workType || "—")}</td><td>${shift.confirmed ? "Sì" : "No"}</td></tr>`).join("")}</tbody></table>
+    </section>`).join("");
+  const popup = window.open("", "_blank", "noopener,noreferrer");
+  if (!popup) return showToast("Consenti l’apertura della finestra per esportare il PDF");
+  popup.document.write(`<!doctype html><html lang="it"><head><meta charset="utf-8"><title>Riepiloghi ${escapeHtml(monthName(summaryMonth))}</title><style>@page{size:A4;margin:15mm}body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#111;margin:0}header{border-bottom:2px solid #111;padding-bottom:10px;margin-bottom:18px}h1{font-size:24px;margin:0}header p{margin:4px 0 0;color:#555}.employee{page-break-inside:avoid;margin-bottom:24px}.employee h2{margin:0;font-size:18px}.totals{margin:4px 0 10px}table{width:100%;border-collapse:collapse;font-size:10px}th,td{padding:6px;border-bottom:1px solid #ddd;text-align:left;vertical-align:top}th{font-size:9px;text-transform:uppercase;letter-spacing:.04em;background:#f3f3f3}</style></head><body><header><h1>Digital Video Service</h1><p>Riepilogo turni · ${escapeHtml(monthName(summaryMonth))}</p></header>${detail}<script>window.onload=()=>setTimeout(()=>window.print(),150)<\/script></body></html>`);
+  popup.document.close();
+}
+
 function openView(viewName) {
   document.querySelectorAll(".nav-item[data-view]").forEach(item => item.classList.toggle("active", item.dataset.view === viewName));
   document.querySelectorAll(".app-view").forEach(view => view.classList.remove("active"));
   document.getElementById(`${viewName}View`)?.classList.add("active");
   if (viewName === "editors") renderEditors();
+  if (viewName === "summaries") renderSummaries();
   if (viewName === "dashboard") renderDashboard();
   if (viewName === "connected") renderConnectedUsers();
   if (viewName === "settings") { showSettingsHome(); }
@@ -1903,7 +2042,7 @@ document.querySelectorAll("[data-settings-section]").forEach(button => button.ad
   const sections = {
     backup: { title:"Backup", subtitle:"Stato e autorizzazione", html:backupSettingsHtml() },
     print: { title:"Stampa", subtitle:"Preferenze di stampa", html:`<h2>Stampa</h2><p>La gestione dei layout e delle preferenze di stampa verrà sviluppata in una prossima build.</p>` },
-    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service.</p><div class="settings-info-meta"><div><span>Versione</span><strong>Build 14.9</strong></div><div><span>Realizzazione</span><strong>Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div>` }
+    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service.</p><div class="settings-info-meta"><div><span>Versione</span><strong>Build 15</strong></div><div><span>Realizzazione</span><strong>Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div>` }
   };
   const selected = sections[section];
   if (!selected) return;
@@ -2203,6 +2342,7 @@ async function loadSupabaseData() {
   renderEditors();
   renderPlanning();
   renderDashboard();
+  renderSummaries();
 }
 
 function enableRealtime() {
@@ -2220,7 +2360,7 @@ function enableRealtime() {
 
 
 
-// Build 14.9 — bugfix note e supporto orario 24:00; stato Backup Agent condiviso tramite Supabase.
+// Build 15 — pagina Riepiloghi dipendenti; base Build 14.9 invariata nelle altre sezioni.
 let backupAgentStatus = null;
 let backupStatusTimer = null;
 
@@ -2344,6 +2484,7 @@ applyPlanningZoom(false);
 renderPlanning();
 renderEditors();
 renderDashboard();
+renderSummaries();
 loadRemindersFromSupabase();
 loadSupabaseData();
 loadOnlineProfiles();

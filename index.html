@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <title>DVS Planning — Build 14.9</title>
+  <title>DVS Planning — Build 15</title>
   <meta name="theme-color" content="#09090b">
   <link rel="icon" type="image/png" sizes="64x64" href="./assets/icons/dvs-planning-64.png">
   <link rel="apple-touch-icon" href="./assets/icons/dvs-planning-180.png">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./src/styles.css?v=14.9">
+  <link rel="stylesheet" href="./src/styles.css?v=15">
 </head>
 <body>
   <section id="profileGate" class="profile-gate" aria-label="Selezione profilo">
@@ -74,7 +74,7 @@
           <span class="nav-icon"><svg class="sf-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 5H5.5A2.5 2.5 0 0 0 3 7.5v9A2.5 2.5 0 0 0 5.5 19H10M14 8l4 4-4 4M8 12h10"/></svg></span><span>Esci</span>
         </button>
         <span id="activeProfileLabel" class="active-profile-label"></span>
-        <span class="build-pill">Build 14.9</span>
+        <span class="build-pill">Build 15</span>
       </div>
     </aside>
 
@@ -192,8 +192,29 @@
         </section>
       </section>
 
-      <section id="summariesView" class="app-view placeholder-view">
-        <div class="placeholder-card"><span>▥</span><h1>Riepiloghi</h1><p>La sezione sarà sviluppata in una build successiva.</p></div>
+      <section id="summariesView" class="app-view summaries-view">
+        <header class="topbar summaries-topbar">
+          <div class="page-title"><h1>Riepiloghi</h1><p>Conteggio mensile dei turni per dipendente</p></div>
+          <div class="toolbar summaries-toolbar">
+            <div class="month-switcher">
+              <button id="summaryPrevMonth" class="icon-btn" type="button" aria-label="Mese precedente">‹</button>
+              <button id="summaryMonthLabel" class="month-label" type="button">Luglio 2026</button>
+              <button id="summaryNextMonth" class="icon-btn" type="button" aria-label="Mese successivo">›</button>
+            </div>
+            <input id="summarySearch" class="summary-search" type="search" placeholder="Cerca dipendente" autocomplete="off">
+            <button id="summaryPdfBtn" class="toolbar-btn" type="button">Esporta PDF</button>
+          </div>
+        </header>
+        <section class="summaries-page">
+          <div class="summaries-card">
+            <div class="summary-table-head"><span>Dipendente</span><span>Turni</span><span>Ore</span></div>
+            <div id="summaryEmployeesList" class="summary-employees-list"></div>
+          </div>
+          <aside id="summaryDetailPanel" class="summary-detail-panel" aria-live="polite">
+            <div id="summaryDetailEmpty" class="summary-detail-empty"><span>▥</span><h2>Seleziona un dipendente</h2><p>Apri una riga per vedere il dettaglio dei turni del mese.</p></div>
+            <div id="summaryDetailContent" class="summary-detail-content" hidden></div>
+          </aside>
+        </section>
       </section>
 
       <section id="connectedView" class="app-view management-view">
@@ -488,6 +509,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="./src/config.js?v=11.0"></script>
-  <script src="./src/app.js?v=14.9"></script>
+  <script src="./src/app.js?v=15"></script>
 </body>
 </html>

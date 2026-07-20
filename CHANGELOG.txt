@@ -1,3 +1,14 @@
+DVS Planning — Build 15
+
+- Nuova pagina Riepiloghi dipendenti.
+- Selettore mensile e ricerca per dipendente.
+- Mostra soltanto i dipendenti con almeno un turno nel mese.
+- Conteggio totale turni e ore.
+- Dettaglio cronologico dei turni.
+- Conferma di tutti i turni non confermati del dipendente nel mese, indipendentemente dalla sala.
+- Esportazione PDF.
+- Nessuna modifica funzionale alle altre pagine.
+
 DVS Planning — Build 14.5
 
 - Aggiunta opzione NOTE in Nuovo turno e Modifica turno.

@@ -33,7 +33,16 @@ La finestra Nuovo/Modifica turno include l'opzione VARIABILE; sulla card compare
 
 La finestra Nuovo/Modifica turno include l’opzione NOTE. Quando attivata, consente di inserire fino a 100 caratteri; il testo viene salvato in `shifts.notes` e mostrato in rosso sotto la lavorazione nella card.
 
-## Build 14.9 — Bug fix
+## Build 15 — Bug fix
 - Ripristinato il supporto completo a `24:00` come fine turno.
 - `00:00` inserito come fine turno viene normalizzato a `24:00` quando rappresenta la mezzanotte successiva.
 - Eliminata la conversione automatica a `23:59`.
+
+
+## Build 15 — Riepiloghi
+- Riepilogo mensile dei turni per dipendente.
+- Visualizzazione dei soli dipendenti con turni nel mese selezionato.
+- Totale turni e totale ore.
+- Pannello dettaglio con elenco cronologico dei turni.
+- Conferma massiva dei turni non confermati del dipendente, su tutte le sale.
+- Esportazione PDF del dipendente selezionato o dell’intero mese.
