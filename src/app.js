@@ -1992,7 +1992,7 @@ function exportSummaryPdf() {
 
 
 
-// Build 16 Bugfix — Centro Stampa
+// Build 16.1 UI Fix — Centro Stampa
 let printMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
 
 function printMonthWeeks(monthDate) {
@@ -2019,12 +2019,21 @@ function shortPrintDate(iso, includeMonth=true) {
 function printSettingsHtml() {
   const weeks = printMonthWeeks(printMonth);
   const monthValue = `${printMonth.getFullYear()}-${String(printMonth.getMonth()+1).padStart(2,'0')}`;
+  const baseYear = new Date().getFullYear();
+  const monthOptions = [];
+  for (let year = baseYear - 1; year <= baseYear + 2; year++) {
+    for (let month = 0; month < 12; month++) {
+      const value = `${year}-${String(month + 1).padStart(2, '0')}`;
+      const label = new Intl.DateTimeFormat('it-IT', { month: 'long', year: 'numeric' }).format(new Date(year, month, 1));
+      monthOptions.push(`<option value="${value}" ${value === monthValue ? 'selected' : ''}>${label.charAt(0).toUpperCase() + label.slice(1)}</option>`);
+    }
+  }
   return `
     <div class="print-center">
       <div class="print-center-heading"><div><small>CENTRO STAMPA</small><h2>Planning da stampare</h2><p>Scegli periodo e sale, quindi apri l’anteprima dedicata.</p></div></div>
       <section class="print-option-card">
         <div class="print-option-title"><span>1</span><div><h3>Periodo</h3><p>Seleziona il mese e le settimane da includere.</p></div></div>
-        <label class="print-month-field">Mese<input id="printMonthInput" type="month" value="${monthValue}"></label>
+        <label class="print-month-field">Mese<select id="printMonthInput">${monthOptions.join('')}</select></label>
         <div class="print-choice-row">
           <label class="print-radio"><input type="radio" name="printPeriodMode" value="month" checked><span>Tutto il mese</span></label>
           <label class="print-radio"><input type="radio" name="printPeriodMode" value="weeks"><span>Settimane specifiche</span></label>
@@ -2109,7 +2118,7 @@ function openPrintPreview() {
       });
     });
     const weekLabel=`${shortPrintDate(week.start)} – ${shortPrintDate(week.end)}`;
-    return `<main class="paper"><header class="head"><div><h1>Digital Video Service</h1><p>PLANNING · ${escapeHtml(monthName(printMonth))}</p><small>Settimana ${escapeHtml(weekLabel)}</small></div><strong>${selectedRooms.length===ROOMS.length?'Tutte le sale':`${selectedRooms.length} sale selezionate`}</strong></header><section class="grid">${cells.join('')}</section><footer class="page-footer"><span>DVS Planning · Build 16 Bugfix</span><span>Pagina ${pageIndex+1} di ${selectedWeeks.length}</span></footer></main>`;
+    return `<main class="paper"><header class="head"><div><h1>Digital Video Service</h1><p>PLANNING · ${escapeHtml(monthName(printMonth))}</p><small>Settimana ${escapeHtml(weekLabel)}</small></div><strong>${selectedRooms.length===ROOMS.length?'Tutte le sale':`${selectedRooms.length} sale selezionate`}</strong></header><section class="grid">${cells.join('')}</section><footer class="page-footer"><span>DVS Planning · Build 16.1 UI Fix</span><span>Pagina ${pageIndex+1} di ${selectedWeeks.length}</span></footer></main>`;
   }).join('');
   const popup=window.open('','_blank');
   if(!popup)return showToast('Consenti l’apertura della finestra di anteprima');
@@ -2178,7 +2187,7 @@ document.querySelectorAll("[data-settings-section]").forEach(button => button.ad
   const sections = {
     backup: { title:"Backup", subtitle:"Stato e autorizzazione", html:backupSettingsHtml() },
     print: { title:"Stampa", subtitle:"Centro Stampa", html:printSettingsHtml() },
-    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service.</p><div class="settings-info-meta"><div><span>Versione</span><strong>Build 16 Bugfix</strong></div><div><span>Realizzazione</span><strong>Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div>` }
+    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service.</p><div class="settings-info-meta"><div><span>Versione</span><strong>Build 16.1 UI Fix</strong></div><div><span>Realizzazione</span><strong>Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div>` }
   };
   const selected = sections[section];
   if (!selected) return;
@@ -2497,7 +2506,7 @@ function enableRealtime() {
 
 
 
-// Build 16 Bugfix — Centro Stampa; Build 15 invariata nelle altre sezioni.
+// Build 16.1 UI Fix — Centro Stampa; Build 15 invariata nelle altre sezioni.
 let backupAgentStatus = null;
 let backupStatusTimer = null;
 
