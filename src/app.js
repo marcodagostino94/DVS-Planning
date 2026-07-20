@@ -1992,7 +1992,7 @@ function exportSummaryPdf() {
 
 
 
-// Build 16.1 UI Fix — Centro Stampa
+// Build 16.2 — Mesi dinamici — Centro Stampa
 let printMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
 
 function printMonthWeeks(monthDate) {
@@ -2019,9 +2019,18 @@ function shortPrintDate(iso, includeMonth=true) {
 function printSettingsHtml() {
   const weeks = printMonthWeeks(printMonth);
   const monthValue = `${printMonth.getFullYear()}-${String(printMonth.getMonth()+1).padStart(2,'0')}`;
-  const baseYear = new Date().getFullYear();
+  // Intervallo dinamico: segue automaticamente il calendario e i dati presenti.
+  // Mostra almeno dall'anno precedente a quello corrente fino a tre anni avanti;
+  // se nel database esistono turni fuori da questo intervallo, li include comunque.
+  const currentYear = new Date().getFullYear();
+  const shiftYears = shifts
+    .map(shift => Number(String(shift.date || '').slice(0, 4)))
+    .filter(year => Number.isInteger(year) && year >= 2000 && year <= 9999);
+  const selectedYear = printMonth.getFullYear();
+  const firstYear = Math.min(currentYear - 1, selectedYear, ...(shiftYears.length ? shiftYears : [currentYear]));
+  const lastYear = Math.max(currentYear + 3, selectedYear, ...(shiftYears.length ? shiftYears : [currentYear]));
   const monthOptions = [];
-  for (let year = baseYear - 1; year <= baseYear + 2; year++) {
+  for (let year = firstYear; year <= lastYear; year++) {
     for (let month = 0; month < 12; month++) {
       const value = `${year}-${String(month + 1).padStart(2, '0')}`;
       const label = new Intl.DateTimeFormat('it-IT', { month: 'long', year: 'numeric' }).format(new Date(year, month, 1));
@@ -2118,7 +2127,7 @@ function openPrintPreview() {
       });
     });
     const weekLabel=`${shortPrintDate(week.start)} – ${shortPrintDate(week.end)}`;
-    return `<main class="paper"><header class="head"><div><h1>Digital Video Service</h1><p>PLANNING · ${escapeHtml(monthName(printMonth))}</p><small>Settimana ${escapeHtml(weekLabel)}</small></div><strong>${selectedRooms.length===ROOMS.length?'Tutte le sale':`${selectedRooms.length} sale selezionate`}</strong></header><section class="grid">${cells.join('')}</section><footer class="page-footer"><span>DVS Planning · Build 16.1 UI Fix</span><span>Pagina ${pageIndex+1} di ${selectedWeeks.length}</span></footer></main>`;
+    return `<main class="paper"><header class="head"><div><h1>Digital Video Service</h1><p>PLANNING · ${escapeHtml(monthName(printMonth))}</p><small>Settimana ${escapeHtml(weekLabel)}</small></div><strong>${selectedRooms.length===ROOMS.length?'Tutte le sale':`${selectedRooms.length} sale selezionate`}</strong></header><section class="grid">${cells.join('')}</section><footer class="page-footer"><span>DVS Planning · Build 16.2</span><span>Pagina ${pageIndex+1} di ${selectedWeeks.length}</span></footer></main>`;
   }).join('');
   const popup=window.open('','_blank');
   if(!popup)return showToast('Consenti l’apertura della finestra di anteprima');
@@ -2506,7 +2515,7 @@ function enableRealtime() {
 
 
 
-// Build 16.1 UI Fix — Centro Stampa; Build 15 invariata nelle altre sezioni.
+// Build 16.2 — Mesi dinamici — Centro Stampa; Build 15 invariata nelle altre sezioni.
 let backupAgentStatus = null;
 let backupStatusTimer = null;
 

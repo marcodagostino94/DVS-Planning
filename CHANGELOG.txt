@@ -1,3 +1,10 @@
+DVS Planning — Build 16.2
+
+- Selettore mesi reso dinamico.
+- L’intervallo avanza automaticamente con l’anno corrente.
+- Gli anni presenti nei turni salvati vengono inclusi automaticamente.
+- Mantenute tutte le correzioni della Build 16.1.
+
 BUILD 16.1 UI FIX 2
 - Corretto cache-busting di CSS e JavaScript.
 - Aggiornati titolo e badge build nell’HTML.
