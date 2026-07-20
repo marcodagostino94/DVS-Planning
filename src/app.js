@@ -1986,6 +1986,148 @@ function exportSummaryPdf() {
   popup.document.close();
 }
 
+
+let printMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+let printRangeMode = "month";
+let printRoomMode = "all";
+let selectedPrintWeeks = new Set();
+let selectedPrintRooms = new Set(ROOMS.map(room => room.id));
+let printFitToPage = true;
+
+function printMonthValue(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function printWeeksForMonth(monthDate) {
+  const dates = planningDates(monthDate);
+  const weeks = [];
+  for (let index = 0; index < dates.length; index += 7) {
+    const weekDates = dates.slice(index, index + 7);
+    weeks.push({
+      id: `${isoFromDate(weekDates[0])}_${isoFromDate(weekDates[6])}`,
+      start: weekDates[0],
+      end: weekDates[6],
+      dates: weekDates
+    });
+  }
+  return weeks;
+}
+
+function shortPrintDate(date) {
+  return new Intl.DateTimeFormat("it-IT", { day:"2-digit", month:"short" }).format(date).replace(".", "");
+}
+
+function printSettingsHtml() {
+  return `
+    <div class="print-settings-page">
+      <div class="print-settings-intro"><small>STAMPA PLANNING</small><h2>Prepara il documento</h2><p>Scegli periodo e sale. L’anteprima mostrerà esclusivamente ciò che hai selezionato.</p></div>
+      <section class="print-option-card">
+        <div class="print-option-heading"><span>1</span><div><h3>Periodo</h3><p>Seleziona il mese e l’intervallo da stampare.</p></div></div>
+        <label class="print-field">Mese<input id="printMonthInput" type="month" value="${printMonthValue(printMonth)}"></label>
+        <div class="print-segmented" role="group" aria-label="Intervallo di stampa">
+          <button type="button" data-print-range="month" class="${printRangeMode === "month" ? "active" : ""}">Tutto il mese</button>
+          <button type="button" data-print-range="weeks" class="${printRangeMode === "weeks" ? "active" : ""}">Settimane specifiche</button>
+        </div>
+        <div id="printWeeksPanel" class="print-check-grid" ${printRangeMode === "weeks" ? "" : "hidden"}></div>
+      </section>
+      <section class="print-option-card">
+        <div class="print-option-heading"><span>2</span><div><h3>Sale</h3><p>Stampa tutte le sale oppure solo quelle necessarie.</p></div></div>
+        <div class="print-segmented" role="group" aria-label="Sale da stampare">
+          <button type="button" data-print-rooms="all" class="${printRoomMode === "all" ? "active" : ""}">Tutte le sale</button>
+          <button type="button" data-print-rooms="custom" class="${printRoomMode === "custom" ? "active" : ""}">Sale specifiche</button>
+        </div>
+        <div id="printRoomsPanel" class="print-rooms-panel" ${printRoomMode === "custom" ? "" : "hidden"}>
+          <div class="print-mini-actions"><button id="selectAllPrintRooms" type="button">Seleziona tutte</button><button id="clearAllPrintRooms" type="button">Deseleziona tutte</button></div>
+          <div id="printRoomsGrid" class="print-check-grid print-room-grid"></div>
+        </div>
+      </section>
+      <label class="print-fit-option"><input id="printFitToPage" type="checkbox" ${printFitToPage ? "checked" : ""}><span><strong>Adatta automaticamente alla larghezza della pagina</strong><small>Consigliato quando selezioni molte sale o più settimane.</small></span></label>
+      <div class="print-settings-footer"><button id="openPrintPreview" class="primary-btn" type="button">Anteprima di stampa</button></div>
+    </div>`;
+}
+
+function renderPrintWeekOptions() {
+  const panel = document.getElementById("printWeeksPanel");
+  if (!panel) return;
+  const weeks = printWeeksForMonth(printMonth);
+  if (![...selectedPrintWeeks].some(id => weeks.some(week => week.id === id))) selectedPrintWeeks = new Set(weeks.map(week => week.id));
+  panel.innerHTML = weeks.map((week, index) => `<label class="print-check-item"><input type="checkbox" data-print-week="${week.id}" ${selectedPrintWeeks.has(week.id) ? "checked" : ""}><span><strong>Settimana ${index + 1}</strong><small>${shortPrintDate(week.start)} – ${shortPrintDate(week.end)}</small></span></label>`).join("");
+  panel.querySelectorAll("[data-print-week]").forEach(input => input.addEventListener("change", () => {
+    if (input.checked) selectedPrintWeeks.add(input.dataset.printWeek); else selectedPrintWeeks.delete(input.dataset.printWeek);
+  }));
+}
+
+function renderPrintRoomOptions() {
+  const grid = document.getElementById("printRoomsGrid");
+  if (!grid) return;
+  grid.innerHTML = ROOMS.map(room => `<label class="print-check-item"><input type="checkbox" data-print-room="${room.id}" ${selectedPrintRooms.has(room.id) ? "checked" : ""}><span><strong>${escapeHtml(room.label)}</strong></span></label>`).join("");
+  grid.querySelectorAll("[data-print-room]").forEach(input => input.addEventListener("change", () => {
+    if (input.checked) selectedPrintRooms.add(input.dataset.printRoom); else selectedPrintRooms.delete(input.dataset.printRoom);
+  }));
+}
+
+function initializePrintSettings() {
+  renderPrintWeekOptions();
+  renderPrintRoomOptions();
+  document.getElementById("printMonthInput")?.addEventListener("change", event => {
+    const [year, month] = event.target.value.split("-").map(Number);
+    if (!year || !month) return;
+    printMonth = new Date(year, month - 1, 1);
+    selectedPrintWeeks.clear();
+    renderPrintWeekOptions();
+  });
+  document.querySelectorAll("[data-print-range]").forEach(button => button.addEventListener("click", () => {
+    printRangeMode = button.dataset.printRange;
+    document.querySelectorAll("[data-print-range]").forEach(item => item.classList.toggle("active", item === button));
+    document.getElementById("printWeeksPanel").hidden = printRangeMode !== "weeks";
+  }));
+  document.querySelectorAll("[data-print-rooms]").forEach(button => button.addEventListener("click", () => {
+    printRoomMode = button.dataset.printRooms;
+    document.querySelectorAll("[data-print-rooms]").forEach(item => item.classList.toggle("active", item === button));
+    document.getElementById("printRoomsPanel").hidden = printRoomMode !== "custom";
+  }));
+  document.getElementById("selectAllPrintRooms")?.addEventListener("click", () => { selectedPrintRooms = new Set(ROOMS.map(room => room.id)); renderPrintRoomOptions(); });
+  document.getElementById("clearAllPrintRooms")?.addEventListener("click", () => { selectedPrintRooms.clear(); renderPrintRoomOptions(); });
+  document.getElementById("printFitToPage")?.addEventListener("change", event => { printFitToPage = event.target.checked; });
+  document.getElementById("openPrintPreview")?.addEventListener("click", openPrintPreview);
+}
+
+function selectedPrintDates() {
+  const weeks = printWeeksForMonth(printMonth);
+  const chosen = printRangeMode === "month" ? weeks : weeks.filter(week => selectedPrintWeeks.has(week.id));
+  return chosen.flatMap(week => week.dates);
+}
+
+function printCardHtml(shift) {
+  const color = FILM_COLORS[shift.color] || FILM_COLORS.blue;
+  const editor = getEditor(shift.editorId);
+  const assignment = shift.isClient ? "CLIENTE" : editorDisplay(editor);
+  return `<article class="p-card ${shift.status} ${shift.confirmed ? "confirmed" : ""}" style="--accent:${color.rgb}"><div class="p-main"><b>${escapeHtml(shift.production || "")}</b><span>${escapeHtml(shift.start)} – ${escapeHtml(shift.end)}</span><strong>${escapeHtml(shift.film || "")}</strong><em>${escapeHtml(shift.workType || "")}${shift.isVariable ? ' <i>- VARIABILE</i>' : ""}</em>${shift.isDoubleStation ? '<u>DOPPIA POSTAZIONE</u>' : ""}${shift.notes ? `<small>${escapeHtml(shift.notes)}</small>` : ""}</div><footer>${escapeHtml(assignment)}</footer></article>`;
+}
+
+function openPrintPreview() {
+  const dates = selectedPrintDates();
+  const rooms = printRoomMode === "all" ? ROOMS : ROOMS.filter(room => selectedPrintRooms.has(room.id));
+  if (!dates.length) return showToast("Seleziona almeno una settimana");
+  if (!rooms.length) return showToast("Seleziona almeno una sala");
+  const activeMonth = printMonth.getMonth();
+  const periodLabel = printRangeMode === "month" ? monthName(printMonth) : `${shortPrintDate(dates[0])} – ${shortPrintDate(dates[dates.length - 1])} ${dates[dates.length - 1].getFullYear()}`;
+  const dayHeads = dates.map(date => { const weekend=[0,6].includes(date.getDay()), outside=date.getMonth()!==activeMonth; return `<div class="p-day ${weekend?"weekend":""} ${outside?"outside":""}"><span>${new Intl.DateTimeFormat("it-IT",{weekday:"short"}).format(date).replace(".","").toUpperCase()}</span><b>${String(date.getDate()).padStart(2,"0")}</b>${outside?`<small>${new Intl.DateTimeFormat("it-IT",{month:"short"}).format(date).replace(".","").toUpperCase()}</small>`:""}</div>`; }).join("");
+  let rows = "";
+  rooms.forEach(room => {
+    const cells = dates.map(date => { const iso=isoFromDate(date); const list=shifts.filter(shift=>shift.room===room.id&&shift.date===iso).sort((a,b)=>a.start.localeCompare(b.start)); return `<div class="p-cell ${[0,6].includes(date.getDay())?"weekend":""}">${list.map(printCardHtml).join("")}</div>`; }).join("");
+    rows += `<div class="p-room">${escapeHtml(room.label)}</div>${cells}`;
+  });
+  const logo = new URL("./assets/logos/digital-video-full.png", window.location.href).href;
+  const popup = window.open("", "_blank");
+  if (!popup) return showToast("Consenti l’apertura della finestra di anteprima");
+  const fitClass = printFitToPage ? "fit" : "natural";
+  popup.document.write(`<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Planning · ${escapeHtml(periodLabel)}</title><style>
+  :root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#15181c;background:#eef1f5}*{box-sizing:border-box}body{margin:0}.toolbar{position:sticky;top:0;z-index:10;display:flex;justify-content:space-between;align-items:center;padding:12px 18px;background:rgba(248,249,251,.94);backdrop-filter:blur(18px);border-bottom:1px solid #d7dce3}.toolbar button{border:0;border-radius:10px;padding:10px 14px;font-weight:700;cursor:pointer}.back{background:#e8ebef}.print{background:#15181c;color:#fff}.sheet{margin:22px auto;background:#fff;width:max-content;min-width:min(1500px,calc(100vw - 36px));padding:24px;box-shadow:0 18px 60px rgba(25,35,50,.16)}header{display:flex;align-items:center;justify-content:space-between;border-bottom:2px solid #15181c;padding-bottom:14px;margin-bottom:16px}header img{width:190px;max-height:52px;object-fit:contain;object-position:left center}header div{text-align:right}header h1{margin:0;font-size:24px;letter-spacing:.08em}header p{margin:5px 0 0;color:#66707b;font-weight:600}.grid{display:grid;grid-template-columns:92px repeat(${dates.length},minmax(145px,1fr));border:1px solid #cfd5dc;border-radius:10px;overflow:hidden}.corner,.p-day,.p-room,.p-cell{border-right:1px solid #d9dde3;border-bottom:1px solid #d9dde3}.corner{display:grid;place-items:center;background:#171a1f;color:#fff;font-size:11px;font-weight:800;letter-spacing:.08em}.p-day{min-height:58px;display:flex;align-items:center;justify-content:center;gap:5px;background:#f7f8fa}.p-day span{font-size:10px;color:#6c7580;font-weight:800}.p-day b{font-size:22px}.p-day small{font-size:8px;color:#9299a2}.p-day.weekend,.p-cell.weekend{background:#fff5f5}.p-day.outside{opacity:.65}.p-room{display:grid;place-items:center;min-height:98px;background:#20242a;color:#fff;font-size:12px;font-weight:800;padding:8px;text-align:center}.p-cell{min-height:98px;padding:5px;background:#fff;display:flex;flex-direction:column;gap:5px}.p-card{border-radius:8px;overflow:hidden;background:rgba(var(--accent),.18);border:1px solid rgba(var(--accent),.45);page-break-inside:avoid}.p-card.provvisorio{background:#fff;border-style:dashed}.p-main{padding:6px 7px;display:flex;flex-direction:column;gap:2px}.p-main b{font-size:9px;text-transform:uppercase}.p-main span{font-size:8px;font-weight:700}.p-main strong{font-size:10px}.p-main em{font-size:8px;font-style:normal;font-weight:800}.p-main em i{color:#d4323e;font-style:normal}.p-main u{font-size:7px;text-decoration:none;color:#b22b35;font-weight:800}.p-main small{font-size:8px;line-height:1.2}.p-card footer{padding:5px 7px;background:rgba(var(--accent),.28);font-size:8px;font-weight:800}.fit .grid{transform-origin:top left}footer.doc{margin-top:13px;display:flex;justify-content:space-between;color:#747d87;font-size:10px}@media print{@page{size:A4 landscape;margin:8mm}body{background:#fff}.toolbar{display:none}.sheet{margin:0;padding:0;box-shadow:none;min-width:0;width:100%}header img{width:150px}.grid{width:100%;grid-template-columns:72px repeat(${dates.length},minmax(0,1fr))}.p-day{min-height:42px}.p-day b{font-size:15px}.p-room,.p-cell{min-height:68px}.p-cell{padding:2px;gap:2px}.p-main{padding:3px}.p-main b,.p-main strong{font-size:6.5px}.p-main span,.p-main em,.p-main small,.p-card footer{font-size:5.8px}.p-main u{font-size:5px}header{margin-bottom:8px;padding-bottom:8px}header h1{font-size:18px}header p{font-size:10px}.natural .grid{width:max-content;grid-template-columns:72px repeat(${dates.length},125px)}}
+  </style></head><body><div class="toolbar"><button class="back" onclick="window.close()">← Torna alle impostazioni</button><button class="print" onclick="window.print()">Stampa / Salva PDF</button></div><main class="sheet ${fitClass}"><header><img src="${logo}" alt="Digital Video Service"><div><h1>PLANNING</h1><p>${escapeHtml(periodLabel)}</p></div></header><div class="grid"><div class="corner">SALE</div>${dayHeads}${rows}</div><footer class="doc"><span>Digital Video Service</span><span>${rooms.length} sale · ${dates.length} giorni</span></footer></main></body></html>`);
+  popup.document.close();
+}
+
 function openView(viewName) {
   document.querySelectorAll(".nav-item[data-view]").forEach(item => item.classList.toggle("active", item.dataset.view === viewName));
   document.querySelectorAll(".app-view").forEach(view => view.classList.remove("active"));
@@ -2041,8 +2183,8 @@ document.querySelectorAll("[data-settings-section]").forEach(button => button.ad
   if (generic) generic.hidden = false;
   const sections = {
     backup: { title:"Backup", subtitle:"Stato e autorizzazione", html:backupSettingsHtml() },
-    print: { title:"Stampa", subtitle:"Preferenze di stampa", html:`<h2>Stampa</h2><p>La gestione dei layout e delle preferenze di stampa verrà sviluppata in una prossima build.</p>` },
-    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service.</p><div class="settings-info-meta"><div><span>Versione</span><strong>Build 15</strong></div><div><span>Realizzazione</span><strong>Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div>` }
+    print: { title:"Stampa", subtitle:"Planning pronto per carta e PDF", html:printSettingsHtml() },
+    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service.</p><div class="settings-info-meta"><div><span>Versione</span><strong>Build 16.0</strong></div><div><span>Realizzazione</span><strong>Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div>` }
   };
   const selected = sections[section];
   if (!selected) return;
@@ -2050,6 +2192,7 @@ document.querySelectorAll("[data-settings-section]").forEach(button => button.ad
   if (subtitle) subtitle.textContent = selected.subtitle;
   if (content) content.innerHTML = selected.html;
   if (section === "backup") renderBackupSettings();
+  if (section === "print") initializePrintSettings();
 }));
 
 function openPlanningToday() {
