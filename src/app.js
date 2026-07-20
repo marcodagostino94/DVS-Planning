@@ -128,6 +128,7 @@ let shifts = loadLocal(SHIFT_STORAGE, seedShifts).map(shift => ({
   isClient: Boolean(shift.isClient),
   isDoubleStation: Boolean(shift.isDoubleStation),
   isVariable: Boolean(shift.isVariable),
+  notes: String(shift.notes || "").slice(0, 100),
   confirmed: Boolean(shift.confirmed)
 }));
 
@@ -796,6 +797,7 @@ function fitAllCardText() {
     document.querySelectorAll(".shift-time").forEach(el => fitText(el, 6));
     document.querySelectorAll(".shift-film").forEach(el => fitText(el, 6));
     document.querySelectorAll(".shift-type").forEach(el => fitText(el, 6));
+    document.querySelectorAll(".shift-note").forEach(el => fitText(el, 5.5));
     document.querySelectorAll(".editor-name").forEach(el => fitText(el, 6.5));
   });
 }
@@ -833,6 +835,7 @@ function renderCard(shift) {
         <div class="shift-time">${escapeHtml(shift.start)} – ${escapeHtml(shift.end)}</div>
         <div class="shift-film">${escapeHtml(shift.film)}</div>
         <div class="shift-type">${escapeHtml(shift.workType)}${shift.isVariable ? '<span class="variable-label"> - VARIABILE</span>' : ""}${shift.isDoubleStation ? '<span class="double-station-label">DOPPIA POSTAZIONE</span>' : ""}</div>
+        ${shift.notes ? `<div class="shift-note">${escapeHtml(shift.notes)}</div>` : ""}
       </div>
       <div class="shift-editor">
         <span class="editor-name${shift.confirmed ? " confirmed-name" : ""}">${escapeHtml(assignment)}</span>
@@ -1223,6 +1226,22 @@ document.addEventListener("click", event => {
   if (field && !field.contains(event.target)) closeDateCalendar();
 });
 
+function updateShiftNotesUI() {
+  const enabled = document.getElementById("hasShiftNotes")?.checked;
+  const field = document.getElementById("shiftNotesField");
+  const textarea = document.getElementById("shiftNotes");
+  const count = document.getElementById("shiftNotesCount");
+  field?.classList.toggle("hidden", !enabled);
+  if (!enabled && textarea) textarea.value = "";
+  if (count) count.textContent = String((textarea?.value || "").length);
+}
+
+document.getElementById("hasShiftNotes")?.addEventListener("change", () => {
+  updateShiftNotesUI();
+  if (document.getElementById("hasShiftNotes")?.checked) document.getElementById("shiftNotes")?.focus();
+});
+document.getElementById("shiftNotes")?.addEventListener("input", updateShiftNotesUI);
+
 function resetShiftForm(shift = {}) {
   const date = shift.date || isoDate(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
   document.getElementById("shiftId").value = shift.id || "";
@@ -1242,6 +1261,10 @@ function resetShiftForm(shift = {}) {
   document.getElementById("isClient").checked = Boolean(shift.isClient);
   document.getElementById("isDoubleStation").checked = Boolean(shift.isDoubleStation);
   document.getElementById("isVariable").checked = Boolean(shift.isVariable);
+  const noteValue = String(shift.notes || "").slice(0, 100);
+  document.getElementById("hasShiftNotes").checked = Boolean(noteValue);
+  document.getElementById("shiftNotes").value = noteValue;
+  updateShiftNotesUI();
   document.getElementById("color").value = shift.color || "blue";
   setStatusUI(shift.status || "definitivo");
   setWeekdaySelection(["all"]);
@@ -1308,6 +1331,9 @@ shiftForm.addEventListener("submit", event => {
     isClient: document.getElementById("isClient").checked,
     isDoubleStation: document.getElementById("isDoubleStation").checked,
     isVariable: document.getElementById("isVariable").checked,
+    notes: document.getElementById("hasShiftNotes").checked
+      ? document.getElementById("shiftNotes").value.trim().replace(/\s+/g, " ").slice(0, 100)
+      : "",
     status: document.getElementById("status").value,
     color: document.getElementById("color").value,
     confirmed: false
@@ -1865,7 +1891,7 @@ document.querySelectorAll("[data-settings-section]").forEach(button => button.ad
   const sections = {
     backup: { title:"Backup", subtitle:"Stato e autorizzazione", html:backupSettingsHtml() },
     print: { title:"Stampa", subtitle:"Preferenze di stampa", html:`<h2>Stampa</h2><p>La gestione dei layout e delle preferenze di stampa verrà sviluppata in una prossima build.</p>` },
-    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service.</p><div class="settings-info-meta"><div><span>Versione</span><strong>Build 14.0</strong></div><div><span>Realizzazione</span><strong>Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div>` }
+    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service.</p><div class="settings-info-meta"><div><span>Versione</span><strong>Build 14.5</strong></div><div><span>Realizzazione</span><strong>Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div>` }
   };
   const selected = sections[section];
   if (!selected) return;
@@ -2071,6 +2097,7 @@ async function syncShiftToSupabase(shift) {
     is_client: Boolean(shift.isClient),
     is_double_station: Boolean(shift.isDoubleStation),
     is_variable: Boolean(shift.isVariable),
+    notes: shift.notes || null,
     status: shift.status,
     confirmed: Boolean(shift.confirmed),
     confirmed_at: shift.confirmed ? (shift.confirmedAt || new Date().toISOString()) : null,
@@ -2153,6 +2180,7 @@ async function loadSupabaseData() {
     isClient: Boolean(row.is_client),
     isDoubleStation: Boolean(row.is_double_station),
     isVariable: Boolean(row.is_variable),
+    notes: String(row.notes || "").slice(0, 100),
     status: row.status,
     color: row.color_key,
     confirmed: Boolean(row.confirmed),
@@ -2180,7 +2208,7 @@ function enableRealtime() {
 
 
 
-// Build 14.0 — stato Backup Agent condiviso tramite Supabase.
+// Build 14.5 — stato Backup Agent condiviso tramite Supabase.
 let backupAgentStatus = null;
 let backupStatusTimer = null;
 

@@ -27,3 +27,8 @@ Eseguire prima `database/010_backup_agent_status_build_13_3.sql`, installare DVS
 ## Build 14.0 — Turni variabili
 Eseguire `database/011_shift_variabile_build_14.sql` su Supabase prima di pubblicare la build.
 La finestra Nuovo/Modifica turno include l'opzione VARIABILE; sulla card compare `EDIT - VARIABILE`, con VARIABILE in rosso.
+
+
+## Build 14.5 — Note turno
+
+La finestra Nuovo/Modifica turno include l’opzione NOTE. Quando attivata, consente di inserire fino a 100 caratteri; il testo viene salvato in `shifts.notes` e mostrato in rosso sotto la lavorazione nella card.

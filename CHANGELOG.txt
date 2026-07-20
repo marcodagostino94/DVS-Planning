@@ -1,3 +1,13 @@
+DVS Planning — Build 14.5
+
+- Aggiunta opzione NOTE in Nuovo turno e Modifica turno.
+- Campo testo fino a 100 caratteri, visibile solo quando NOTE è attivo.
+- Nota mostrata in rosso sotto la lavorazione sulla card del Planning.
+- Salvataggio locale e sincronizzazione Supabase nel campo shifts.notes.
+- Aggiunta migrazione 012_shift_notes_build_14_5.sql.
+- Aggiornati numero build e cache-busting a 14.5.
+- Backup Agent non modificato.
+
 DVS Planning — Build 14.0
 
 - Aggiunta l’opzione VARIABILE nelle finestre Nuovo turno e Modifica turno.
