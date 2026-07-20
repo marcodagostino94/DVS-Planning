@@ -1,3 +1,8 @@
+BUILD 16 BUGFIX
+- Stampa Planning suddivisa automaticamente: una pagina per settimana.
+- Stampa mese intero: una pagina per ogni settimana del mese.
+- Corretto Esporta PDF nei Riepiloghi (pagina bianca).
+
 DVS Planning — Build 15
 
 - Nuova pagina Riepiloghi dipendenti.
