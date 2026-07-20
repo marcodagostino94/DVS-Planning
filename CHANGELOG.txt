@@ -1,9 +1,3 @@
-BUILD 16.0
-- Nuovo Centro Stampa con selezione mese, settimane e sale.
-- Nuova pagina di anteprima dedicata.
-- Stampa o salvataggio PDF tramite finestra nativa.
-- Nessuna modifica al database.
-
 DVS Planning — Build 15
 
 - Nuova pagina Riepiloghi dipendenti.

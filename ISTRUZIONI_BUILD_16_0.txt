@@ -1,12 +1,11 @@
 DVS PLANNING — BUILD 16.0
 
-CENTRO STAMPA
-- Impostazioni > Stampa completamente rinnovata
-- Selezione mese
-- Tutto il mese oppure settimane specifiche
-- Tutte le sale oppure sale specifiche
-- Anteprima dedicata e filtrata
-- Stampa nativa del browser / Salva come PDF
-- Orientamento orizzontale e adattamento alla pagina
+NOVITÀ
+- Centro Stampa in Impostazioni > Stampa
+- Selezione mese, mese intero o settimane specifiche
+- Selezione di tutte le sale o sale specifiche
+- Anteprima dedicata filtrata secondo le selezioni
+- Stampa / Salva PDF tramite finestra nativa del browser
+- Layout orizzontale e adattamento automatico
 
-Nessuna migrazione SQL richiesta.
+Nessuna modifica al database richiesta.
