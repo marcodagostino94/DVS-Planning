@@ -1649,3 +1649,29 @@ button.dashboard-kpi { cursor:pointer; }
 .settings-info-meta div{display:flex;justify-content:space-between;gap:20px;color:#5e6873;}
 .settings-info-meta strong{color:#15181c;}
 @media(max-width:760px){.settings-home{grid-template-columns:1fr}.settings-symbol{width:52px;height:52px}.settings-symbol svg{width:30px;height:30px}}
+
+
+/* Build 13.3 — pagina e semaforo Backup Agent */
+.backup-status-button{width:100%;text-align:left;color:inherit;font:inherit;cursor:pointer;}
+.backup-status-button:hover{border-color:rgba(255,255,255,.2);}
+.backup-card .status-card-copy strong{display:flex;align-items:center;gap:8px;}
+.backup-light{width:9px;height:9px;display:inline-block;border-radius:50%;flex:none;}
+.backup-light.is-green{background:#34c759;box-shadow:0 0 10px rgba(52,199,89,.8);}
+.backup-light.is-red{background:#ff453a;box-shadow:0 0 10px rgba(255,69,58,.72);}
+.backup-page-header{display:flex;justify-content:space-between;gap:20px;align-items:flex-start;margin-bottom:22px;}
+.backup-page-header small{color:#c71f36;font-weight:850;letter-spacing:.12em;font-size:10px;}
+.backup-page-header h2{margin:5px 0 5px;}
+.backup-health-badge{display:inline-flex;align-items:center;gap:9px;padding:9px 13px;border-radius:999px;font-size:12px;white-space:nowrap;}
+.backup-health-badge i{width:10px;height:10px;border-radius:50%;}
+.backup-health-badge.is-green{color:#16763a;background:rgba(52,199,89,.13);}.backup-health-badge.is-green i{background:#34c759;box-shadow:0 0 8px rgba(52,199,89,.55);}
+.backup-health-badge.is-red{color:#a9272f;background:rgba(255,69,58,.12);}.backup-health-badge.is-red i{background:#ff453a;box-shadow:0 0 8px rgba(255,69,58,.45);}
+.backup-details-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:11px;}
+.backup-detail{min-height:78px;padding:14px 16px;border:1px solid rgba(28,35,43,.09);border-radius:15px;background:rgba(247,248,249,.92);display:grid;align-content:center;gap:6px;}
+.backup-detail span{font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#7a848e;font-weight:780;}
+.backup-detail strong{color:#171a1e;font-size:13px;overflow-wrap:anywhere;}
+.backup-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:20px;padding-top:18px;border-top:1px solid rgba(28,35,43,.1);}
+.backup-download-btn{text-decoration:none;display:inline-flex;align-items:center;justify-content:center;}
+.danger-outline-btn{padding:10px 15px;border:1px solid rgba(198,38,50,.38);border-radius:11px;color:#b01f2c;background:rgba(198,38,50,.05);font-weight:780;cursor:pointer;}
+.danger-outline-btn:hover:not(:disabled){background:rgba(198,38,50,.11);}.danger-outline-btn:disabled{opacity:.48;cursor:default;}
+.backup-utility-note{margin-top:16px!important;padding:13px 15px;border-radius:12px;background:rgba(44,52,61,.055);font-size:12px!important;}
+@media(max-width:760px){.backup-page-header{display:grid}.backup-details-grid{grid-template-columns:1fr}}

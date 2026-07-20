@@ -1860,15 +1860,16 @@ document.querySelectorAll("[data-settings-section]").forEach(button => button.ad
   if (profilesDetail) profilesDetail.hidden = true;
   if (generic) generic.hidden = false;
   const sections = {
-    backup: { title:"Backup", subtitle:"Salvataggio e ripristino", html:`<h2>Backup</h2><p>La funzione di backup verrà configurata in una prossima build. La sezione è già predisposta per il salvataggio e il ripristino dei dati condivisi.</p>` },
+    backup: { title:"Backup", subtitle:"Stato e autorizzazione", html:backupSettingsHtml() },
     print: { title:"Stampa", subtitle:"Preferenze di stampa", html:`<h2>Stampa</h2><p>La gestione dei layout e delle preferenze di stampa verrà sviluppata in una prossima build.</p>` },
-    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service.</p><div class="settings-info-meta"><div><span>Versione</span><strong>Build 13.2</strong></div><div><span>Realizzazione</span><strong>Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div>` }
+    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service.</p><div class="settings-info-meta"><div><span>Versione</span><strong>Build 13.3</strong></div><div><span>Realizzazione</span><strong>Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div>` }
   };
   const selected = sections[section];
   if (!selected) return;
   if (title) title.textContent = selected.title;
   if (subtitle) subtitle.textContent = selected.subtitle;
   if (content) content.innerHTML = selected.html;
+  if (section === "backup") renderBackupSettings();
 }));
 
 function openPlanningToday() {
@@ -2168,8 +2169,128 @@ function enableRealtime() {
     .on("postgres_changes", { event: "*", schema: "public", table: "reminders" }, loadRemindersFromSupabase)
     .on("postgres_changes", { event: "*", schema: "public", table: "planning_profiles" }, loadProfilesFromSupabase)
     .on("postgres_changes", { event: "*", schema: "public", table: "profile_presence" }, loadOnlineProfiles)
+    .on("postgres_changes", { event: "*", schema: "public", table: "backup_agent_status" }, loadBackupStatus)
     .subscribe();
 }
+
+
+
+// Build 13.3 — stato Backup Agent condiviso tramite Supabase.
+let backupAgentStatus = null;
+let backupStatusTimer = null;
+
+function formatBackupDate(value) {
+  if (!value) return "Nessun backup registrato";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "Data non disponibile";
+  const now = new Date();
+  const sameDay = date.toDateString() === now.toDateString();
+  const time = new Intl.DateTimeFormat("it-IT", { hour:"2-digit", minute:"2-digit" }).format(date);
+  if (sameDay) return `Ultimo backup: oggi, ${time}`;
+  const day = new Intl.DateTimeFormat("it-IT", { day:"2-digit", month:"2-digit", year:"numeric" }).format(date);
+  return `Ultimo backup: ${day}, ${time}`;
+}
+
+function backupReason(status) {
+  if (!status) return "Backup Agent non ancora registrato";
+  if (status.authorized === false) return "Autorizzazione revocata";
+  if (status.last_status === "error") return status.last_error || "Ultimo backup non riuscito";
+  if (!status.last_success_at) return "Nessun backup completato";
+  if (!status.healthy) return "Backup assente o non aggiornato";
+  return "Backup aggiornato e valido";
+}
+
+function updateBackupSidebar() {
+  const light = document.getElementById("backupSidebarLight");
+  const date = document.getElementById("backupSidebarDate");
+  const healthy = Boolean(backupAgentStatus?.healthy && backupAgentStatus?.authorized !== false);
+  light?.classList.toggle("is-green", healthy);
+  light?.classList.toggle("is-red", !healthy);
+  if (date) date.textContent = formatBackupDate(backupAgentStatus?.last_success_at);
+}
+
+function backupSettingsHtml() {
+  return `
+    <div class="backup-page-header">
+      <div><small>PROTEZIONE DATI</small><h2>Backup Agent</h2><p>Il semaforo indica se l’ultimo backup automatico è affidabile.</p></div>
+      <span id="backupPageBadge" class="backup-health-badge is-red"><i></i><b>Da verificare</b></span>
+    </div>
+    <div class="backup-details-grid">
+      <div class="backup-detail"><span>Stato</span><strong id="backupDetailReason">Caricamento…</strong></div>
+      <div class="backup-detail"><span>Ultimo backup</span><strong id="backupDetailDate">—</strong></div>
+      <div class="backup-detail"><span>Utente autorizzato</span><strong id="backupDetailUser">—</strong></div>
+      <div class="backup-detail"><span>Computer autorizzato</span><strong id="backupDetailComputer">—</strong></div>
+      <div class="backup-detail"><span>Versione Agent</span><strong id="backupDetailVersion">—</strong></div>
+      <div class="backup-detail"><span>Cartella backup</span><strong id="backupDetailFolder">—</strong></div>
+    </div>
+    <div class="backup-actions">
+      <a class="primary-btn backup-download-btn" href="./downloads/DVS_Backup_Agent.pkg" download>Scarica Backup Agent</a>
+      <button id="revokeBackupAuthorization" class="danger-outline-btn" type="button">Revoca autorizzazione</button>
+    </div>
+    <p class="backup-utility-note">Per eseguire “Backup ora”, aprire la cartella o consultare i log usa <strong>DVS Backup Agent Utility</strong> nella cartella Applicazioni del Mac autorizzato.</p>`;
+}
+
+function renderBackupSettings() {
+  const status = backupAgentStatus;
+  const healthy = Boolean(status?.healthy && status?.authorized !== false);
+  const badge = document.getElementById("backupPageBadge");
+  if (badge) {
+    badge.classList.toggle("is-green", healthy);
+    badge.classList.toggle("is-red", !healthy);
+    const text = badge.querySelector("b");
+    if (text) text.textContent = healthy ? "Backup protetto" : "Attenzione";
+  }
+  const set = (id, value) => { const el = document.getElementById(id); if (el) el.textContent = value || "—"; };
+  set("backupDetailReason", backupReason(status));
+  set("backupDetailDate", status?.last_success_at ? formatBackupDate(status.last_success_at).replace("Ultimo backup: ", "") : "Mai eseguito");
+  set("backupDetailUser", status?.authorized_user_name || "Non assegnato");
+  set("backupDetailComputer", status?.computer_name || "Non registrato");
+  set("backupDetailVersion", status?.agent_version || "Non rilevata");
+  set("backupDetailFolder", status?.backup_folder || "Non comunicata");
+  const revoke = document.getElementById("revokeBackupAuthorization");
+  if (revoke) {
+    revoke.disabled = !status?.authorized;
+    revoke.textContent = status?.authorized ? "Revoca autorizzazione" : "Autorizzazione revocata";
+    revoke.onclick = revokeBackupAuthorization;
+  }
+}
+
+async function loadBackupStatus() {
+  if (!db) { backupAgentStatus = null; updateBackupSidebar(); renderBackupSettings(); return; }
+  const { data, error } = await db.from("backup_agent_status").select("*").eq("id", "primary").maybeSingle();
+  if (error) {
+    console.warn("Stato Backup Agent non disponibile:", error.message);
+    backupAgentStatus = null;
+  } else backupAgentStatus = data || null;
+  updateBackupSidebar();
+  renderBackupSettings();
+}
+
+async function revokeBackupAuthorization() {
+  if (!db || !backupAgentStatus?.authorized) return;
+  const userName = activeProfile?.name || "Profilo sconosciuto";
+  const confirmed = window.confirm(`Revocare l’autorizzazione al backup per “${backupAgentStatus.computer_name || "questo computer"}”? I backup già creati non verranno eliminati.`);
+  if (!confirmed) return;
+  const { error } = await db.from("backup_agent_status").update({
+    authorized:false,
+    healthy:false,
+    last_status:"revoked",
+    last_error:"Autorizzazione revocata dal Planning",
+    revoked_at:new Date().toISOString(),
+    revoked_by_profile_id:activeProfile?.id || null,
+    revoked_by_name:userName,
+    updated_at:new Date().toISOString()
+  }).eq("id", "primary");
+  if (error) { showToast(`Revoca non riuscita: ${error.message}`); return; }
+  showToast("Autorizzazione del computer revocata.");
+  await loadBackupStatus();
+}
+
+document.getElementById("backupStatusCard")?.addEventListener("click", () => {
+  openView("settings");
+  const button = document.querySelector('[data-settings-section="backup"]');
+  button?.click();
+});
 
 loadProfilesFromSupabase().then(() => { initializeProfileGate(); if (activeProfile) { setCurrentProfileOnline(); startPresenceTracking(); } });
 populateShiftSelects();
@@ -2181,4 +2302,6 @@ renderDashboard();
 loadRemindersFromSupabase();
 loadSupabaseData();
 loadOnlineProfiles();
+loadBackupStatus();
+backupStatusTimer = setInterval(loadBackupStatus, 60000);
 enableRealtime();
