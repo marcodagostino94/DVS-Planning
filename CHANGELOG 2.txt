@@ -1,15 +1,3 @@
-DVS Planning — Build 13.3
-
-- Attivata la pagina Backup già predisposta.
-- Semaforo verde/rosso nella barra laterale.
-- Data e ora dell’ultimo backup sotto la voce Backup.
-- Stato, utente autorizzato, computer autorizzato, versione Agent e cartella di backup.
-- Pulsante Revoca autorizzazione: blocca i backup futuri senza eliminare quelli esistenti.
-- Download del PKG da downloads/DVS_Backup_Agent.pkg.
-- Realtime sullo stato Backup Agent.
-- Aggiunto SQL 010_backup_agent_status_build_13_3.sql.
-
-Nota: prima del push GitHub sostituire il PKG 0.3.1 incluso con il nuovo PKG 0.4.0.
 BUILD 13.2
 - Ripristinate le card profilo della schermata iniziale in stile Liquid Glass: sfondo neutro, solo bordo e avatar colorati, riempimento leggero esclusivamente al passaggio del mouse.
 - Corretto il contrasto nella Gestione Profili: nomi in nero e stato in grigio scuro.
@@ -72,6 +60,3 @@ v_10 CORREZIONI ULTIME 5
 
 Build 12.5
 - Dashboard definitiva: fix rendering sale, liste allineate in alto, scroll interni, pagina senza scroll.
-
-Build 13.3.1
-- Corretto il cache-busting di src/app.js: la pagina Backup completa ora viene caricata al posto del codice 13.2 memorizzato dal browser.
