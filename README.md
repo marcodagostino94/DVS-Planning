@@ -32,3 +32,8 @@ La finestra Nuovo/Modifica turno include l'opzione VARIABILE; sulla card compare
 ## Build 14.5 — Note turno
 
 La finestra Nuovo/Modifica turno include l’opzione NOTE. Quando attivata, consente di inserire fino a 100 caratteri; il testo viene salvato in `shifts.notes` e mostrato in rosso sotto la lavorazione nella card.
+
+## Build 14.9 — Bug fix
+- Ripristinato il supporto completo a `24:00` come fine turno.
+- `00:00` inserito come fine turno viene normalizzato a `24:00` quando rappresenta la mezzanotte successiva.
+- Eliminata la conversione automatica a `23:59`.

@@ -797,7 +797,7 @@ function fitAllCardText() {
     document.querySelectorAll(".shift-time").forEach(el => fitText(el, 6));
     document.querySelectorAll(".shift-film").forEach(el => fitText(el, 6));
     document.querySelectorAll(".shift-type").forEach(el => fitText(el, 6));
-    document.querySelectorAll(".shift-note").forEach(el => fitText(el, 5.5));
+    document.querySelectorAll(".shift-note").forEach(el => fitText(el, 8.5));
     document.querySelectorAll(".editor-name").forEach(el => fitText(el, 6.5));
   });
 }
@@ -821,7 +821,8 @@ function renderCard(shift) {
     shift.confirmed ? "confirmed" : "",
     shift.isDoubleStation ? "double-station" : "",
     selectedShiftIds.has(shift.id) ? "selected" : "",
-    cutShiftIds.has(shift.id) ? "cut-pending" : ""
+    cutShiftIds.has(shift.id) ? "cut-pending" : "",
+    shift.notes ? "has-note" : ""
   ].filter(Boolean).join(" ");
 
   return `
@@ -884,7 +885,15 @@ function renderPlanning() {
       maxTurnsInDay = Math.max(maxTurnsInDay, count);
     });
 
-    const rowHeight = Math.max(98, maxTurnsInDay * 93 + 8);
+    let tallestDayHeight = 98;
+    dates.forEach(dateObject => {
+      const date = isoFromDate(dateObject);
+      const dayShifts = shifts.filter(shift => shift.room === room.id && shift.date === date);
+      const cardsHeight = dayShifts.reduce((total, shift) => total + (shift.notes ? 102 : 88), 0);
+      const gapsHeight = Math.max(0, dayShifts.length - 1) * 5;
+      tallestDayHeight = Math.max(tallestDayHeight, cardsHeight + gapsHeight + 10);
+    });
+    const rowHeight = tallestDayHeight;
     planningGrid.insertAdjacentHTML("beforeend", `<div class="room-label" style="--row-height:${rowHeight}px">${room.label}</div>`);
 
     dates.forEach(dateObject => {
@@ -1312,7 +1321,10 @@ function datesForFormRange() {
 shiftForm.addEventListener("submit", event => {
   event.preventDefault();
   const start = normalizeTime(document.getElementById("start").value);
-  const end = normalizeTime(document.getElementById("end").value);
+  const rawEnd = document.getElementById("end").value.trim();
+  let end = normalizeTime(rawEnd);
+  // A fine turno, 00:00 indica la mezzanotte successiva: internamente resta 24:00.
+  if (end === "00:00" && start && start !== "00:00") end = "24:00";
   const error = document.getElementById("shiftFormError");
   error.textContent = "";
   if (!start || !end || timeToMinutes(end) <= timeToMinutes(start)) { error.textContent = "Inserisci un intervallo orario valido."; return; }
@@ -1370,7 +1382,7 @@ document.getElementById("newShiftBtn").addEventListener("click", () => openNewSh
 document.getElementById("start").addEventListener("change", event => {
   const value = normalizeTime(event.target.value); if (!value) return;
   const minutes = timeToMinutes(value) + 480;
-  document.getElementById("end").value = minutes >= 1440 ? "23:59" : `${String(Math.floor(minutes/60)).padStart(2,"0")}:${String(minutes%60).padStart(2,"0")}`;
+  document.getElementById("end").value = minutes >= 1440 ? "24:00" : `${String(Math.floor(minutes/60)).padStart(2,"0")}:${String(minutes%60).padStart(2,"0")}`;
 });
 document.getElementById("isClient").addEventListener("change", updateClientUI);
 document.getElementById("editorSearchInput").addEventListener("change", () => resolveEditorInput(false));
@@ -1891,7 +1903,7 @@ document.querySelectorAll("[data-settings-section]").forEach(button => button.ad
   const sections = {
     backup: { title:"Backup", subtitle:"Stato e autorizzazione", html:backupSettingsHtml() },
     print: { title:"Stampa", subtitle:"Preferenze di stampa", html:`<h2>Stampa</h2><p>La gestione dei layout e delle preferenze di stampa verrà sviluppata in una prossima build.</p>` },
-    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service.</p><div class="settings-info-meta"><div><span>Versione</span><strong>Build 14.5</strong></div><div><span>Realizzazione</span><strong>Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div>` }
+    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service.</p><div class="settings-info-meta"><div><span>Versione</span><strong>Build 14.9</strong></div><div><span>Realizzazione</span><strong>Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div>` }
   };
   const selected = sections[section];
   if (!selected) return;
@@ -2208,7 +2220,7 @@ function enableRealtime() {
 
 
 
-// Build 14.5 — stato Backup Agent condiviso tramite Supabase.
+// Build 14.9 — bugfix note e supporto orario 24:00; stato Backup Agent condiviso tramite Supabase.
 let backupAgentStatus = null;
 let backupStatusTimer = null;
 

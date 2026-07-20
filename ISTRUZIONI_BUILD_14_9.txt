@@ -1,0 +1,15 @@
+DVS PLANNING — BUILD 14.9 BUG FIX
+
+Correzioni incluse:
+- Ripristinato l'inserimento e la visualizzazione dell'orario 24:00.
+- Inserendo 00:00 come fine turno dopo un orario di inizio, il sistema lo interpreta come mezzanotte e lo salva/mostra come 24:00.
+- Il calcolo automatico di 8 ore imposta 24:00 e non più 23:59.
+- Mantenute le correzioni grafiche delle note della Build 14.5 corretta.
+
+DATABASE / SUPABASE
+- Non è richiesta alcuna nuova migrazione SQL.
+- Viene utilizzata la logica già presente: end_time = 00:00 ed end_is_24 = true.
+
+INSTALLAZIONE
+1. Sostituire i file pubblicati con quelli contenuti in questa build.
+2. Eseguire un aggiornamento forzato del browser/PWA.

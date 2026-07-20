@@ -94,3 +94,14 @@ Build 12.5
 
 Build 13.3.1
 - Corretto il cache-busting di src/app.js: la pagina Backup completa ora viene caricata al posto del codice 13.2 memorizzato dal browser.
+
+Correzione grafica note (revisione 14.5):
+- Card con nota più alta e riga sala adattiva.
+- Nota più leggibile, con spaziatura superiore e inferiore.
+- Cache-busting aggiornato a 14.5.1 mantenendo la versione visibile Build 14.5.
+
+BUILD 14.9 — BUG FIX ORARIO 24:00
+- Campo fine turno compatibile con 24:00.
+- 00:00 a fine turno viene interpretato come mezzanotte successiva e visualizzato come 24:00.
+- Calcolo automatico +8 ore corretto: 16:00 → 24:00, mai 23:59.
+- Nessuna modifica allo schema Supabase.

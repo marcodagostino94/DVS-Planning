@@ -1686,4 +1686,20 @@ button.dashboard-kpi { cursor:pointer; }
 .shift-notes-field.hidden { display:none; }
 .shift-notes-field textarea { min-height:64px; resize:vertical; padding-right:56px; }
 .shift-notes-counter { position:absolute; right:10px; bottom:9px; color:#8a929a; font-size:9px; font-weight:750; pointer-events:none; }
-.shift-note { margin-top:3px; color:#d22334; font-size:6.5px; font-weight:850; line-height:1.15; letter-spacing:.01em; white-space:normal; overflow-wrap:anywhere; }
+.shift-card.has-note { height:102px; }
+.shift-card.has-note .shift-main { padding-bottom:7px; }
+.shift-note {
+  margin-top:5px;
+  padding-bottom:1px;
+  color:#bd2432;
+  font-size:9px;
+  font-weight:650;
+  line-height:1.18;
+  letter-spacing:.005em;
+  white-space:normal;
+  overflow-wrap:anywhere;
+  display:-webkit-box;
+  -webkit-box-orient:vertical;
+  -webkit-line-clamp:2;
+  overflow:hidden;
+}
