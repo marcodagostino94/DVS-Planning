@@ -1753,3 +1753,24 @@ body.dvs-drag-active .shift-card.dragging {
   -webkit-font-smoothing: antialiased;
 }
 body.dvs-drag-active .planning-grid { contain: layout paint style; }
+
+
+/* Build 16.6.1 — Stable fitted text during and after drag */
+body.dvs-drag-active .shift-film,
+body.dvs-drag-active .shift-production,
+body.dvs-drag-active .shift-time,
+body.dvs-drag-active .shift-type,
+body.dvs-drag-active .shift-note,
+body.dvs-drag-active .editor-name {
+  transition: none !important;
+  animation: none !important;
+}
+.drag-group-ghost .shift-film,
+.drag-group-ghost .shift-production,
+.drag-group-ghost .shift-time,
+.drag-group-ghost .shift-type,
+.drag-group-ghost .shift-note,
+.drag-group-ghost .editor-name {
+  transition: none !important;
+  animation: none !important;
+}

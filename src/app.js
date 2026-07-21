@@ -1,4 +1,4 @@
-// DVS Planning Build 16.6 Diagnostics Engine + Drag Stability
+// DVS Planning Build 16.6.1 Diagnostics Engine + Stable Text Drag
 
 const ROOMS = [
   ...Array.from({ length: 15 }, (_, index) => ({
@@ -793,7 +793,7 @@ function fitText(element, minSize) {
   }
 }
 
-function fitAllCardText() {
+function fitAllCardText(immediate = false) {
   if (fitTextJob) {
     if (typeof cancelIdleCallback === "function") cancelIdleCallback(fitTextJob);
     else cancelAnimationFrame(fitTextJob);
@@ -822,6 +822,11 @@ function fitAllCardText() {
     }
     diagnosticsMeasure(dvsDiagnostics.fitTextTimes, fitStartedAt);
   };
+
+  if (immediate) {
+    run();
+    return;
+  }
 
   fitTextJob = typeof requestIdleCallback === "function"
     ? requestIdleCallback(run, { timeout: 250 })
@@ -994,7 +999,7 @@ function diagnosticsSnapshot() {
   } : null;
   return {
     generatedAt: new Date().toISOString(),
-    build: "16.6",
+    build: "16.6.1",
     userAgent: navigator.userAgent,
     viewport: { width: window.innerWidth, height: window.innerHeight, devicePixelRatio: window.devicePixelRatio || 1 },
     data: { shifts: shifts.length, employees: editors.length, rooms: ROOMS.length },
@@ -1146,7 +1151,7 @@ function bindDiagnosticsPage() {
     dvsDiagnostics.fitTextTimes = []; dvsDiagnostics.dragTimes = []; dvsDiagnostics.dragMoves = 0; dvsDiagnostics.dragDrops = 0;
     dvsDiagnostics.zoomTimes = []; dvsDiagnostics.scrollFrames = 0; dvsDiagnostics.longTasks = [];
     dvsDiagnostics.operations = Object.create(null); dvsDiagnostics.lastFps = null; dvsDiagnostics.fpsSamples = [];
-    dvsDiagnostics.lastReport = null; renderDiagnosticsSnapshot(); showToast("Dati diagnostici azzerati.");
+    dvsDiagnostics.lastReport = null; renderPlanning(); renderDiagnosticsSnapshot(); showToast("Dati diagnostici azzerati e nuovo campione di rendering registrato.");
   });
   document.getElementById("diagnosticsDisableBtn")?.addEventListener("click", () => {
     dvsDiagnostics.enabled = false; stopDiagnosticsCollectors(); localStorage.removeItem(DVS_DIAGNOSTICS_KEY); updateDiagnosticsVisibility(); showSettingsHome();
@@ -1166,6 +1171,8 @@ function activateDiagnostics() {
   localStorage.setItem(DVS_DIAGNOSTICS_KEY, "1");
   startDiagnosticsCollectors();
   updateDiagnosticsVisibility();
+  // Registra subito un primo campione reale di rendering.
+  requestAnimationFrame(() => renderPlanning());
   showToast("Modalità sviluppatore attivata: DVS Diagnostics disponibile nelle Impostazioni.");
 }
 
@@ -1253,13 +1260,15 @@ function renderPlanning() {
 
   bindPlanningEvents();
   updateSelectionBadge();
-  fitAllCardText();
+  // Il testo viene adattato nello stesso ciclo di rendering, prima del paint.
+  // Evita il passaggio visibile font predefinito → font ridotto dopo un drag.
+  fitAllCardText(true);
   applyPlanningZoom(false);
 
   const renderDuration = performance.now() - renderStartedAt;
   diagnosticsRecord(dvsDiagnostics.renderTimes, renderDuration);
   if (window.DVS_PERF_DEBUG) {
-    console.debug(`[DVS 16.6] renderPlanning: ${shifts.length} turni, ${dateMeta.length * ROOMS.length} celle, ${renderDuration.toFixed(1)} ms`);
+    console.debug(`[DVS 16.6.1] renderPlanning: ${shifts.length} turni, ${dateMeta.length * ROOMS.length} celle, ${renderDuration.toFixed(1)} ms`);
   }
 }
 
@@ -2510,7 +2519,7 @@ function openPrintPreview() {
       });
     });
     const weekLabel=`${shortPrintDate(week.start)} – ${shortPrintDate(week.end)}`;
-    return `<main class="paper"><header class="head"><div><h1>Digital Video Service</h1><p>PLANNING · ${escapeHtml(monthName(printMonth))}</p><small>Settimana ${escapeHtml(weekLabel)}</small></div><strong>${selectedRooms.length===ROOMS.length?'Tutte le sale':`${selectedRooms.length} sale selezionate`}</strong></header><section class="grid">${cells.join('')}</section><footer class="page-footer"><span>DVS Planning · Build 16.6</span><span>Pagina ${pageIndex+1} di ${selectedWeeks.length}</span></footer></main>`;
+    return `<main class="paper"><header class="head"><div><h1>Digital Video Service</h1><p>PLANNING · ${escapeHtml(monthName(printMonth))}</p><small>Settimana ${escapeHtml(weekLabel)}</small></div><strong>${selectedRooms.length===ROOMS.length?'Tutte le sale':`${selectedRooms.length} sale selezionate`}</strong></header><section class="grid">${cells.join('')}</section><footer class="page-footer"><span>DVS Planning · Build 16.6.1</span><span>Pagina ${pageIndex+1} di ${selectedWeeks.length}</span></footer></main>`;
   }).join('');
   const popup=window.open('','_blank');
   if(!popup)return showToast('Consenti l’apertura della finestra di anteprima');
@@ -2580,7 +2589,7 @@ document.querySelectorAll("[data-settings-section]").forEach(button => button.ad
     backup: { title:"Backup", subtitle:"Stato e autorizzazione", html:backupSettingsHtml() },
     print: { title:"Stampa", subtitle:"Centro Stampa", html:printSettingsHtml() },
     diagnostics: { title:"DVS Diagnostics", subtitle:"Modalità sviluppatore", html:diagnosticsHtml() },
-    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service.</p><div class="settings-info-meta"><div><span>Versione</span><strong>Build 16.6 Diagnostics Engine</strong></div><div><span>Realizzazione</span><strong>Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div>` }
+    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service.</p><div class="settings-info-meta"><div><span>Versione</span><strong>Build 16.6.1 Diagnostics Engine</strong></div><div><span>Realizzazione</span><strong>Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div>` }
   };
   const selected = sections[section];
   if (!selected) return;
