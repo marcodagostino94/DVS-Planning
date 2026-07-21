@@ -8,7 +8,7 @@
   <link rel="icon" type="image/png" sizes="64x64" href="./assets/icons/dvs-planning-64.png">
   <link rel="apple-touch-icon" href="./assets/icons/dvs-planning-180.png">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./src/styles.css?v=19-gm">
+  <link rel="stylesheet" href="./src/styles.css?v=19-gm-2">
 </head>
 <body>
   <section id="profileGate" class="profile-gate" aria-label="Selezione profilo">
@@ -278,7 +278,17 @@
 
         <div id="genericSettingsSection" class="settings-detail" hidden>
           <div class="settings-detail-toolbar"><button id="backFromGenericSettings" class="toolbar-btn" type="button">‹ Impostazioni</button></div>
-          <div id="genericSettingsContent" class="management-card settings-generic-card"></div>
+          <div id="genericSettingsContent" class="management-card settings-generic-card">
+            <img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video">
+            <h2>DVS Planning</h2>
+            <p>Applicazione collaborativa per la gestione del Planning di Digital Video Service.</p>
+            <div class="settings-info-meta">
+              <div><span>Versione</span><strong>v19 – Golden Master</strong></div>
+              <div><span>Ideazione e sviluppo</span><strong>Marco D'Agostino per Digital Video Service</strong></div>
+              <div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div>
+            </div>
+            <p class="settings-info-copyright"><strong>Copyright © 2026 Marco D'Agostino per Digital Video Service</strong><br>Tutti i diritti riservati.</p>
+          </div>
         </div>
       </section>
     </main>
@@ -532,6 +542,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="./src/config.js?v=11.0"></script>
-  <script src="./src/app.js?v=19-gm"></script>
+  <script src="./src/app.js?v=19-gm-2"></script>
 </body>
 </html>
