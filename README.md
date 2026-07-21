@@ -1,14 +1,12 @@
-# DVS Planning — Build 16.4
+# DVS Planning — Versione 17.0
 
-Build dedicata a performance e pulizia, basata sulla 16.3 Hotfix 1000 v2.
+Build stabile derivata dalla 16.6.1.
 
-## Miglioramenti
-- Caricamento paginato completo dei turni Supabase.
-- Event delegation nella griglia: un solo gruppo di listener invece di listener su ogni card/cella.
-- Indici in memoria per turni, dipendenti e conflitti.
-- Adattamento testo differito e limitato alle card visibili.
-- Aggiornamenti realtime accorpati per evitare ricaricamenti multipli ravvicinati.
-- Nessuna modifica intenzionale alla grafica o alle funzioni.
+## Modifiche
+- Rimossa completamente la diagnostica dall’interfaccia e dal motore.
+- Il testo del tipo lavorazione è rosso solo per GRAFICA e COLOR.
+- Aggiornati tutti i riferimenti di versione alla 17.0.
+- Rimossi changelog e asset non utilizzati.
 
-## File indispensabile
-La cartella `downloads/` resta inclusa perché distribuisce `DVS_Backup_Agent.pkg` tramite GitHub Pages.
+## Avvio
+Aprire `index.html` oppure pubblicare l’intera cartella sul servizio web già utilizzato dal progetto.

@@ -1,9 +1,0 @@
-DVS Planning — Build 16.6 Diagnostics Engine & Drag Stability
-
-- Collegata la diagnostica al rendering reale, ai caricamenti Supabase e al realtime.
-- Aggiunte metriche per drag, fit testo, pagine database, latenze realtime e long task.
-- Aggiunti contatori operativi al report JSON.
-- Stabilizzato il trascinamento: eliminati rotazione/scala durante il drag.
-- Ghost spostato con translate3d e aggiornamento destinazione solo al cambio cella.
-- Sospeso fitText durante il drag per evitare flicker delle scritte.
-- Diagnostics resta completamente inattivo quando la modalità sviluppatore è disabilitata.

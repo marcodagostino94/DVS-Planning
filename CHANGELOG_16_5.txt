@@ -1,9 +1,0 @@
-DVS Planning — Build 16.5
-
-- Aggiunta DVS Diagnostics, nascosta e inattiva per impostazione predefinita.
-- Attivazione con 5 clic/tocchi sul numero della Build.
-- Metriche: rendering, caricamento Supabase, DOM, card, celle, realtime, memoria (se supportata), FPS.
-- Analisi automatica con punteggio e segnalazioni.
-- Esportazione report JSON.
-- Reset dati e disattivazione completa.
-- Nessuna raccolta o misurazione continua quando la modalità è disattivata.

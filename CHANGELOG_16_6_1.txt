@@ -1,9 +1,0 @@
-DVS Planning — Build 16.6.1 Diagnostics Engine & Stable Text Drag
-
-CORREZIONI VERIFICATE
-- Numero build aggiornato in titolo, sidebar, informazioni, stampa e report diagnostico.
-- fitText eseguito in modo sincrono nello stesso ciclo di renderPlanning, prima del paint.
-- Eliminato il passaggio visibile del titolo Film dalla dimensione predefinita a quella adattata dopo lo spostamento.
-- Modalità sviluppatore: all’attivazione viene registrato subito un campione reale di rendering.
-- Azzera dati registra immediatamente un nuovo campione render, evitando Render medio/massimo vuoti.
-- Cache busting aggiornato a 16-6-1-stable-text-diagnostics.
