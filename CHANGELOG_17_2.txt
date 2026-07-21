@@ -1,7 +1,0 @@
-DVS Planning — Versione 17.2
-
-- Interfaccia iPhone dedicata con barra superiore e navigazione inferiore a sole icone.
-- Stato backup e utenti online visibili in alto.
-- Azione contestuale Nuovo turno / Nuovo dipendente in alto a destra.
-- Ottimizzazioni Planning iPad estese a iPhone.
-- Mac e iPad invariati.

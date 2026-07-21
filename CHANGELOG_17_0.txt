@@ -1,7 +1,0 @@
-DVS Planning — Versione 17.0
-
-- Rimossa completamente DVS Diagnostics.
-- GRAFICA e COLOR mostrano in rosso esclusivamente il testo del tipo lavorazione.
-- Aggiornati titolo, sidebar, Informazioni, stampa e cache alla Versione 17.0.
-- Rimossi file di changelog precedenti e asset non referenziati.
-- Nessuna modifica al comportamento stabile del ridimensionamento testi.

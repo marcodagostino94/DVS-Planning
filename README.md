@@ -16,6 +16,6 @@ Aprire `index.html` oppure pubblicare l'intera cartella sul servizio web già ut
 
 ## Copyright
 
-© 2026 Marco D'Agostino  
-Ideato, progettato e sviluppato da Marco D'Agostino.  
+© 2026 Marco D'Agostino per Digital Video Service  
+Ideazione e sviluppo: Marco D'Agostino per Digital Video Service.  
 Tutti i diritti riservati.
