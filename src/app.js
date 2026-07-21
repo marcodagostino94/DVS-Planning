@@ -1,3 +1,4 @@
+// DVS Planning Build 16.3 Performance Engine + Hotfix paginazione Supabase v2
 
 const ROOMS = [
   ...Array.from({ length: 15 }, (_, index) => ({
@@ -2511,6 +2512,8 @@ async function loadSupabaseData() {
     email: row.email || "",
     notes: row.notes || ""
   }));
+
+  console.info(`[DVS 16.3 HOTFIX v2] Turni caricati da Supabase: ${(shiftsResult.data || []).length}`);
 
   shifts = (shiftsResult.data || []).map(row => ({
     id: String(row.id),
