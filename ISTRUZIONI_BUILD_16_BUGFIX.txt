@@ -1,8 +1,0 @@
-DVS PLANNING — BUILD 16 BUGFIX
-
-Correzioni incluse:
-- Centro Stampa: ogni settimana selezionata viene impaginata su una pagina separata.
-- Tutto il mese: una pagina per ogni settimana del mese.
-- Riepiloghi: corretto Esporta PDF, che ora genera il contenuto e apre la stampa senza pagina bianca.
-
-Nessuna modifica al database.

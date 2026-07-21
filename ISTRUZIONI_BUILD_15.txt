@@ -1,6 +1,0 @@
-DVS PLANNING — BUILD 15
-
-Questa build parte dalla Build 14.9 confermata e modifica esclusivamente la pagina Riepiloghi.
-
-Non sono necessarie migrazioni SQL.
-Caricare tutti i file sul sito sostituendo la build precedente e svuotare la cache del browser/PWA se necessario.

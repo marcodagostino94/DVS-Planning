@@ -1,0 +1,9 @@
+DVS Planning Build 16.4 — Performance & Cleanup
+
+- Mantiene hotfix paginazione oltre 1000 turni.
+- Event delegation planning grid.
+- Cache dipendenti/conflitti per rendering.
+- Fit testo differito sulle sole card visibili.
+- Debounce eventi realtime staff/turni.
+- Rimossi documenti legacy di build dalla root.
+- Conservata downloads/DVS_Backup_Agent.pkg.

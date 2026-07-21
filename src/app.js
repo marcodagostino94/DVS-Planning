@@ -1,4 +1,4 @@
-// DVS Planning Build 16.3 Performance Engine + Hotfix paginazione Supabase v2
+// DVS Planning Build 16.4 Performance Engine + Hotfix paginazione Supabase v2
 
 const ROOMS = [
   ...Array.from({ length: 15 }, (_, index) => ({
@@ -795,14 +795,35 @@ function fitText(element, minSize) {
 }
 
 function fitAllCardText() {
-  requestAnimationFrame(() => {
-    document.querySelectorAll(".shift-production").forEach(el => fitText(el, 5.5));
-    document.querySelectorAll(".shift-time").forEach(el => fitText(el, 6));
-    document.querySelectorAll(".shift-film").forEach(el => fitText(el, 6));
-    document.querySelectorAll(".shift-type").forEach(el => fitText(el, 6));
-    document.querySelectorAll(".shift-note").forEach(el => fitText(el, 8.5));
-    document.querySelectorAll(".editor-name").forEach(el => fitText(el, 6.5));
-  });
+  if (fitTextJob) {
+    if (typeof cancelIdleCallback === "function") cancelIdleCallback(fitTextJob);
+    else cancelAnimationFrame(fitTextJob);
+  }
+
+  const run = () => {
+    fitTextJob = null;
+    const viewport = planningScroller.getBoundingClientRect();
+    const visibleCards = [...planningGrid.querySelectorAll(".shift-card")].filter(card => {
+      const rect = card.getBoundingClientRect();
+      return rect.right >= viewport.left && rect.left <= viewport.right
+        && rect.bottom >= viewport.top && rect.top <= viewport.bottom;
+    });
+
+    const selectors = [
+      [".shift-production", 5.5], [".shift-time", 6], [".shift-film", 6],
+      [".shift-type", 6], [".shift-note", 8.5], [".editor-name", 6.5]
+    ];
+    for (const card of visibleCards) {
+      for (const [selector, minSize] of selectors) {
+        const element = card.querySelector(selector);
+        if (element) fitText(element, minSize);
+      }
+    }
+  };
+
+  fitTextJob = typeof requestIdleCallback === "function"
+    ? requestIdleCallback(run, { timeout: 250 })
+    : requestAnimationFrame(run);
 }
 
 function escapeHtml(value) {
@@ -850,6 +871,37 @@ function renderCard(shift) {
   `;
 }
 
+let renderEditorMap = new Map();
+let renderConflictIds = new Set();
+let fitTextJob = null;
+let planningEventsBound = false;
+
+function buildRenderConflictIds() {
+  const byEditorDate = new Map();
+  for (const shift of shifts) {
+    if (!shift.editorId) continue;
+    const key = `${shift.editorId}|${shift.date}`;
+    const bucket = byEditorDate.get(key);
+    if (bucket) bucket.push(shift);
+    else byEditorDate.set(key, [shift]);
+  }
+
+  const conflicts = new Set();
+  for (const bucket of byEditorDate.values()) {
+    bucket.sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start));
+    for (let i = 0; i < bucket.length; i += 1) {
+      for (let j = i + 1; j < bucket.length; j += 1) {
+        if (timeToMinutes(bucket[j].start) >= timeToMinutes(bucket[i].end)) break;
+        if (overlaps(bucket[i], bucket[j])) {
+          conflicts.add(bucket[i].id);
+          conflicts.add(bucket[j].id);
+        }
+      }
+    }
+  }
+  return conflicts;
+}
+
 function buildPlanningShiftIndex() {
   const index = new Map();
   for (const shift of shifts) {
@@ -870,6 +922,8 @@ function renderPlanning() {
   const activeMonth = currentMonth.getMonth();
   const now = new Date();
   const shiftIndex = buildPlanningShiftIndex();
+  renderEditorMap = new Map(editors.map(editor => [editor.id, editor]));
+  renderConflictIds = buildRenderConflictIds();
   const dateMeta = dates.map((date, index) => ({
     dateObject: date,
     iso: isoFromDate(date),
@@ -942,129 +996,150 @@ function renderPlanning() {
   }
 }
 
+function syncPlanningSelectionUI() {
+  planningGrid.querySelectorAll('.shift-card').forEach(card => {
+    card.classList.toggle('selected', selectedShiftIds.has(card.dataset.shiftId));
+  });
+  planningGrid.querySelectorAll('.planning-cell').forEach(cell => {
+    const selected = selectedCell?.room === cell.dataset.room && selectedCell?.date === cell.dataset.date;
+    cell.classList.toggle('cell-selected', selected);
+    let dot = cell.querySelector('.cell-selection-dot');
+    if (selected && !dot) cell.insertAdjacentHTML('afterbegin', '<span class="cell-selection-dot" aria-hidden="true"></span>');
+    else if (!selected) dot?.remove();
+  });
+  updateSelectionBadge();
+}
+
 function bindPlanningEvents() {
-  document.querySelectorAll(".shift-card").forEach(card => {
-    card.addEventListener("click", event => {
+  if (planningEventsBound) return;
+  planningEventsBound = true;
+
+  planningGrid.addEventListener('click', event => {
+    const card = event.target.closest('.shift-card');
+    const cell = event.target.closest('.planning-cell');
+    if (card) {
       event.stopPropagation();
-      if (suppressNextClick) {
-        suppressNextClick = false;
-        return;
-      }
+      if (suppressNextClick) { suppressNextClick = false; return; }
       hideContextMenu();
-      const id=card.dataset.shiftId;
-      if (event.metaKey||event.ctrlKey) toggleCommandSelection(id);
-      else if (event.shiftKey&&selectionAnchorId) selectShiftRange(selectionAnchorId,id);
+      const id = card.dataset.shiftId;
+      if (event.metaKey || event.ctrlKey) toggleCommandSelection(id);
+      else if (event.shiftKey && selectionAnchorId) selectShiftRange(selectionAnchorId, id);
       else selectOnlyShift(id);
-      renderPlanning();
-    });
-    card.addEventListener("dblclick", event => {
-      event.stopPropagation(); hideContextMenu();
-      const shift = shifts.find(item => item.id === card.dataset.shiftId);
-      if (shift?.confirmed) return showToast("Il turno confermato è bloccato");
-      openEditShift(card.dataset.shiftId);
-    });
-    card.addEventListener("contextmenu", event => {
-      const id=card.dataset.shiftId;
-      if (!selectedShiftIds.has(id)) selectOnlyShift(id);
-      const x=event.clientX,y=event.clientY;
-      renderPlanning();
-      requestAnimationFrame(()=>showContextMenu({preventDefault(){},stopPropagation(){},clientX:x,clientY:y}, document.querySelector(`.shift-card[data-shift-id="${id}"]`)?.closest('.planning-cell')));
-    });
-    card.addEventListener("dragstart", event => {
-      const dragged = shifts.find(item => item.id === card.dataset.shiftId);
-      if (dragged?.confirmed) { event.preventDefault(); return showToast("Il turno confermato è bloccato"); }
-      dragSourceShiftId = card.dataset.shiftId;
-      const group = captureDragGroup(dragSourceShiftId);
-
-      selectedShiftIds = new Set(group.map(shift => shift.id));
-      selectionAnchorId = dragSourceShiftId;
-      suppressNextClick = true;
-
-      document.querySelectorAll('.shift-card').forEach(item => {
-        if (selectedShiftIds.has(item.dataset.shiftId)) item.classList.add('dragging');
-      });
-
-      event.dataTransfer.effectAllowed = 'move';
-      event.dataTransfer.setData('text/plain', dragSourceShiftId);
-      const image = new Image();
-      image.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
-      event.dataTransfer.setDragImage(image, 0, 0);
-      createDragGhost(group);
-      updateSelectionBadge();
-    });
-
-    card.addEventListener("dragend", () => {
-      document.querySelectorAll('.shift-card.dragging').forEach(item => item.classList.remove('dragging'));
-      dragSourceShiftId = null;
-      clearActiveDrag();
-      removeDragGhost();
-    });
+      syncPlanningSelectionUI();
+      return;
+    }
+    if (!cell || marqueeState?.active) return;
+    clearTimeout(emptyCellClickTimer);
+    emptyCellClickTimer = setTimeout(() => {
+      hideContextMenu();
+      selectedShiftIds.clear();
+      selectionAnchorId = null;
+      selectedCell = { room: cell.dataset.room, date: cell.dataset.date };
+      syncPlanningSelectionUI();
+    }, 190);
   });
 
-  document.querySelectorAll(".planning-cell").forEach(cell => {
-    cell.addEventListener("click", event => {
-      if (event.target.closest('.shift-card') || marqueeState?.active) return;
-      clearTimeout(emptyCellClickTimer);
-      emptyCellClickTimer = setTimeout(() => {
-        hideContextMenu();
-        selectedShiftIds.clear();
-        selectionAnchorId = null;
-        selectedCell = {room:cell.dataset.room, date:cell.dataset.date};
-        renderPlanning();
-      }, 190);
-    });
-    cell.addEventListener("dblclick", event => {
-      if (event.target.closest('.shift-card')) return;
-      clearTimeout(emptyCellClickTimer);
-      emptyCellClickTimer = null;
-      selectedCell = {room:cell.dataset.room, date:cell.dataset.date};
+  planningGrid.addEventListener('dblclick', event => {
+    const card = event.target.closest('.shift-card');
+    const cell = event.target.closest('.planning-cell');
+    clearTimeout(emptyCellClickTimer);
+    emptyCellClickTimer = null;
+    if (card) {
+      event.stopPropagation(); hideContextMenu();
+      const shift = shifts.find(item => item.id === card.dataset.shiftId);
+      if (shift?.confirmed) return showToast('Il turno confermato è bloccato');
+      openEditShift(card.dataset.shiftId);
+      return;
+    }
+    if (cell) {
+      selectedCell = { room: cell.dataset.room, date: cell.dataset.date };
       openNewShift(cell.dataset.room, cell.dataset.date);
-    });
-    cell.addEventListener("mousedown", event => { if (!event.target.closest('.shift-card')) startMarquee(event,cell); });
-    cell.addEventListener("contextmenu", event => { clearTimeout(emptyCellClickTimer); selectedCell={room:cell.dataset.room,date:cell.dataset.date}; showContextMenu(event,cell); });
-    cell.addEventListener("dragover", event => {
-      event.preventDefault();
-      const valid = highlightGroupDestination(cell.dataset.room, cell.dataset.date);
-      event.dataTransfer.dropEffect = valid ? 'move' : 'none';
-      moveDragGhost(event);
-    });
-    cell.addEventListener("dragleave", event => {
-      if (!event.relatedTarget?.closest?.('.planning-cell')) clearDropHighlights();
-    });
-    cell.addEventListener("drop", event => {
-      event.preventDefault(); clearDropHighlights();
-      const sourceId = dragSourceShiftId || event.dataTransfer.getData('text/plain');
-      if (!activeDragGroup.length) captureDragGroup(sourceId);
+    }
+  });
 
-      const candidates = buildMovedGroup(cell.dataset.room, cell.dataset.date);
-      if (!candidates.length) {
-        clearActiveDrag();
-        return removeDragGhost();
-      }
+  planningGrid.addEventListener('mousedown', event => {
+    const cell = event.target.closest('.planning-cell');
+    if (cell && !event.target.closest('.shift-card')) startMarquee(event, cell);
+  });
 
-      if (groupHasConflict(candidates)) {
-        showToast('Orari non compatibili');
-        clearActiveDrag();
-        return removeDragGhost();
-      }
+  planningGrid.addEventListener('contextmenu', event => {
+    const card = event.target.closest('.shift-card');
+    const cell = event.target.closest('.planning-cell');
+    if (!cell) return;
+    clearTimeout(emptyCellClickTimer);
+    if (card) {
+      const id = card.dataset.shiftId;
+      if (!selectedShiftIds.has(id)) selectOnlyShift(id);
+      syncPlanningSelectionUI();
+    } else selectedCell = { room: cell.dataset.room, date: cell.dataset.date };
+    showContextMenu(event, cell);
+  });
 
-      const movedById = new Map(candidates.map(candidate => [candidate.id, candidate]));
-      shifts = shifts.map(shift => movedById.get(shift.id) || shift);
-      candidates.forEach(syncShiftToSupabase);
-      saveLocal();
-
-      selectedShiftIds = new Set(candidates.map(candidate => candidate.id));
-      selectionAnchorId = sourceId;
-      selectedCell = null;
-      clearActiveDrag();
-      renderPlanning();
-      removeDragGhost();
-      showToast(
-        candidates.length === 1
-          ? 'Turno spostato'
-          : `${candidates.length} turni spostati`
-      );
+  planningGrid.addEventListener('dragstart', event => {
+    const card = event.target.closest('.shift-card');
+    if (!card) return;
+    const dragged = shifts.find(item => item.id === card.dataset.shiftId);
+    if (dragged?.confirmed) { event.preventDefault(); return showToast('Il turno confermato è bloccato'); }
+    dragSourceShiftId = card.dataset.shiftId;
+    const group = captureDragGroup(dragSourceShiftId);
+    selectedShiftIds = new Set(group.map(shift => shift.id));
+    selectionAnchorId = dragSourceShiftId;
+    suppressNextClick = true;
+    planningGrid.querySelectorAll('.shift-card').forEach(item => {
+      if (selectedShiftIds.has(item.dataset.shiftId)) item.classList.add('dragging');
     });
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData('text/plain', dragSourceShiftId);
+    const image = new Image();
+    image.src = 'data:image/gif;base64,R0lGODlhAQABAIAAAAAAAP///ywAAAAAAQABAAACAUwAOw==';
+    event.dataTransfer.setDragImage(image, 0, 0);
+    createDragGhost(group);
+    updateSelectionBadge();
+  });
+
+  planningGrid.addEventListener('dragend', event => {
+    if (!event.target.closest('.shift-card')) return;
+    planningGrid.querySelectorAll('.shift-card.dragging').forEach(item => item.classList.remove('dragging'));
+    dragSourceShiftId = null;
+    clearActiveDrag();
+    removeDragGhost();
+  });
+
+  planningGrid.addEventListener('dragover', event => {
+    const cell = event.target.closest('.planning-cell');
+    if (!cell) return;
+    event.preventDefault();
+    const valid = highlightGroupDestination(cell.dataset.room, cell.dataset.date);
+    event.dataTransfer.dropEffect = valid ? 'move' : 'none';
+    moveDragGhost(event);
+  });
+
+  planningGrid.addEventListener('dragleave', event => {
+    if (!event.relatedTarget?.closest?.('.planning-cell')) clearDropHighlights();
+  });
+
+  planningGrid.addEventListener('drop', event => {
+    const cell = event.target.closest('.planning-cell');
+    if (!cell) return;
+    event.preventDefault(); clearDropHighlights();
+    const sourceId = dragSourceShiftId || event.dataTransfer.getData('text/plain');
+    if (!activeDragGroup.length) captureDragGroup(sourceId);
+    const candidates = buildMovedGroup(cell.dataset.room, cell.dataset.date);
+    if (!candidates.length) { clearActiveDrag(); return removeDragGhost(); }
+    if (groupHasConflict(candidates)) {
+      showToast('Orari non compatibili'); clearActiveDrag(); return removeDragGhost();
+    }
+    const movedById = new Map(candidates.map(candidate => [candidate.id, candidate]));
+    shifts = shifts.map(shift => movedById.get(shift.id) || shift);
+    candidates.forEach(syncShiftToSupabase);
+    saveLocal();
+    selectedShiftIds = new Set(candidates.map(candidate => candidate.id));
+    selectionAnchorId = sourceId;
+    selectedCell = null;
+    clearActiveDrag();
+    renderPlanning();
+    removeDragGhost();
+    showToast(candidates.length === 1 ? 'Turno spostato' : `${candidates.length} turni spostati`);
   });
 }
 
@@ -2146,7 +2221,7 @@ function openPrintPreview() {
       });
     });
     const weekLabel=`${shortPrintDate(week.start)} – ${shortPrintDate(week.end)}`;
-    return `<main class="paper"><header class="head"><div><h1>Digital Video Service</h1><p>PLANNING · ${escapeHtml(monthName(printMonth))}</p><small>Settimana ${escapeHtml(weekLabel)}</small></div><strong>${selectedRooms.length===ROOMS.length?'Tutte le sale':`${selectedRooms.length} sale selezionate`}</strong></header><section class="grid">${cells.join('')}</section><footer class="page-footer"><span>DVS Planning · Build 16.3</span><span>Pagina ${pageIndex+1} di ${selectedWeeks.length}</span></footer></main>`;
+    return `<main class="paper"><header class="head"><div><h1>Digital Video Service</h1><p>PLANNING · ${escapeHtml(monthName(printMonth))}</p><small>Settimana ${escapeHtml(weekLabel)}</small></div><strong>${selectedRooms.length===ROOMS.length?'Tutte le sale':`${selectedRooms.length} sale selezionate`}</strong></header><section class="grid">${cells.join('')}</section><footer class="page-footer"><span>DVS Planning · Build 16.4</span><span>Pagina ${pageIndex+1} di ${selectedWeeks.length}</span></footer></main>`;
   }).join('');
   const popup=window.open('','_blank');
   if(!popup)return showToast('Consenti l’apertura della finestra di anteprima');
@@ -2215,7 +2290,7 @@ document.querySelectorAll("[data-settings-section]").forEach(button => button.ad
   const sections = {
     backup: { title:"Backup", subtitle:"Stato e autorizzazione", html:backupSettingsHtml() },
     print: { title:"Stampa", subtitle:"Centro Stampa", html:printSettingsHtml() },
-    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service.</p><div class="settings-info-meta"><div><span>Versione</span><strong>Build 16.3 Performance Engine</strong></div><div><span>Realizzazione</span><strong>Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div>` }
+    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service.</p><div class="settings-info-meta"><div><span>Versione</span><strong>Build 16.4 Performance Engine</strong></div><div><span>Realizzazione</span><strong>Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div>` }
   };
   const selected = sections[section];
   if (!selected) return;
@@ -2513,7 +2588,7 @@ async function loadSupabaseData() {
     notes: row.notes || ""
   }));
 
-  console.info(`[DVS 16.3 HOTFIX v2] Turni caricati da Supabase: ${(shiftsResult.data || []).length}`);
+  console.info(`[DVS 16.4 PERFORMANCE & CLEANUP] Turni caricati da Supabase: ${(shiftsResult.data || []).length}`);
 
   shifts = (shiftsResult.data || []).map(row => ({
     id: String(row.id),
@@ -2542,12 +2617,18 @@ async function loadSupabaseData() {
   renderSummaries();
 }
 
+let realtimeDataRefreshTimer = null;
+function scheduleRealtimeDataRefresh() {
+  clearTimeout(realtimeDataRefreshTimer);
+  realtimeDataRefreshTimer = setTimeout(loadSupabaseData, 140);
+}
+
 function enableRealtime() {
   if (!db) return;
 
   db.channel("dvs-planning-realtime")
-    .on("postgres_changes", { event: "*", schema: "public", table: "staff" }, loadSupabaseData)
-    .on("postgres_changes", { event: "*", schema: "public", table: "shifts" }, loadSupabaseData)
+    .on("postgres_changes", { event: "*", schema: "public", table: "staff" }, scheduleRealtimeDataRefresh)
+    .on("postgres_changes", { event: "*", schema: "public", table: "shifts" }, scheduleRealtimeDataRefresh)
     .on("postgres_changes", { event: "*", schema: "public", table: "reminders" }, loadRemindersFromSupabase)
     .on("postgres_changes", { event: "*", schema: "public", table: "planning_profiles" }, loadProfilesFromSupabase)
     .on("postgres_changes", { event: "*", schema: "public", table: "profile_presence" }, loadOnlineProfiles)
