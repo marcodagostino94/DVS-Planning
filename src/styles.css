@@ -1847,3 +1847,53 @@ html.is-ipad .shift-card:hover { transform: none; animation: none !important; }
   html.is-iphone .shift-card:hover { transform:none; animation:none !important; }
   html.is-iphone dialog { max-width:calc(100vw - 16px); width:calc(100vw - 16px); max-height:calc(100dvh - 24px); }
 }
+
+
+/* Versione 18.0 — iPhone Final UI. Regole limitate esclusivamente a iPhone. */
+.iphone-shift-menu{display:none}
+@media(max-width:760px){
+  html.is-iphone .app-shell{height:100dvh;overflow:hidden}
+  html.is-iphone #dashboardView{overflow-y:auto!important;overflow-x:hidden!important;-webkit-overflow-scrolling:touch;overscroll-behavior-y:contain}
+  html.is-iphone #dashboardView .dashboard-content{display:block!important;padding:10px 12px calc(28px + env(safe-area-inset-bottom))!important;overflow:visible!important}
+  html.is-iphone .dashboard-kpis{display:grid!important;grid-template-columns:repeat(3,minmax(0,1fr))!important;gap:8px!important;margin-bottom:12px!important}
+  html.is-iphone .dashboard-kpi{min-height:82px!important;height:82px!important;padding:10px!important;border-radius:16px!important;display:grid!important;grid-template-columns:32px minmax(0,1fr)!important;grid-template-rows:1fr!important;align-items:center!important;gap:8px!important}
+  html.is-iphone .dashboard-kpi .kpi-icon{width:31px!important;height:31px!important;border-radius:10px!important}
+  html.is-iphone .dashboard-kpi .kpi-icon .sf-icon{width:18px!important;height:18px!important}
+  html.is-iphone .dashboard-kpi .kpi-copy{display:grid!important;gap:1px!important;min-width:0!important}
+  html.is-iphone .dashboard-kpi .kpi-copy small{font-size:8px!important;line-height:1.05!important;white-space:normal!important}
+  html.is-iphone .dashboard-kpi .kpi-copy strong{font-size:22px!important;line-height:1!important}
+  html.is-iphone .dashboard-kpi .kpi-action{display:none!important}
+  html.is-iphone .dashboard-grid{display:grid!important;grid-template-columns:1fr!important;gap:12px!important;overflow:visible!important}
+  html.is-iphone .dashboard-panel{min-height:0!important;height:auto!important;max-height:none!important;border-radius:18px!important;overflow:hidden!important}
+  html.is-iphone .dashboard-panel .panel-heading{padding:14px 14px 10px!important}
+  html.is-iphone .dashboard-panel .panel-heading h2{font-size:17px!important}
+  html.is-iphone .today-planning-list,html.is-iphone .compact-dashboard-list,html.is-iphone .reminders-list{height:auto!important;max-height:none!important;overflow:visible!important;padding-bottom:8px!important}
+  html.is-iphone #todayRoomsList{display:grid!important;grid-template-columns:repeat(2,minmax(0,1fr))!important;grid-template-rows:none!important;grid-auto-flow:row!important;height:auto!important;max-height:none!important;overflow:visible!important;padding:0 12px 12px!important;gap:7px!important}
+  html.is-iphone .today-shift-row{grid-template-columns:72px minmax(0,1fr)!important;gap:3px 9px!important;padding:11px 14px!important}
+  html.is-iphone .today-shift-row time{grid-row:1/3!important}
+  html.is-iphone .today-shift-row .room{font-size:10px!important}
+  html.is-iphone .today-shift-row strong{font-size:13px!important}
+  html.is-iphone .reminder-form{padding:0 12px 12px!important}
+  html.is-iphone .reminder-form button{width:42px!important;min-width:42px!important;height:42px!important;border-radius:13px!important;font-size:24px!important}
+  html.is-iphone .iphone-topbar{min-height:56px;padding:calc(7px + env(safe-area-inset-top)) 11px 7px;gap:7px}
+  html.is-iphone .iphone-topbar h1{font-size:19px;flex:1 1 auto}
+  html.is-iphone .iphone-topbar-status{gap:5px;flex:0 0 auto}
+  html.is-iphone .iphone-backup-status{position:relative;width:34px;min-width:34px;height:34px;padding:4px!important}
+  html.is-iphone .iphone-backup-cloud{width:26px;height:26px;fill:none;stroke:#606974;stroke-width:1.7;stroke-linecap:round;stroke-linejoin:round}
+  html.is-iphone .iphone-backup-status .backup-light{position:absolute;right:3px;bottom:3px;width:9px;height:9px;border:2px solid #f5f6f8}
+  html.is-iphone .iphone-online-users{padding:2px!important;min-width:28px!important}
+  html.is-iphone .iphone-online-avatars i{width:26px;height:26px;font-size:8px}
+  html.is-iphone .iphone-online-avatars .profile-red{background:linear-gradient(145deg,#d32b42,#8f1024)}
+  html.is-iphone .iphone-online-avatars .profile-blue{background:linear-gradient(145deg,#3e83ec,#224f9e)}
+  html.is-iphone .iphone-online-avatars .profile-purple{background:linear-gradient(145deg,#9b5ce0,#63309c)}
+  html.is-iphone .iphone-online-avatars .profile-orange{background:linear-gradient(145deg,#ef8b31,#a94a15)}
+  html.is-iphone .iphone-online-avatars .profile-green{background:linear-gradient(145deg,#39b66d,#17713d)}
+  html.is-iphone .iphone-online-avatars .profile-cyan{background:linear-gradient(145deg,#31adc6,#176b7d)}
+  html.is-iphone .iphone-context-action{width:36px;min-width:36px;height:36px;min-height:36px;padding:0!important;border-radius:12px;font-size:23px;line-height:1}
+  html.is-iphone #editorsView>.topbar{display:none!important}
+  html.is-iphone .editors-page{padding-top:10px!important}
+  html.is-iphone .shift-card{position:relative}
+  html.is-iphone .iphone-shift-menu{display:grid;place-items:center;position:absolute;z-index:8;top:3px;right:3px;width:30px;height:25px;padding:0;border:0;border-radius:8px;background:rgba(255,255,255,.72);color:#343a42;font-size:14px;font-weight:900;letter-spacing:1px;box-shadow:0 1px 5px rgba(0,0,0,.12);touch-action:manipulation}
+  html.is-iphone .shift-production{padding-right:30px}
+  html.is-iphone #contextMenu{position:fixed!important;z-index:500!important;max-width:calc(100vw - 16px)!important;max-height:calc(100dvh - 100px)!important;overflow-y:auto!important}
+}

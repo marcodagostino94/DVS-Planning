@@ -1,4 +1,4 @@
-// DVS Planning Versione 17.2 + Stable Text Drag
+// DVS Planning Versione 18.0 + Stable Text Drag
 
 const ROOMS = [
   ...Array.from({ length: 15 }, (_, index) => ({
@@ -871,6 +871,7 @@ function renderCard(shift) {
       style="--accent-rgb:${color.rgb}">
       <div class="shift-main">
         <div class="shift-production">${escapeHtml(shift.production)}</div>
+        <button class="iphone-shift-menu" type="button" aria-label="Azioni turno" title="Azioni turno">•••</button>
         <div class="shift-time">${escapeHtml(shift.start)} – ${escapeHtml(shift.end)}</div>
         <div class="shift-film">${escapeHtml(shift.film)}</div>
         <div class="shift-type${["GRAFICA", "COLOR"].includes(String(shift.workType || "").toUpperCase()) ? " shift-type-red" : ""}">${escapeHtml(shift.workType)}${shift.isVariable ? '<span class="variable-label"> - VARIABILE</span>' : ""}${shift.isDoubleStation ? '<span class="double-station-label">DOPPIA POSTAZIONE</span>' : ""}</div>
@@ -1038,8 +1039,19 @@ function bindPlanningEvents() {
   planningEventsBound = true;
 
   planningGrid.addEventListener('click', event => {
+    const menuButton = event.target.closest('.iphone-shift-menu');
     const card = event.target.closest('.shift-card');
     const cell = event.target.closest('.planning-cell');
+    if (menuButton && card && cell) {
+      event.preventDefault();
+      event.stopPropagation();
+      const id = card.dataset.shiftId;
+      if (!selectedShiftIds.has(id)) selectOnlyShift(id);
+      syncPlanningSelectionUI();
+      const rect = menuButton.getBoundingClientRect();
+      showContextMenu({ clientX: rect.right - 8, clientY: rect.bottom + 6, preventDefault(){} }, cell);
+      return;
+    }
     if (card) {
       event.stopPropagation();
       if (suppressNextClick) { suppressNextClick = false; return; }
@@ -1099,6 +1111,7 @@ function bindPlanningEvents() {
   });
 
   planningGrid.addEventListener('dragstart', event => {
+    if (event.target.closest('.iphone-shift-menu')) { event.preventDefault(); return; }
     const card = event.target.closest('.shift-card');
     if (!card) return;
     const dragged = shifts.find(item => item.id === card.dataset.shiftId);
@@ -2257,7 +2270,7 @@ function openPrintPreview() {
       });
     });
     const weekLabel=`${shortPrintDate(week.start)} – ${shortPrintDate(week.end)}`;
-    return `<main class="paper"><header class="head"><div><h1>Digital Video Service</h1><p>PLANNING · ${escapeHtml(monthName(printMonth))}</p><small>Settimana ${escapeHtml(weekLabel)}</small></div><strong>${selectedRooms.length===ROOMS.length?'Tutte le sale':`${selectedRooms.length} sale selezionate`}</strong></header><section class="grid">${cells.join('')}</section><footer class="page-footer"><span>DVS Planning · Versione 17.2</span><span>Pagina ${pageIndex+1} di ${selectedWeeks.length}</span></footer></main>`;
+    return `<main class="paper"><header class="head"><div><h1>Digital Video Service</h1><p>PLANNING · ${escapeHtml(monthName(printMonth))}</p><small>Settimana ${escapeHtml(weekLabel)}</small></div><strong>${selectedRooms.length===ROOMS.length?'Tutte le sale':`${selectedRooms.length} sale selezionate`}</strong></header><section class="grid">${cells.join('')}</section><footer class="page-footer"><span>DVS Planning · Versione 18.0</span><span>Pagina ${pageIndex+1} di ${selectedWeeks.length}</span></footer></main>`;
   }).join('');
   const popup=window.open('','_blank');
   if(!popup)return showToast('Consenti l’apertura della finestra di anteprima');
@@ -2291,11 +2304,13 @@ function updateIPhoneChrome(viewName) {
   action.textContent = "";
   action.onclick = null;
   if (viewName === "planning") {
-    action.textContent = "+ Nuovo turno";
+    action.textContent = "+";
+    action.setAttribute("aria-label", "Nuovo turno");
     action.onclick = () => document.getElementById("newShiftBtn")?.click();
     action.classList.remove("hidden");
   } else if (viewName === "editors") {
-    action.textContent = "+ Nuovo dipendente";
+    action.textContent = "+";
+    action.setAttribute("aria-label", "Nuovo dipendente");
     action.onclick = () => document.getElementById("newEditorBtn")?.click();
     action.classList.remove("hidden");
   }
@@ -2374,7 +2389,7 @@ document.querySelectorAll("[data-settings-section]").forEach(button => button.ad
   const sections = {
     backup: { title:"Backup", subtitle:"Stato e autorizzazione", html:backupSettingsHtml() },
     print: { title:"Stampa", subtitle:"Centro Stampa", html:printSettingsHtml() },
-    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service.</p><div class="settings-info-meta"><div><span>Versione</span><strong>Versione 17.2</strong></div><div><span>Realizzazione</span><strong>Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div>` }
+    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service.</p><div class="settings-info-meta"><div><span>Versione</span><strong>Versione 18.0</strong></div><div><span>Realizzazione</span><strong>Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div>` }
   };
   const selected = sections[section];
   if (!selected) return;
