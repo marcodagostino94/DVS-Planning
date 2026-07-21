@@ -1651,6 +1651,7 @@ button.dashboard-kpi { cursor:pointer; }
 .settings-info-meta{display:grid;gap:10px;margin-top:20px;padding-top:18px;border-top:1px solid rgba(28,35,43,.10);}
 .settings-info-meta div{display:flex;justify-content:space-between;gap:20px;color:#5e6873;}
 .settings-info-meta strong{color:#15181c;}
+.settings-info-copyright{margin-top:22px;padding-top:18px;border-top:1px solid rgba(28,35,43,.10);color:#5e6873;line-height:1.65;text-align:center;}
 @media(max-width:760px){.settings-home{grid-template-columns:1fr}.settings-symbol{width:52px;height:52px}.settings-symbol svg{width:30px;height:30px}}
 
 
@@ -1849,7 +1850,7 @@ html.is-ipad .shift-card:hover { transform: none; animation: none !important; }
 }
 
 
-/* Versione 18.0 — iPhone Final UI. Regole limitate esclusivamente a iPhone. */
+/* v19 Golden Master — interfaccia iPhone. Regole limitate esclusivamente a iPhone. */
 .iphone-shift-menu{display:none}
 @media(max-width:760px){
   html.is-iphone .app-shell{height:100dvh;overflow:hidden}

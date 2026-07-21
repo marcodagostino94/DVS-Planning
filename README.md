@@ -1,12 +1,21 @@
-# DVS Planning — Versione 17.2
+# DVS Planning v19 – Golden Master
 
-Build stabile derivata dalla 16.6.1.
+Release finale dell'applicazione collaborativa per la gestione del Planning di Digital Video Service.
 
-## Modifiche
-- Rimossa completamente la diagnostica dall’interfaccia e dal motore.
-- Il testo del tipo lavorazione è rosso solo per GRAFICA e COLOR.
-- Aggiornati tutti i riferimenti di versione alla 17.2.
-- Rimossi changelog e asset non utilizzati.
+## Contenuto della release
+
+- Corretto su iPhone il pulsante `•••`: apre lo stesso menu contestuale utilizzato su Mac.
+- La pressione lunga resta riservata allo spostamento dei turni.
+- Conservato il comportamento già funzionante su Mac e iPad.
+- Verificati i riferimenti a file, icone, documentazione, database e Backup Agent.
+- Aggiornati titolo, manifest, stampe e schermata Informazioni alla v19 Golden Master.
 
 ## Avvio
-Aprire `index.html` oppure pubblicare l’intera cartella sul servizio web già utilizzato dal progetto.
+
+Aprire `index.html` oppure pubblicare l'intera cartella sul servizio web già utilizzato dal progetto.
+
+## Copyright
+
+© 2026 Marco D'Agostino  
+Ideato, progettato e sviluppato da Marco D'Agostino.  
+Tutti i diritti riservati.

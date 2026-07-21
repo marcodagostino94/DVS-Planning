@@ -1,0 +1,8 @@
+DVS Planning v19 – Golden Master
+
+- Corretto il pulsante ••• dei turni su iPhone: ora apre il menu contestuale condiviso con Mac.
+- Mantenuta la pressione lunga per il trascinamento dei turni.
+- Aggiornati tutti i riferimenti di release, il manifest, il README, le stampe e la schermata Informazioni.
+- Aggiunti copyright e attribuzione a Marco D'Agostino.
+- Verificata la struttura del progetto con pulizia conservativa dei soli elementi certamente inutilizzati.
+- Mac e iPad invariati.
