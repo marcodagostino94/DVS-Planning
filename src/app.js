@@ -1,4 +1,4 @@
-// DVS Planning Build 16.4 Performance Engine + Hotfix paginazione Supabase v2
+// DVS Planning Build 16.5 Performance Engine + DVS Diagnostics
 
 const ROOMS = [
   ...Array.from({ length: 15 }, (_, index) => ({
@@ -916,6 +916,198 @@ function buildPlanningShiftIndex() {
   return index;
 }
 
+
+// Build 16.5 — DVS Diagnostics. Inattivo per impostazione predefinita.
+const DVS_DIAGNOSTICS_KEY = "dvs-planning-diagnostics-enabled";
+const dvsDiagnostics = {
+  enabled: localStorage.getItem(DVS_DIAGNOSTICS_KEY) === "1",
+  renderTimes: [],
+  databaseLoads: [],
+  realtimeEvents: 0,
+  realtimeRefreshes: 0,
+  lastFps: null,
+  fpsSamples: [],
+  activatedAt: null,
+  lastReport: null
+};
+
+function diagnosticsRecord(list, value, max = 80) {
+  if (!dvsDiagnostics.enabled || !Number.isFinite(value)) return;
+  list.push(Number(value.toFixed(2)));
+  if (list.length > max) list.splice(0, list.length - max);
+}
+
+function diagnosticsAverage(values) {
+  return values.length ? values.reduce((sum, value) => sum + value, 0) / values.length : 0;
+}
+
+function diagnosticsSnapshot() {
+  const grid = document.getElementById("planningGrid");
+  const memory = performance.memory ? {
+    usedJSHeapMB: Number((performance.memory.usedJSHeapSize / 1048576).toFixed(1)),
+    totalJSHeapMB: Number((performance.memory.totalJSHeapSize / 1048576).toFixed(1)),
+    limitJSHeapMB: Number((performance.memory.jsHeapSizeLimit / 1048576).toFixed(1))
+  } : null;
+  return {
+    generatedAt: new Date().toISOString(),
+    build: "16.5",
+    userAgent: navigator.userAgent,
+    viewport: { width: window.innerWidth, height: window.innerHeight, devicePixelRatio: window.devicePixelRatio || 1 },
+    data: { shifts: shifts.length, employees: editors.length, rooms: ROOMS.length },
+    dom: {
+      totalNodes: document.getElementsByTagName("*").length,
+      planningNodes: grid ? grid.getElementsByTagName("*").length : 0,
+      planningCells: grid ? grid.querySelectorAll(".planning-cell").length : 0,
+      shiftCards: grid ? grid.querySelectorAll(".shift-card").length : 0
+    },
+    rendering: {
+      samples: dvsDiagnostics.renderTimes.length,
+      averageMs: Number(diagnosticsAverage(dvsDiagnostics.renderTimes).toFixed(1)),
+      maxMs: Number((dvsDiagnostics.renderTimes.length ? Math.max(...dvsDiagnostics.renderTimes) : 0).toFixed(1)),
+      lastMs: Number((dvsDiagnostics.renderTimes.at(-1) || 0).toFixed(1))
+    },
+    database: {
+      samples: dvsDiagnostics.databaseLoads.length,
+      averageMs: Number(diagnosticsAverage(dvsDiagnostics.databaseLoads).toFixed(1)),
+      maxMs: Number((dvsDiagnostics.databaseLoads.length ? Math.max(...dvsDiagnostics.databaseLoads) : 0).toFixed(1)),
+      lastMs: Number((dvsDiagnostics.databaseLoads.at(-1) || 0).toFixed(1))
+    },
+    realtime: { events: dvsDiagnostics.realtimeEvents, refreshes: dvsDiagnostics.realtimeRefreshes },
+    fps: { last: dvsDiagnostics.lastFps, samples: [...dvsDiagnostics.fpsSamples] },
+    memory
+  };
+}
+
+function diagnosticsScore(snapshot) {
+  let score = 100;
+  const issues = [];
+  const render = snapshot.rendering.averageMs;
+  const fps = snapshot.fps.last;
+  if (render > 250) { score -= 30; issues.push("Rendering medio molto lento (>250 ms)"); }
+  else if (render > 120) { score -= 18; issues.push("Rendering medio migliorabile (>120 ms)"); }
+  else if (render > 60) { score -= 8; issues.push("Rendering medio leggermente elevato (>60 ms)"); }
+  if (fps != null && fps < 40) { score -= 25; issues.push("Fluidità scroll critica (<40 FPS)"); }
+  else if (fps != null && fps < 52) { score -= 12; issues.push("Fluidità scroll migliorabile (<52 FPS)"); }
+  if (snapshot.dom.totalNodes > 12000) { score -= 18; issues.push("DOM molto grande (>12.000 nodi)"); }
+  else if (snapshot.dom.totalNodes > 7000) { score -= 8; issues.push("DOM elevato (>7.000 nodi)"); }
+  if (snapshot.database.averageMs > 2500) { score -= 15; issues.push("Caricamento database lento (>2,5 s)"); }
+  else if (snapshot.database.averageMs > 1200) { score -= 7; issues.push("Caricamento database migliorabile (>1,2 s)"); }
+  score = Math.max(0, Math.round(score));
+  const status = score >= 90 ? "Ottimo" : score >= 75 ? "Buono" : score >= 55 ? "Attenzione" : "Critico";
+  return { score, status, issues };
+}
+
+function diagnosticsHtml() {
+  return `<div class="diagnostics-page">
+    <div class="diagnostics-heading"><small>STRUMENTI INTERNI</small><h2>DVS Diagnostics</h2><p>Le misurazioni sono attive solo mentre la modalità sviluppatore è abilitata.</p></div>
+    <div id="diagnosticsStatus" class="diagnostics-status"><strong>Pronto per l’analisi</strong><span>Premi “Analizza ora” per acquisire una fotografia del motore.</span></div>
+    <div id="diagnosticsMetrics" class="diagnostics-grid"></div>
+    <div class="diagnostics-actions">
+      <button id="diagnosticsAnalyzeBtn" class="primary-btn" type="button">Analizza ora</button>
+      <button id="diagnosticsFpsBtn" class="toolbar-btn" type="button">Test FPS (5 secondi)</button>
+      <button id="diagnosticsExportBtn" class="toolbar-btn" type="button">Esporta report</button>
+      <button id="diagnosticsResetBtn" class="toolbar-btn" type="button">Azzera dati</button>
+      <button id="diagnosticsDisableBtn" class="danger-outline-btn" type="button">Disattiva modalità</button>
+    </div>
+    <p class="diagnostics-note">Durante il test FPS scorri liberamente il Planning. Al termine torna qui e premi “Analizza ora”.</p>
+  </div>`;
+}
+
+function renderDiagnosticsSnapshot(snapshot = diagnosticsSnapshot()) {
+  const result = diagnosticsScore(snapshot);
+  dvsDiagnostics.lastReport = { ...snapshot, analysis: result };
+  const status = document.getElementById("diagnosticsStatus");
+  if (status) {
+    status.className = `diagnostics-status score-${result.score >= 90 ? "green" : result.score >= 75 ? "yellow" : result.score >= 55 ? "orange" : "red"}`;
+    status.innerHTML = `<strong>${result.score}/100 · ${result.status}</strong><span>${result.issues.length ? result.issues.join(" · ") : "Nessun collo di bottiglia evidente nei dati disponibili."}</span>`;
+  }
+  const metrics = document.getElementById("diagnosticsMetrics");
+  if (metrics) metrics.innerHTML = [
+    ["Render medio", `${snapshot.rendering.averageMs || "—"} ms`],
+    ["Render massimo", `${snapshot.rendering.maxMs || "—"} ms`],
+    ["FPS ultimo test", snapshot.fps.last ?? "—"],
+    ["Caricamento DB", `${snapshot.database.lastMs || "—"} ms`],
+    ["Nodi DOM", snapshot.dom.totalNodes.toLocaleString("it-IT")],
+    ["Nodi Planning", snapshot.dom.planningNodes.toLocaleString("it-IT")],
+    ["Celle", snapshot.dom.planningCells.toLocaleString("it-IT")],
+    ["Card turni", snapshot.dom.shiftCards.toLocaleString("it-IT")],
+    ["Turni caricati", snapshot.data.shifts.toLocaleString("it-IT")],
+    ["Eventi realtime", snapshot.realtime.events.toLocaleString("it-IT")],
+    ["Refresh realtime", snapshot.realtime.refreshes.toLocaleString("it-IT")],
+    ["Heap JS", snapshot.memory ? `${snapshot.memory.usedJSHeapMB} MB` : "Non disponibile"]
+  ].map(([label,value]) => `<div class="diagnostics-metric"><span>${label}</span><strong>${value}</strong></div>`).join("");
+}
+
+function runDiagnosticsFpsTest() {
+  const button = document.getElementById("diagnosticsFpsBtn");
+  if (button) { button.disabled = true; button.textContent = "Test in corso… scorri il Planning"; }
+  const started = performance.now();
+  let frames = 0;
+  function frame(now) {
+    frames += 1;
+    if (now - started < 5000) requestAnimationFrame(frame);
+    else {
+      const fps = Number((frames / ((now - started) / 1000)).toFixed(1));
+      dvsDiagnostics.lastFps = fps;
+      dvsDiagnostics.fpsSamples.push(fps);
+      if (dvsDiagnostics.fpsSamples.length > 20) dvsDiagnostics.fpsSamples.shift();
+      if (button) { button.disabled = false; button.textContent = `FPS rilevati: ${fps}`; }
+      showToast(`Test FPS completato: ${fps}`);
+    }
+  }
+  requestAnimationFrame(frame);
+  openView("planning");
+}
+
+function exportDiagnosticsReport() {
+  const report = dvsDiagnostics.lastReport || { ...diagnosticsSnapshot(), analysis: diagnosticsScore(diagnosticsSnapshot()) };
+  const blob = new Blob([JSON.stringify(report, null, 2)], { type:"application/json" });
+  const link = document.createElement("a");
+  link.href = URL.createObjectURL(blob);
+  link.download = `DVS_Diagnostics_${new Date().toISOString().replace(/[:.]/g,"-")}.json`;
+  document.body.appendChild(link); link.click(); link.remove();
+  setTimeout(() => URL.revokeObjectURL(link.href), 1000);
+}
+
+function bindDiagnosticsPage() {
+  document.getElementById("diagnosticsAnalyzeBtn")?.addEventListener("click", () => renderDiagnosticsSnapshot());
+  document.getElementById("diagnosticsFpsBtn")?.addEventListener("click", runDiagnosticsFpsTest);
+  document.getElementById("diagnosticsExportBtn")?.addEventListener("click", exportDiagnosticsReport);
+  document.getElementById("diagnosticsResetBtn")?.addEventListener("click", () => {
+    dvsDiagnostics.renderTimes = []; dvsDiagnostics.databaseLoads = []; dvsDiagnostics.realtimeEvents = 0;
+    dvsDiagnostics.realtimeRefreshes = 0; dvsDiagnostics.lastFps = null; dvsDiagnostics.fpsSamples = [];
+    dvsDiagnostics.lastReport = null; renderDiagnosticsSnapshot(); showToast("Dati diagnostici azzerati.");
+  });
+  document.getElementById("diagnosticsDisableBtn")?.addEventListener("click", () => {
+    dvsDiagnostics.enabled = false; localStorage.removeItem(DVS_DIAGNOSTICS_KEY); updateDiagnosticsVisibility(); showSettingsHome();
+    showToast("Modalità sviluppatore disattivata.");
+  });
+  renderDiagnosticsSnapshot();
+}
+
+function updateDiagnosticsVisibility() {
+  document.querySelectorAll("[data-diagnostics-only]").forEach(el => { el.hidden = !dvsDiagnostics.enabled; });
+}
+
+function activateDiagnostics() {
+  if (dvsDiagnostics.enabled) return;
+  dvsDiagnostics.enabled = true;
+  dvsDiagnostics.activatedAt = new Date().toISOString();
+  localStorage.setItem(DVS_DIAGNOSTICS_KEY, "1");
+  updateDiagnosticsVisibility();
+  showToast("Modalità sviluppatore attivata: DVS Diagnostics disponibile nelle Impostazioni.");
+}
+
+let diagnosticsBuildTapCount = 0;
+let diagnosticsBuildTapTimer = null;
+document.querySelectorAll(".build-pill").forEach(build => build.addEventListener("click", () => {
+  diagnosticsBuildTapCount += 1;
+  clearTimeout(diagnosticsBuildTapTimer);
+  diagnosticsBuildTapTimer = setTimeout(() => { diagnosticsBuildTapCount = 0; }, 1800);
+  if (diagnosticsBuildTapCount >= 5) { diagnosticsBuildTapCount = 0; activateDiagnostics(); }
+}));
+updateDiagnosticsVisibility();
+
 function renderPlanning() {
   const renderStartedAt = performance.now();
   const dates = planningDates(currentMonth);
@@ -991,8 +1183,10 @@ function renderPlanning() {
   fitAllCardText();
   applyPlanningZoom(false);
 
+  const renderDuration = performance.now() - renderStartedAt;
+  diagnosticsRecord(dvsDiagnostics.renderTimes, renderDuration);
   if (window.DVS_PERF_DEBUG) {
-    console.debug(`[DVS 16.3] renderPlanning: ${shifts.length} turni, ${dateMeta.length * ROOMS.length} celle, ${(performance.now() - renderStartedAt).toFixed(1)} ms`);
+    console.debug(`[DVS 16.5] renderPlanning: ${shifts.length} turni, ${dateMeta.length * ROOMS.length} celle, ${renderDuration.toFixed(1)} ms`);
   }
 }
 
@@ -2221,7 +2415,7 @@ function openPrintPreview() {
       });
     });
     const weekLabel=`${shortPrintDate(week.start)} – ${shortPrintDate(week.end)}`;
-    return `<main class="paper"><header class="head"><div><h1>Digital Video Service</h1><p>PLANNING · ${escapeHtml(monthName(printMonth))}</p><small>Settimana ${escapeHtml(weekLabel)}</small></div><strong>${selectedRooms.length===ROOMS.length?'Tutte le sale':`${selectedRooms.length} sale selezionate`}</strong></header><section class="grid">${cells.join('')}</section><footer class="page-footer"><span>DVS Planning · Build 16.4</span><span>Pagina ${pageIndex+1} di ${selectedWeeks.length}</span></footer></main>`;
+    return `<main class="paper"><header class="head"><div><h1>Digital Video Service</h1><p>PLANNING · ${escapeHtml(monthName(printMonth))}</p><small>Settimana ${escapeHtml(weekLabel)}</small></div><strong>${selectedRooms.length===ROOMS.length?'Tutte le sale':`${selectedRooms.length} sale selezionate`}</strong></header><section class="grid">${cells.join('')}</section><footer class="page-footer"><span>DVS Planning · Build 16.5</span><span>Pagina ${pageIndex+1} di ${selectedWeeks.length}</span></footer></main>`;
   }).join('');
   const popup=window.open('','_blank');
   if(!popup)return showToast('Consenti l’apertura della finestra di anteprima');
@@ -2290,7 +2484,8 @@ document.querySelectorAll("[data-settings-section]").forEach(button => button.ad
   const sections = {
     backup: { title:"Backup", subtitle:"Stato e autorizzazione", html:backupSettingsHtml() },
     print: { title:"Stampa", subtitle:"Centro Stampa", html:printSettingsHtml() },
-    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service.</p><div class="settings-info-meta"><div><span>Versione</span><strong>Build 16.4 Performance Engine</strong></div><div><span>Realizzazione</span><strong>Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div>` }
+    diagnostics: { title:"DVS Diagnostics", subtitle:"Modalità sviluppatore", html:diagnosticsHtml() },
+    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service.</p><div class="settings-info-meta"><div><span>Versione</span><strong>Build 16.5 Performance Engine</strong></div><div><span>Realizzazione</span><strong>Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div>` }
   };
   const selected = sections[section];
   if (!selected) return;
@@ -2299,6 +2494,7 @@ document.querySelectorAll("[data-settings-section]").forEach(button => button.ad
   if (content) content.innerHTML = selected.html;
   if (section === "backup") renderBackupSettings();
   if (section === "print") bindPrintSettings();
+  if (section === "diagnostics") bindDiagnosticsPage();
 }));
 
 function openPlanningToday() {
@@ -2560,6 +2756,7 @@ async function fetchAllSupabaseRows(table, configureQuery, pageSize = 1000) {
 
 async function loadSupabaseData() {
   if (!db) return;
+  const diagnosticsDbStartedAt = dvsDiagnostics.enabled ? performance.now() : 0;
 
   const [staffResult, shiftsResult] = await Promise.all([
     fetchAllSupabaseRows("staff", query => query.order("first_name").order("last_name").order("id")),
@@ -2588,7 +2785,7 @@ async function loadSupabaseData() {
     notes: row.notes || ""
   }));
 
-  console.info(`[DVS 16.4 PERFORMANCE & CLEANUP] Turni caricati da Supabase: ${(shiftsResult.data || []).length}`);
+  console.info(`[DVS 16.5 PERFORMANCE & DIAGNOSTICS] Turni caricati da Supabase: ${(shiftsResult.data || []).length}`);
 
   shifts = (shiftsResult.data || []).map(row => ({
     id: String(row.id),
@@ -2615,12 +2812,17 @@ async function loadSupabaseData() {
   renderPlanning();
   renderDashboard();
   renderSummaries();
+  if (diagnosticsDbStartedAt) diagnosticsRecord(dvsDiagnostics.databaseLoads, performance.now() - diagnosticsDbStartedAt);
 }
 
 let realtimeDataRefreshTimer = null;
 function scheduleRealtimeDataRefresh() {
+  if (dvsDiagnostics.enabled) dvsDiagnostics.realtimeEvents += 1;
   clearTimeout(realtimeDataRefreshTimer);
-  realtimeDataRefreshTimer = setTimeout(loadSupabaseData, 140);
+  realtimeDataRefreshTimer = setTimeout(() => {
+    if (dvsDiagnostics.enabled) dvsDiagnostics.realtimeRefreshes += 1;
+    loadSupabaseData();
+  }, 140);
 }
 
 function enableRealtime() {

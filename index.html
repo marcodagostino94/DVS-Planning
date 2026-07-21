@@ -3,12 +3,12 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
-  <title>DVS Planning — Build 16.4</title>
+  <title>DVS Planning — Build 16.5</title>
   <meta name="theme-color" content="#09090b">
   <link rel="icon" type="image/png" sizes="64x64" href="./assets/icons/dvs-planning-64.png">
   <link rel="apple-touch-icon" href="./assets/icons/dvs-planning-180.png">
   <link rel="manifest" href="./manifest.webmanifest">
-  <link rel="stylesheet" href="./src/styles.css?v=16-2-dynamic-months">
+  <link rel="stylesheet" href="./src/styles.css?v=16-5-diagnostics">
 </head>
 <body>
   <section id="profileGate" class="profile-gate" aria-label="Selezione profilo">
@@ -74,7 +74,7 @@
           <span class="nav-icon"><svg class="sf-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 5H5.5A2.5 2.5 0 0 0 3 7.5v9A2.5 2.5 0 0 0 5.5 19H10M14 8l4 4-4 4M8 12h10"/></svg></span><span>Esci</span>
         </button>
         <span id="activeProfileLabel" class="active-profile-label"></span>
-        <span class="build-pill">Build 16.4</span>
+        <span class="build-pill">Build 16.5</span>
       </div>
     </aside>
 
@@ -244,6 +244,11 @@
           <button class="settings-liquid-card" type="button" data-settings-section="print">
             <span class="settings-symbol" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M7 9V4h10v5M7 17H5a2 2 0 0 1-2-2v-4a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v4a2 2 0 0 1-2 2h-2"/><path d="M7 14h10v6H7z"/><path d="M17.5 12h.01"/></svg></span>
             <span class="settings-card-copy"><strong>Stampa</strong><small>Preferenze e layout per la stampa del Planning</small></span>
+            <span class="settings-card-chevron">›</span>
+          </button>
+          <button class="settings-liquid-card diagnostics-settings-card" type="button" data-settings-section="diagnostics" data-diagnostics-only hidden>
+            <span class="settings-symbol" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="M4 19h16M6 16l3-4 3 2 5-7 2 2"/><circle cx="6" cy="16" r="1"/><circle cx="9" cy="12" r="1"/><circle cx="12" cy="14" r="1"/><circle cx="17" cy="7" r="1"/></svg></span>
+            <span class="settings-card-copy"><strong>DVS Diagnostics</strong><small>Analisi interna di prestazioni, rendering e database</small></span>
             <span class="settings-card-chevron">›</span>
           </button>
           <button class="settings-liquid-card" type="button" data-settings-section="info">
@@ -509,6 +514,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="./src/config.js?v=11.0"></script>
-  <script src="./src/app.js?v=16-4-performance-cleanup"></script>
+  <script src="./src/app.js?v=16-5-diagnostics"></script>
 </body>
 </html>
