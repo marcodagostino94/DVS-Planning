@@ -1772,3 +1772,34 @@ body.dvs-drag-active .editor-name {
   transition: none !important;
   animation: none !important;
 }
+
+
+/* Versione 17.1 — ottimizzazione esclusiva iPad. Mac invariato. */
+html.is-ipad .planning-scroller {
+  -webkit-overflow-scrolling: touch;
+  touch-action: pan-x pan-y;
+  overscroll-behavior: contain;
+  scroll-behavior: auto;
+  contain: layout paint style;
+}
+html.is-ipad .planning-canvas, html.is-ipad .planning-grid {
+  transform: translateZ(0);
+  backface-visibility: hidden;
+}
+html.is-ipad .shift-production, html.is-ipad .shift-time,
+html.is-ipad .shift-film, html.is-ipad .shift-type, html.is-ipad .editor-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+html.is-ipad .shift-production { font-size: 13px; }
+html.is-ipad .shift-time { font-size: 12px; }
+html.is-ipad .shift-film { font-size: 15px; line-height: 1.05; }
+html.is-ipad .shift-type { font-size: 12px; }
+html.is-ipad .editor-name { font-size: 13px; }
+html.is-ipad .shift-card {
+  box-shadow: 0 3px 8px rgba(44,54,65,.10);
+  transition: none;
+  animation: none !important;
+}
+html.is-ipad .shift-card:hover { transform: none; animation: none !important; }

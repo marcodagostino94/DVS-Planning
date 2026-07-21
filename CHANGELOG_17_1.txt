@@ -1,0 +1,9 @@
+DVS Planning — Versione 17.1
+
+Ottimizzazione esclusiva iPad (Mac invariato):
+- riuso del Planning già renderizzato nel passaggio Dashboard → Turni di oggi;
+- eliminazione del fit dinamico del testo su iPad;
+- font iPad stabili e più leggibili con ellissi;
+- scroll touch con inerzia e comportamento immediato;
+- animazioni disattivate e ombre alleggerite su iPad;
+- primo avvio iPad con zoom Adatta.
