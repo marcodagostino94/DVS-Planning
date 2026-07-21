@@ -144,3 +144,9 @@ BUILD 14.9 — BUG FIX ORARIO 24:00
 - 00:00 a fine turno viene interpretato come mezzanotte successiva e visualizzato come 24:00.
 - Calcolo automatico +8 ore corretto: 16:00 → 24:00, mai 23:59.
 - Nessuna modifica allo schema Supabase.
+
+BUILD 16.3 — HOTFIX CARICAMENTO COMPLETO TURNI
+- Corretto il limite predefinito di 1000 righe delle query Supabase/PostgREST.
+- I turni vengono ora caricati a pagine da 1000 fino al completamento dell'intera tabella.
+- Aggiunto ordinamento deterministico per evitare salti o duplicati tra le pagine.
+- Risolto il caso in cui un turno appena inserito compariva e poi spariva dopo il refresh realtime.

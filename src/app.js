@@ -2461,12 +2461,33 @@ async function deleteEditorFromSupabase(id) {
   return true;
 }
 
+async function fetchAllSupabaseRows(table, configureQuery, pageSize = 1000) {
+  const rows = [];
+  let from = 0;
+
+  while (true) {
+    let query = db.from(table).select("*");
+    query = configureQuery ? configureQuery(query) : query;
+
+    const { data, error } = await query.range(from, from + pageSize - 1);
+    if (error) return { data: null, error };
+
+    const page = data || [];
+    rows.push(...page);
+
+    if (page.length < pageSize) break;
+    from += pageSize;
+  }
+
+  return { data: rows, error: null };
+}
+
 async function loadSupabaseData() {
   if (!db) return;
 
   const [staffResult, shiftsResult] = await Promise.all([
-    db.from("staff").select("*").order("first_name").order("last_name"),
-    db.from("shifts").select("*").order("shift_date").order("start_time")
+    fetchAllSupabaseRows("staff", query => query.order("first_name").order("last_name").order("id")),
+    fetchAllSupabaseRows("shifts", query => query.order("shift_date").order("start_time").order("room_code").order("id"))
   ]);
 
   if (staffResult.error) {

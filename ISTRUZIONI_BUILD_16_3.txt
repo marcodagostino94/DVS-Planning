@@ -1,14 +1,15 @@
-DVS PLANNING — BUILD 16.3 PERFORMANCE ENGINE
+DVS PLANNING — BUILD 16.3 PERFORMANCE ENGINE + HOTFIX CARICAMENTO COMPLETO
 
-Questa build ottimizza esclusivamente il motore del Planning.
+CORREZIONE CRITICA
+Supabase/PostgREST restituisce normalmente al massimo 1000 righe per richiesta.
+Il database aveva 1054 turni: il Planning caricava soltanto i primi 1000 ordinati per data,
+perciò gli ultimi turni di luglio e quelli di agosto restavano nel database ma sparivano dalla griglia.
+
+Questa versione carica automaticamente tutte le pagine da 1000 righe fino alla fine della tabella.
 
 TEST CONSIGLIATI
-1. Aprire il Planning sul mese con molti turni.
-2. Verificare fluidità di scroll e zoom.
-3. Selezionare, aprire, spostare e modificare alcuni turni.
-4. Controllare i mesi futuri e verificare se i turni risultano visibili.
-5. Per misurare il rendering, aprire la Console ed eseguire:
-   window.DVS_PERF_DEBUG = true
-   Poi cambiare mese o forzare un nuovo rendering.
-
-La Console mostrerà numero di turni, celle e tempo di rendering.
+1. Aprire luglio 2026 e verificare i turni del 28, 29, 30 e 31 luglio.
+2. Aprire agosto 2026 e inserire un turno.
+3. Attendere il refresh realtime: il turno deve rimanere visibile.
+4. Controllare scroll e zoom nel mese con molti turni.
+5. Console opzionale: window.DVS_PERF_DEBUG = true
