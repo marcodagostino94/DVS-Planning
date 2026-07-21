@@ -1,3 +1,13 @@
+DVS Planning — Build 16.3 Performance Engine
+
+- Indicizzazione dei turni per sala e data tramite Map.
+- Eliminazione dei filter ripetuti durante il rendering della griglia.
+- Ordinamento dei turni eseguito una sola volta per cella indicizzata.
+- Generazione della griglia in memoria e singola scrittura nel DOM.
+- Precalcolo dei metadati delle date.
+- Debug prestazioni opzionale tramite window.DVS_PERF_DEBUG = true.
+- Nessuna modifica grafica o funzionale intenzionale.
+
 DVS Planning — Build 16.2
 
 - Selettore mesi reso dinamico.

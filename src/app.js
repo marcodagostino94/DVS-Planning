@@ -849,78 +849,96 @@ function renderCard(shift) {
   `;
 }
 
+function buildPlanningShiftIndex() {
+  const index = new Map();
+  for (const shift of shifts) {
+    const key = `${shift.room}|${shift.date}`;
+    const bucket = index.get(key);
+    if (bucket) bucket.push(shift);
+    else index.set(key, [shift]);
+  }
+  for (const bucket of index.values()) {
+    bucket.sort((a, b) => String(a.start || "").localeCompare(String(b.start || "")));
+  }
+  return index;
+}
+
 function renderPlanning() {
+  const renderStartedAt = performance.now();
   const dates = planningDates(currentMonth);
   const activeMonth = currentMonth.getMonth();
   const now = new Date();
+  const shiftIndex = buildPlanningShiftIndex();
+  const dateMeta = dates.map((date, index) => ({
+    dateObject: date,
+    iso: isoFromDate(date),
+    weekday: new Intl.DateTimeFormat("it-IT", { weekday: "short" })
+      .format(date).replace(".", "").toUpperCase(),
+    weekend: [0, 6].includes(date.getDay()),
+    holiday: isHoliday(date),
+    weekStart: date.getDay() === 1 && index !== 0,
+    today: date.toDateString() === now.toDateString(),
+    outsideMonth: date.getMonth() !== activeMonth,
+    monthMini: date.getMonth() !== activeMonth
+      ? new Intl.DateTimeFormat("it-IT", { month: "short" }).format(date).replace(".", "").toUpperCase()
+      : ""
+  }));
 
   monthLabel.textContent = monthName(currentMonth);
   planningGrid.style.setProperty("--days", dates.length);
-  planningGrid.innerHTML = `<div class="corner">SALE</div>`;
 
-  dates.forEach(date => {
-    const weekday = new Intl.DateTimeFormat("it-IT", { weekday: "short" })
-      .format(date).replace(".", "").toUpperCase();
-    const weekend = [0, 6].includes(date.getDay());
-    const holiday = isHoliday(date);
-    const weekStart = date.getDay() === 1 && date.getTime() !== dates[0].getTime();
-    const today = date.toDateString() === now.toDateString();
-    const outsideMonth = date.getMonth() !== activeMonth;
+  const html = ['<div class="corner">SALE</div>'];
 
-    planningGrid.insertAdjacentHTML("beforeend", `
-      <div class="day-head ${weekend ? "weekend" : ""} ${holiday ? "holiday" : ""} ${weekStart ? "week-start" : ""} ${today ? "today-column" : ""} ${outsideMonth ? "outside-month" : ""}"
-           data-date="${isoFromDate(date)}">
-        <span class="dow">${weekday}</span>
-        <span class="num">${String(date.getDate()).padStart(2, "0")}</span>
-        ${outsideMonth ? `<span class="month-mini">${new Intl.DateTimeFormat("it-IT", {month:"short"}).format(date).replace(".", "").toUpperCase()}</span>` : ""}
+  for (const meta of dateMeta) {
+    html.push(`
+      <div class="day-head ${meta.weekend ? "weekend" : ""} ${meta.holiday ? "holiday" : ""} ${meta.weekStart ? "week-start" : ""} ${meta.today ? "today-column" : ""} ${meta.outsideMonth ? "outside-month" : ""}"
+           data-date="${meta.iso}">
+        <span class="dow">${meta.weekday}</span>
+        <span class="num">${String(meta.dateObject.getDate()).padStart(2, "0")}</span>
+        ${meta.outsideMonth ? `<span class="month-mini">${meta.monthMini}</span>` : ""}
       </div>
     `);
-  });
+  }
 
   ROOMS.forEach((room, roomIndex) => {
-    if (GROUPS[roomIndex]) planningGrid.insertAdjacentHTML("beforeend", `<div class="group-row">${GROUPS[roomIndex]}</div>`);
-
-    let maxTurnsInDay = 1;
-    dates.forEach(dateObject => {
-      const date = isoFromDate(dateObject);
-      const count = shifts.filter(shift => shift.room === room.id && shift.date === date).length;
-      maxTurnsInDay = Math.max(maxTurnsInDay, count);
-    });
+    if (GROUPS[roomIndex]) html.push(`<div class="group-row">${GROUPS[roomIndex]}</div>`);
 
     let tallestDayHeight = 98;
-    dates.forEach(dateObject => {
-      const date = isoFromDate(dateObject);
-      const dayShifts = shifts.filter(shift => shift.room === room.id && shift.date === date);
+    for (const meta of dateMeta) {
+      const dayShifts = shiftIndex.get(`${room.id}|${meta.iso}`) || [];
       const cardsHeight = dayShifts.reduce((total, shift) => total + (shift.notes ? 102 : 88), 0);
       const gapsHeight = Math.max(0, dayShifts.length - 1) * 5;
       tallestDayHeight = Math.max(tallestDayHeight, cardsHeight + gapsHeight + 10);
-    });
+    }
+
     const rowHeight = tallestDayHeight;
-    planningGrid.insertAdjacentHTML("beforeend", `<div class="room-label" style="--row-height:${rowHeight}px">${room.label}</div>`);
+    html.push(`<div class="room-label" style="--row-height:${rowHeight}px">${room.label}</div>`);
 
-    dates.forEach(dateObject => {
-      const date = isoFromDate(dateObject);
-      const weekend = [0, 6].includes(dateObject.getDay());
-      const holiday = isHoliday(dateObject);
-      const weekStart = dateObject.getDay() === 1 && dateObject.getTime() !== dates[0].getTime();
-      const outsideMonth = dateObject.getMonth() !== activeMonth;
-      const isSelected = selectedCell?.room === room.id && selectedCell?.date === date;
-      const dayShifts = shifts.filter(shift => shift.room === room.id && shift.date === date).sort((a,b)=>a.start.localeCompare(b.start));
+    for (const meta of dateMeta) {
+      const isSelected = selectedCell?.room === room.id && selectedCell?.date === meta.iso;
+      const dayShifts = shiftIndex.get(`${room.id}|${meta.iso}`) || [];
 
-      planningGrid.insertAdjacentHTML("beforeend", `
-        <div class="planning-cell ${weekend ? "weekend" : ""} ${holiday ? "holiday" : ""} ${weekStart ? "week-start" : ""} ${outsideMonth ? "outside-month" : ""} ${isSelected ? "cell-selected" : ""}"
-          style="--row-height:${rowHeight}px" data-room="${room.id}" data-date="${date}">
+      html.push(`
+        <div class="planning-cell ${meta.weekend ? "weekend" : ""} ${meta.holiday ? "holiday" : ""} ${meta.weekStart ? "week-start" : ""} ${meta.outsideMonth ? "outside-month" : ""} ${isSelected ? "cell-selected" : ""}"
+          style="--row-height:${rowHeight}px" data-room="${room.id}" data-date="${meta.iso}">
           ${isSelected ? '<span class="cell-selection-dot" aria-hidden="true"></span>' : ""}
           ${dayShifts.map(renderCard).join("")}
           ${dayShifts.length ? "" : '<span class="cell-add-hint">+ turno</span>'}
         </div>`);
-    });
+    }
   });
+
+  // Un'unica scrittura DOM evita centinaia di insertAdjacentHTML e relativi reflow.
+  planningGrid.innerHTML = html.join("");
 
   bindPlanningEvents();
   updateSelectionBadge();
   fitAllCardText();
   applyPlanningZoom(false);
+
+  if (window.DVS_PERF_DEBUG) {
+    console.debug(`[DVS 16.3] renderPlanning: ${shifts.length} turni, ${dateMeta.length * ROOMS.length} celle, ${(performance.now() - renderStartedAt).toFixed(1)} ms`);
+  }
 }
 
 function bindPlanningEvents() {
@@ -2127,7 +2145,7 @@ function openPrintPreview() {
       });
     });
     const weekLabel=`${shortPrintDate(week.start)} – ${shortPrintDate(week.end)}`;
-    return `<main class="paper"><header class="head"><div><h1>Digital Video Service</h1><p>PLANNING · ${escapeHtml(monthName(printMonth))}</p><small>Settimana ${escapeHtml(weekLabel)}</small></div><strong>${selectedRooms.length===ROOMS.length?'Tutte le sale':`${selectedRooms.length} sale selezionate`}</strong></header><section class="grid">${cells.join('')}</section><footer class="page-footer"><span>DVS Planning · Build 16.2</span><span>Pagina ${pageIndex+1} di ${selectedWeeks.length}</span></footer></main>`;
+    return `<main class="paper"><header class="head"><div><h1>Digital Video Service</h1><p>PLANNING · ${escapeHtml(monthName(printMonth))}</p><small>Settimana ${escapeHtml(weekLabel)}</small></div><strong>${selectedRooms.length===ROOMS.length?'Tutte le sale':`${selectedRooms.length} sale selezionate`}</strong></header><section class="grid">${cells.join('')}</section><footer class="page-footer"><span>DVS Planning · Build 16.3</span><span>Pagina ${pageIndex+1} di ${selectedWeeks.length}</span></footer></main>`;
   }).join('');
   const popup=window.open('','_blank');
   if(!popup)return showToast('Consenti l’apertura della finestra di anteprima');
@@ -2196,7 +2214,7 @@ document.querySelectorAll("[data-settings-section]").forEach(button => button.ad
   const sections = {
     backup: { title:"Backup", subtitle:"Stato e autorizzazione", html:backupSettingsHtml() },
     print: { title:"Stampa", subtitle:"Centro Stampa", html:printSettingsHtml() },
-    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service.</p><div class="settings-info-meta"><div><span>Versione</span><strong>Build 16.1 UI Fix</strong></div><div><span>Realizzazione</span><strong>Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div>` }
+    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service.</p><div class="settings-info-meta"><div><span>Versione</span><strong>Build 16.3 Performance Engine</strong></div><div><span>Realizzazione</span><strong>Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div>` }
   };
   const selected = sections[section];
   if (!selected) return;

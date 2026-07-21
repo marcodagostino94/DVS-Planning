@@ -1,0 +1,14 @@
+DVS PLANNING — BUILD 16.3 PERFORMANCE ENGINE
+
+Questa build ottimizza esclusivamente il motore del Planning.
+
+TEST CONSIGLIATI
+1. Aprire il Planning sul mese con molti turni.
+2. Verificare fluidità di scroll e zoom.
+3. Selezionare, aprire, spostare e modificare alcuni turni.
+4. Controllare i mesi futuri e verificare se i turni risultano visibili.
+5. Per misurare il rendering, aprire la Console ed eseguire:
+   window.DVS_PERF_DEBUG = true
+   Poi cambiare mese o forzare un nuovo rendering.
+
+La Console mostrerà numero di turni, celle e tempo di rendering.
