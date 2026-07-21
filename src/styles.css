@@ -1723,3 +1723,33 @@ button.dashboard-kpi { cursor:pointer; }
 .diagnostics-settings-card{border-color:rgba(64,120,255,.22);background:linear-gradient(135deg,rgba(235,242,255,.96),rgba(255,255,255,.82))}
 .diagnostics-page{display:grid;gap:18px;color:#171a20}.diagnostics-heading small{color:#3974d8;font-weight:850;letter-spacing:.12em}.diagnostics-heading h2{margin:5px 0 4px;font-size:26px}.diagnostics-heading p{margin:0;color:#68717d}.diagnostics-status{padding:18px;border-radius:16px;background:#f1f4f8;border:1px solid #dce2ea;display:grid;gap:5px}.diagnostics-status strong{font-size:20px}.diagnostics-status span{color:#59636f;font-size:12px}.diagnostics-status.score-green{background:#ebf8ef;border-color:#b7e4c4}.diagnostics-status.score-green strong{color:#237a42}.diagnostics-status.score-yellow{background:#fff8df;border-color:#ecd98c}.diagnostics-status.score-yellow strong{color:#8a6810}.diagnostics-status.score-orange{background:#fff0df;border-color:#efc08e}.diagnostics-status.score-orange strong{color:#a4570d}.diagnostics-status.score-red{background:#fdebec;border-color:#efb2b7}.diagnostics-status.score-red strong{color:#b12632}.diagnostics-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}.diagnostics-metric{padding:14px 15px;border-radius:14px;background:#f7f8fa;border:1px solid #e0e4ea;display:grid;gap:5px}.diagnostics-metric span{font-size:10px;text-transform:uppercase;letter-spacing:.07em;color:#7a848f;font-weight:800}.diagnostics-metric strong{font-size:19px}.diagnostics-actions{display:flex;gap:9px;flex-wrap:wrap;padding-top:4px}.diagnostics-note{margin:0;padding:12px 14px;border-radius:12px;background:rgba(57,116,216,.07);color:#586474;font-size:12px}.settings-generic-card:has(.diagnostics-page){max-width:980px}
 @media(max-width:850px){.diagnostics-grid{grid-template-columns:repeat(2,minmax(0,1fr))}}@media(max-width:560px){.diagnostics-grid{grid-template-columns:1fr}.diagnostics-actions>*{width:100%}}
+
+/* Build 16.6 — Drag Stability: niente ricampionamento del testo durante il trascinamento */
+body.dvs-drag-active .shift-card,
+body.dvs-drag-active .shift-card:hover,
+body.dvs-drag-active .shift-card.dragging {
+  animation: none !important;
+  transition: none !important;
+  text-rendering: geometricPrecision;
+  -webkit-font-smoothing: antialiased;
+}
+body.dvs-drag-active .shift-card.dragging {
+  opacity: .34;
+  transform: translateZ(0) !important;
+  filter: none !important;
+}
+.drag-group-ghost {
+  left: 0 !important;
+  top: 0 !important;
+  contain: layout paint style;
+  will-change: transform;
+  transform: translate3d(-9999px,-9999px,0);
+}
+.drag-group-ghost .drag-ghost-card {
+  animation: none !important;
+  transition: none !important;
+  transform-style: preserve-3d;
+  backface-visibility: hidden;
+  -webkit-font-smoothing: antialiased;
+}
+body.dvs-drag-active .planning-grid { contain: layout paint style; }
