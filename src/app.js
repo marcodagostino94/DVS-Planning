@@ -1,4 +1,4 @@
-// DVS Planning Versione 17.1 + Stable Text Drag
+// DVS Planning Versione 17.2 + Stable Text Drag
 
 const ROOMS = [
   ...Array.from({ length: 15 }, (_, index) => ({
@@ -140,9 +140,12 @@ const planningCanvas = document.getElementById("planningCanvas");
 const planningScroller = document.getElementById("planningScroller");
 
 // Modalità iPad separata: il comportamento Mac resta invariato.
+const IS_IPHONE = /iPhone|iPod/.test(navigator.userAgent);
 const IS_IPAD = /iPad/.test(navigator.userAgent)
   || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+const IS_TOUCH_APPLE = IS_IPAD || IS_IPHONE;
 document.documentElement.classList.toggle("is-ipad", IS_IPAD);
+document.documentElement.classList.toggle("is-iphone", IS_IPHONE);
 let planningRenderSignature = "";
 const monthLabel = document.getElementById("monthLabel");
 const zoomSelect = document.getElementById("zoomSelect");
@@ -1008,7 +1011,7 @@ function renderPlanning() {
   bindPlanningEvents();
   updateSelectionBadge();
   // Mac: comportamento stabile esistente. iPad: niente fit sincrono del testo.
-  if (!IS_IPAD) fitAllCardText(true);
+  if (!IS_TOUCH_APPLE) fitAllCardText(true);
   applyPlanningZoom(false);
   planningRenderSignature = currentPlanningSignature();
 
@@ -1549,7 +1552,7 @@ document.getElementById("todayBtn").addEventListener("click", () => {
     const target = dayHeader.offsetLeft * planningZoom
       - planningScroller.clientWidth / 2
       + dayHeader.offsetWidth * planningZoom / 2;
-    planningScroller.scrollTo({ left: Math.max(0, target), behavior: IS_IPAD ? "auto" : "smooth" });
+    planningScroller.scrollTo({ left: Math.max(0, target), behavior: IS_TOUCH_APPLE ? "auto" : "smooth" });
   });
 });
 
@@ -1941,6 +1944,7 @@ function renderConnectedUsers() {
   if (title) title.textContent = countText;
   if (sidebarCount) sidebarCount.textContent = countText;
   if (avatars) avatars.innerHTML = onlineProfiles.slice(0,3).map(p => `<i class="profile-${escapeHtml(p.tone)}">${escapeHtml(p.initials)}</i>`).join("");
+  updateIPhoneOnlineAvatars();
   if (list) list.innerHTML = count ? onlineProfiles.map(profile => `<div class="connected-user-row"><span class="profile-mini-avatar profile-${escapeHtml(profile.tone)}">${escapeHtml(profile.initials)}</span><span><strong>${escapeHtml(profileFullName(profile))}</strong><small>Online</small></span><i class="online-green-dot" aria-label="Online"></i></div>`).join("") : '<div class="empty-dashboard">Nessun utente collegato.</div>';
 }
 
@@ -2253,7 +2257,7 @@ function openPrintPreview() {
       });
     });
     const weekLabel=`${shortPrintDate(week.start)} – ${shortPrintDate(week.end)}`;
-    return `<main class="paper"><header class="head"><div><h1>Digital Video Service</h1><p>PLANNING · ${escapeHtml(monthName(printMonth))}</p><small>Settimana ${escapeHtml(weekLabel)}</small></div><strong>${selectedRooms.length===ROOMS.length?'Tutte le sale':`${selectedRooms.length} sale selezionate`}</strong></header><section class="grid">${cells.join('')}</section><footer class="page-footer"><span>DVS Planning · Versione 17.1</span><span>Pagina ${pageIndex+1} di ${selectedWeeks.length}</span></footer></main>`;
+    return `<main class="paper"><header class="head"><div><h1>Digital Video Service</h1><p>PLANNING · ${escapeHtml(monthName(printMonth))}</p><small>Settimana ${escapeHtml(weekLabel)}</small></div><strong>${selectedRooms.length===ROOMS.length?'Tutte le sale':`${selectedRooms.length} sale selezionate`}</strong></header><section class="grid">${cells.join('')}</section><footer class="page-footer"><span>DVS Planning · Versione 17.2</span><span>Pagina ${pageIndex+1} di ${selectedWeeks.length}</span></footer></main>`;
   }).join('');
   const popup=window.open('','_blank');
   if(!popup)return showToast('Consenti l’apertura della finestra di anteprima');
@@ -2266,8 +2270,56 @@ function openPrintPreview() {
 }
 
 
+
+const IPHONE_VIEW_TITLES = {
+  dashboard: "Dashboard",
+  planning: "Planning",
+  editors: "Dipendenti",
+  summaries: "Riepiloghi",
+  settings: "Impostazioni",
+  connected: "Utenti collegati"
+};
+
+function updateIPhoneChrome(viewName) {
+  if (!IS_IPHONE) return;
+  document.querySelectorAll(".iphone-nav-item[data-view]").forEach(item => item.classList.toggle("active", item.dataset.view === viewName));
+  const title = document.getElementById("iphoneSectionTitle");
+  if (title) title.textContent = IPHONE_VIEW_TITLES[viewName] || "DVS Planning";
+  const action = document.getElementById("iphoneContextAction");
+  if (!action) return;
+  action.classList.add("hidden");
+  action.textContent = "";
+  action.onclick = null;
+  if (viewName === "planning") {
+    action.textContent = "+ Nuovo turno";
+    action.onclick = () => document.getElementById("newShiftBtn")?.click();
+    action.classList.remove("hidden");
+  } else if (viewName === "editors") {
+    action.textContent = "+ Nuovo dipendente";
+    action.onclick = () => document.getElementById("newEditorBtn")?.click();
+    action.classList.remove("hidden");
+  }
+}
+
+function updateIPhoneOnlineAvatars() {
+  if (!IS_IPHONE) return;
+  const container = document.getElementById("iphoneOnlineAvatars");
+  if (!container) return;
+  container.innerHTML = onlineProfiles.slice(0,3).map(p => `<i class="profile-${escapeHtml(p.tone)}">${escapeHtml(p.initials)}</i>`).join("");
+}
+
+function updateIPhoneBackupLight() {
+  if (!IS_IPHONE) return;
+  const light = document.getElementById("iphoneBackupLight");
+  if (!light) return;
+  const healthy = Boolean(backupAgentStatus?.healthy && backupAgentStatus?.authorized !== false);
+  light.classList.toggle("is-green", healthy);
+  light.classList.toggle("is-red", !healthy);
+}
+
 function openView(viewName) {
   document.querySelectorAll(".nav-item[data-view]").forEach(item => item.classList.toggle("active", item.dataset.view === viewName));
+  updateIPhoneChrome(viewName);
   document.querySelectorAll(".app-view").forEach(view => view.classList.remove("active"));
   document.getElementById(`${viewName}View`)?.classList.add("active");
   if (viewName === "editors") renderEditors();
@@ -2322,7 +2374,7 @@ document.querySelectorAll("[data-settings-section]").forEach(button => button.ad
   const sections = {
     backup: { title:"Backup", subtitle:"Stato e autorizzazione", html:backupSettingsHtml() },
     print: { title:"Stampa", subtitle:"Centro Stampa", html:printSettingsHtml() },
-    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service.</p><div class="settings-info-meta"><div><span>Versione</span><strong>Versione 17.1</strong></div><div><span>Realizzazione</span><strong>Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div>` }
+    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service.</p><div class="settings-info-meta"><div><span>Versione</span><strong>Versione 17.2</strong></div><div><span>Realizzazione</span><strong>Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div>` }
   };
   const selected = sections[section];
   if (!selected) return;
@@ -2342,12 +2394,12 @@ function openPlanningToday() {
   openView("planning");
 
   // Su iPad riutilizza la griglia già pronta se mese e dati non sono cambiati.
-  if (!IS_IPAD || monthChanged || planningNeedsRender()) renderPlanning();
+  if (!IS_TOUCH_APPLE || monthChanged || planningNeedsRender()) renderPlanning();
 
   requestAnimationFrame(() => {
     const todayCell = planningGrid.querySelector(`[data-date="${localTodayIso()}"]`);
     if (!todayCell) return;
-    if (IS_IPAD) {
+    if (IS_TOUCH_APPLE) {
       const target = todayCell.offsetLeft * planningZoom
         - planningScroller.clientWidth / 2
         + todayCell.offsetWidth * planningZoom / 2;
@@ -2487,6 +2539,12 @@ document.getElementById("remindersList")?.addEventListener("click", async event 
 document.querySelectorAll(".nav-item[data-view]").forEach(button => {
   button.addEventListener("click", () => openView(button.dataset.view));
 });
+
+document.querySelectorAll(".iphone-nav-item[data-view]").forEach(button => {
+  button.addEventListener("click", () => openView(button.dataset.view));
+});
+document.getElementById("iphoneBackupStatus")?.addEventListener("click", () => { openView("settings"); document.querySelector('[data-settings-section="backup"]')?.click(); });
+document.getElementById("iphoneOnlineUsers")?.addEventListener("click", () => openView("connected"));
 
 
 document.getElementById("connectedUsersCard")?.addEventListener("click", () => openView("connected"));
@@ -2716,6 +2774,7 @@ function updateBackupSidebar() {
   light?.classList.toggle("is-green", healthy);
   light?.classList.toggle("is-red", !healthy);
   if (date) date.textContent = formatBackupDate(backupAgentStatus?.last_success_at);
+  updateIPhoneBackupLight();
 }
 
 function backupSettingsHtml() {
@@ -2803,17 +2862,18 @@ document.getElementById("backupStatusCard")?.addEventListener("click", () => {
 
 loadProfilesFromSupabase().then(() => { initializeProfileGate(); if (activeProfile) { setCurrentProfileOnline(); startPresenceTracking(); } });
 populateShiftSelects();
-if (IS_IPAD && !localStorage.getItem("dvs-planning-ipad-zoom-initialized")) {
+if (IS_TOUCH_APPLE && !localStorage.getItem("dvs-planning-touch-zoom-initialized")) {
   zoomSelect.value = "fit";
 } else {
   zoomSelect.value = String(nearestZoomOption(planningZoom));
 }
 applyPlanningZoom(false);
 renderPlanning();
-if (IS_IPAD && !localStorage.getItem("dvs-planning-ipad-zoom-initialized")) {
+updateIPhoneChrome("dashboard");
+if (IS_TOUCH_APPLE && !localStorage.getItem("dvs-planning-touch-zoom-initialized")) {
   requestAnimationFrame(() => {
     fitPlanningToWindow();
-    localStorage.setItem("dvs-planning-ipad-zoom-initialized", "1");
+    localStorage.setItem("dvs-planning-touch-zoom-initialized", "1");
   });
 }
 renderEditors();
