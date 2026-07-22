@@ -1,6 +1,12 @@
-# DVS Planning v19 – Golden Master
+# DVS Planning v19.0.1
 
 Release finale dell'applicazione collaborativa per la gestione del Planning di Digital Video Service.
+
+## Correzione 19.0.1
+
+- Aggiunto il comando **Autorizza nuovo computer** dopo la revoca del Backup Agent.
+- Il profilo connesso diventa automaticamente l'utente autorizzato.
+- Non è più necessario eseguire manualmente una query SQL per registrare un nuovo Mac.
 
 ## Contenuto della release
 

@@ -1,4 +1,4 @@
-// DVS Planning v19 – Golden Master
+// DVS Planning v19.0.1 – Backup authorization fix
 
 const ROOMS = [
   ...Array.from({ length: 15 }, (_, index) => ({
@@ -2275,7 +2275,7 @@ function openPrintPreview() {
       });
     });
     const weekLabel=`${shortPrintDate(week.start)} – ${shortPrintDate(week.end)}`;
-    return `<main class="paper"><header class="head"><div><h1>Digital Video Service</h1><p>PLANNING · ${escapeHtml(monthName(printMonth))}</p><small>Settimana ${escapeHtml(weekLabel)}</small></div><strong>${selectedRooms.length===ROOMS.length?'Tutte le sale':`${selectedRooms.length} sale selezionate`}</strong></header><section class="grid">${cells.join('')}</section><footer class="page-footer"><span>DVS Planning · v19 – Golden Master</span><span>Pagina ${pageIndex+1} di ${selectedWeeks.length}</span></footer></main>`;
+    return `<main class="paper"><header class="head"><div><h1>Digital Video Service</h1><p>PLANNING · ${escapeHtml(monthName(printMonth))}</p><small>Settimana ${escapeHtml(weekLabel)}</small></div><strong>${selectedRooms.length===ROOMS.length?'Tutte le sale':`${selectedRooms.length} sale selezionate`}</strong></header><section class="grid">${cells.join('')}</section><footer class="page-footer"><span>DVS Planning · v19.0.1</span><span>Pagina ${pageIndex+1} di ${selectedWeeks.length}</span></footer></main>`;
   }).join('');
   const popup=window.open('','_blank');
   if(!popup)return showToast('Consenti l’apertura della finestra di anteprima');
@@ -2394,7 +2394,7 @@ document.querySelectorAll("[data-settings-section]").forEach(button => button.ad
   const sections = {
     backup: { title:"Backup", subtitle:"Stato e autorizzazione", html:backupSettingsHtml() },
     print: { title:"Stampa", subtitle:"Centro Stampa", html:printSettingsHtml() },
-    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service.</p><div class="settings-info-meta"><div><span>Versione</span><strong>v19 – Golden Master</strong></div><div><span>Ideazione e sviluppo</span><strong>Marco D'Agostino per Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div><p class="settings-info-copyright"><strong>Copyright © 2026 Marco D'Agostino per Digital Video Service</strong><br>Tutti i diritti riservati.</p>` }
+    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service.</p><div class="settings-info-meta"><div><span>Versione</span><strong>v19.0.1</strong></div><div><span>Ideazione e sviluppo</span><strong>Marco D'Agostino per Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div><p class="settings-info-copyright"><strong>Copyright © 2026 Marco D'Agostino per Digital Video Service</strong><br>Tutti i diritti riservati.</p>` }
   };
   const selected = sections[section];
   if (!selected) return;
@@ -2837,9 +2837,12 @@ function renderBackupSettings() {
   set("backupDetailFolder", status?.backup_folder || "Non comunicata");
   const revoke = document.getElementById("revokeBackupAuthorization");
   if (revoke) {
-    revoke.disabled = !status?.authorized;
-    revoke.textContent = status?.authorized ? "Revoca autorizzazione" : "Autorizzazione revocata";
-    revoke.onclick = revokeBackupAuthorization;
+    const isAuthorized = Boolean(status?.authorized);
+    revoke.disabled = false;
+    revoke.classList.toggle("danger-outline-btn", isAuthorized);
+    revoke.classList.toggle("primary-btn", !isAuthorized);
+    revoke.textContent = isAuthorized ? "Revoca autorizzazione" : "Autorizza nuovo computer";
+    revoke.onclick = isAuthorized ? revokeBackupAuthorization : authorizeNewBackupComputer;
   }
 }
 
@@ -2871,6 +2874,32 @@ async function revokeBackupAuthorization() {
   }).eq("id", "primary");
   if (error) { showToast(`Revoca non riuscita: ${error.message}`); return; }
   showToast("Autorizzazione del computer revocata.");
+  await loadBackupStatus();
+}
+
+async function authorizeNewBackupComputer() {
+  if (!db) return showToast("Connessione al database non disponibile");
+  const userName = activeProfile?.name || "Profilo sconosciuto";
+  const confirmed = window.confirm(`Autorizzare un nuovo computer per il backup come “${userName}”? Il primo Mac che eseguirà “Backup ora” verrà registrato.`);
+  if (!confirmed) return;
+  const payload = {
+    id:"primary",
+    authorized:true,
+    authorized_user_profile_id:activeProfile?.id || null,
+    authorized_user_name:userName,
+    computer_id:null,
+    computer_name:null,
+    healthy:false,
+    last_status:"awaiting_registration",
+    last_error:null,
+    revoked_at:null,
+    revoked_by_profile_id:null,
+    revoked_by_name:null,
+    updated_at:new Date().toISOString()
+  };
+  const { error } = await db.from("backup_agent_status").upsert(payload, { onConflict:"id" });
+  if (error) { showToast(`Autorizzazione non riuscita: ${error.message}`); return; }
+  showToast("Autorizzazione aperta. Premi “Backup ora” sul nuovo Mac.");
   await loadBackupStatus();
 }
 
