@@ -1,7 +1,0 @@
-DVS Planning v19.0.1
-
-- Aggiunto il pulsante “Autorizza nuovo computer” nella sezione Backup.
-- Dopo una revoca, il Planning riapre automaticamente la registrazione del Backup Agent.
-- Il profilo attualmente connesso viene salvato come utente autorizzato.
-- Il primo Mac che esegue “Backup ora” viene registrato come computer autorizzato.
-- Eliminata la necessità di eseguire manualmente la query SQL di riattivazione.
