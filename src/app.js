@@ -1,4 +1,4 @@
-// DVS Planning v19.0.1 – Backup authorization fix
+// DVS Planning v19.0.2 – Shared backup health fix
 
 const ROOMS = [
   ...Array.from({ length: 15 }, (_, index) => ({
@@ -2275,7 +2275,7 @@ function openPrintPreview() {
       });
     });
     const weekLabel=`${shortPrintDate(week.start)} – ${shortPrintDate(week.end)}`;
-    return `<main class="paper"><header class="head"><div><h1>Digital Video Service</h1><p>PLANNING · ${escapeHtml(monthName(printMonth))}</p><small>Settimana ${escapeHtml(weekLabel)}</small></div><strong>${selectedRooms.length===ROOMS.length?'Tutte le sale':`${selectedRooms.length} sale selezionate`}</strong></header><section class="grid">${cells.join('')}</section><footer class="page-footer"><span>DVS Planning · v19.0.1</span><span>Pagina ${pageIndex+1} di ${selectedWeeks.length}</span></footer></main>`;
+    return `<main class="paper"><header class="head"><div><h1>Digital Video Service</h1><p>PLANNING · ${escapeHtml(monthName(printMonth))}</p><small>Settimana ${escapeHtml(weekLabel)}</small></div><strong>${selectedRooms.length===ROOMS.length?'Tutte le sale':`${selectedRooms.length} sale selezionate`}</strong></header><section class="grid">${cells.join('')}</section><footer class="page-footer"><span>DVS Planning · v19.0.2</span><span>Pagina ${pageIndex+1} di ${selectedWeeks.length}</span></footer></main>`;
   }).join('');
   const popup=window.open('','_blank');
   if(!popup)return showToast('Consenti l’apertura della finestra di anteprima');
@@ -2332,7 +2332,7 @@ function updateIPhoneBackupLight() {
   if (!IS_IPHONE) return;
   const light = document.getElementById("iphoneBackupLight");
   if (!light) return;
-  const healthy = Boolean(backupAgentStatus?.healthy && backupAgentStatus?.authorized !== false);
+  const healthy = isSharedBackupHealthy(backupAgentStatus);
   light.classList.toggle("is-green", healthy);
   light.classList.toggle("is-red", !healthy);
 }
@@ -2394,7 +2394,7 @@ document.querySelectorAll("[data-settings-section]").forEach(button => button.ad
   const sections = {
     backup: { title:"Backup", subtitle:"Stato e autorizzazione", html:backupSettingsHtml() },
     print: { title:"Stampa", subtitle:"Centro Stampa", html:printSettingsHtml() },
-    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service.</p><div class="settings-info-meta"><div><span>Versione</span><strong>v19.0.1</strong></div><div><span>Ideazione e sviluppo</span><strong>Marco D'Agostino per Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div><p class="settings-info-copyright"><strong>Copyright © 2026 Marco D'Agostino per Digital Video Service</strong><br>Tutti i diritti riservati.</p>` }
+    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service.</p><div class="settings-info-meta"><div><span>Versione</span><strong>v19.0.2</strong></div><div><span>Ideazione e sviluppo</span><strong>Marco D'Agostino per Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div><p class="settings-info-copyright"><strong>Copyright © 2026 Marco D'Agostino per Digital Video Service</strong><br>Tutti i diritti riservati.</p>` }
   };
   const selected = sections[section];
   if (!selected) return;
@@ -2781,16 +2781,25 @@ function formatBackupDate(value) {
 function backupReason(status) {
   if (!status) return "Backup Agent non ancora registrato";
   if (status.authorized === false) return "Autorizzazione revocata";
+  if (isSharedBackupHealthy(status)) return "Backup aggiornato e valido";
   if (status.last_status === "error") return status.last_error || "Ultimo backup non riuscito";
   if (!status.last_success_at) return "Nessun backup completato";
-  if (!status.healthy) return "Backup assente o non aggiornato";
-  return "Backup aggiornato e valido";
+  return "Ultimo backup più vecchio di 24 ore";
+}
+
+function isSharedBackupHealthy(status) {
+  if (!status || status.authorized === false || !status.last_success_at) return false;
+  if (status.healthy !== true || status.last_status !== "success" || status.last_error) return false;
+  const lastSuccess = new Date(status.last_success_at).getTime();
+  if (!Number.isFinite(lastSuccess)) return false;
+  const age = Date.now() - lastSuccess;
+  return age >= 0 && age <= 24 * 60 * 60 * 1000;
 }
 
 function updateBackupSidebar() {
   const light = document.getElementById("backupSidebarLight");
   const date = document.getElementById("backupSidebarDate");
-  const healthy = Boolean(backupAgentStatus?.healthy && backupAgentStatus?.authorized !== false);
+  const healthy = isSharedBackupHealthy(backupAgentStatus);
   light?.classList.toggle("is-green", healthy);
   light?.classList.toggle("is-red", !healthy);
   if (date) date.textContent = formatBackupDate(backupAgentStatus?.last_success_at);
@@ -2820,7 +2829,7 @@ function backupSettingsHtml() {
 
 function renderBackupSettings() {
   const status = backupAgentStatus;
-  const healthy = Boolean(status?.healthy && status?.authorized !== false);
+  const healthy = isSharedBackupHealthy(status);
   const badge = document.getElementById("backupPageBadge");
   if (badge) {
     badge.classList.toggle("is-green", healthy);

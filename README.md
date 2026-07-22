@@ -1,6 +1,12 @@
-# DVS Planning v19.0.1
+# DVS Planning v19.0.2
 
 Release finale dell'applicazione collaborativa per la gestione del Planning di Digital Video Service.
+
+## Correzione 19.0.2
+
+- Semaforo condiviso verde su tutti i dispositivi soltanto quando autorizzazione, cartella e ultimo backup sono validi e il backup risale a non più di 24 ore.
+- Un Mac non autorizzato non può più sovrascrivere lo stato globale del backup.
+- Backup Agent incluso aggiornato alla versione 1.0.1.
 
 ## Correzione 19.0.1
 
