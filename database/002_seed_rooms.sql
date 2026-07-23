@@ -11,11 +11,11 @@ insert into public.rooms (code, display_name, sort_order, active) values
   ('sala-8', 'Sala 8', 8, true),
   ('sala-9', 'Sala 9', 9, true),
   ('sala-10', 'Sala 10', 10, true),
-  ('sala-11', 'Sala 11', 11, true),
-  ('sala-12', 'Sala 12', 12, true),
-  ('sala-13', 'Sala 13', 13, true),
-  ('sala-14', 'Sala 14', 14, true),
-  ('sala-15', 'Sala 15', 15, true),
+  ('sala-11', 'Sala 1A', 11, true),
+  ('sala-12', 'Sala 2A', 12, true),
+  ('sala-13', 'Sala 3A', 13, true),
+  ('sala-14', 'Sala 4A', 14, true),
+  ('sala-15', 'Sala 5A', 15, true),
   ('remoto-grafica', 'Grafica remoto', 16, true),
   ('remoto-sound', 'Sound remoto', 17, true)
 on conflict (code) do update set
