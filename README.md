@@ -1,4 +1,18 @@
-# DVS Planning v20.5
+# DVS Planning v22 – FINALE
+
+Versione finale pronta per il collaudo.
+
+## Funzioni Mac
+
+- selezione multipla di turni appartenenti anche a sale diverse;
+- selezione tramite riquadro su più righe del Planning;
+- trascinamento simultaneo della selezione su più giorni e più sale;
+- creazione dello stesso turno su più sale, con dipendente distinto per sala;
+- dipendente facoltativo anche nella creazione multisala;
+- prolungamento di un turno modificando la data finale;
+- annullamento con `Cmd + Z` e ripristino con `Cmd + Shift + Z` delle ultime 20 operazioni sui turni.
+
+Questa revisione non richiede alcuna modifica SQL su Supabase.
 
 Release consolidata dell’applicazione collaborativa per la gestione del Planning di Digital Video Service.
 

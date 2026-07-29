@@ -1,4 +1,4 @@
-// DVS Planning v20.5 – consolidated release
+// DVS Planning v22 – FINALE
 
 const ROOMS = [
   ...Array.from({ length: 15 }, (_, index) => ({
@@ -240,6 +240,75 @@ function saveLocal() {
   localStorage.setItem(EDITOR_STORAGE, JSON.stringify(editors));
 }
 
+const SHIFT_HISTORY_LIMIT = 20;
+let shiftUndoStack = [];
+let shiftRedoStack = [];
+let shiftHistoryBusy = false;
+
+function cloneShiftState() {
+  return structuredClone(shifts);
+}
+
+function recordShiftUndo(label) {
+  if (shiftHistoryBusy) return;
+  shiftUndoStack.push({ label, state: cloneShiftState() });
+  if (shiftUndoStack.length > SHIFT_HISTORY_LIMIT) shiftUndoStack.shift();
+  shiftRedoStack = [];
+}
+
+async function syncRestoredShiftState(previousState, restoredState) {
+  if (!db) return;
+  const previousById = new Map(previousState.map(shift => [shift.id, shift]));
+  const restoredById = new Map(restoredState.map(shift => [shift.id, shift]));
+  const deletedIds = [...previousById.keys()].filter(id => !restoredById.has(id));
+  const changed = [...restoredById.values()].filter(shift => {
+    const previous = previousById.get(shift.id);
+    return !previous || JSON.stringify(previous) !== JSON.stringify(shift);
+  });
+  await Promise.all([
+    ...deletedIds.map(id => deleteShiftFromSupabase(id)),
+    ...changed.map(shift => syncShiftToSupabase(shift))
+  ]);
+}
+
+async function restoreShiftHistory(sourceStack, destinationStack, actionName) {
+  if (shiftHistoryBusy || !sourceStack.length) {
+    if (!sourceStack.length) showToast(actionName === "Annullata" ? "Nessuna operazione da annullare" : "Nessuna operazione da ripristinare");
+    return;
+  }
+  shiftHistoryBusy = true;
+  try {
+    const entry = sourceStack.pop();
+    const previousState = cloneShiftState();
+    destinationStack.push({ label: entry.label, state: previousState });
+    if (destinationStack.length > SHIFT_HISTORY_LIMIT) destinationStack.shift();
+    shifts = structuredClone(entry.state);
+    clearSelection();
+    clearCutState();
+    copiedShifts = [];
+    clipboardMode = "copy";
+    saveLocal();
+    renderPlanning();
+    renderDashboard();
+    renderSummaries();
+    await syncRestoredShiftState(previousState, shifts);
+    showToast(`${actionName}: ${entry.label}`);
+  } catch (error) {
+    console.error("Errore ripristino cronologia turni:", error);
+    showToast("Impossibile completare l’operazione");
+  } finally {
+    shiftHistoryBusy = false;
+  }
+}
+
+function undoShiftOperation() {
+  return restoreShiftHistory(shiftUndoStack, shiftRedoStack, "Annullata");
+}
+
+function redoShiftOperation() {
+  return restoreShiftHistory(shiftRedoStack, shiftUndoStack, "Ripristinata");
+}
+
 function showToast(message) {
   toast.textContent = message;
   toast.classList.add("show");
@@ -361,33 +430,38 @@ function selectShiftRange(anchorId, targetId) {
   const anchorShift = shifts.find(shift => shift.id === anchorId);
   const targetShift = shifts.find(shift => shift.id === targetId);
 
-  if (!anchorShift || !targetShift || anchorShift.room !== targetShift.room) {
+  if (!anchorShift || !targetShift) {
     selectOnlyShift(targetId);
     return;
   }
 
-  const sameRoom = shifts
-    .filter(shift => shift.room === anchorShift.room)
-    .sort((a, b) =>
-      a.date.localeCompare(b.date)
-      || a.start.localeCompare(b.start)
-      || a.id.localeCompare(b.id)
-    );
-
-  const anchorIndex = sameRoom.findIndex(shift => shift.id === anchorId);
-  const targetIndex = sameRoom.findIndex(shift => shift.id === targetId);
-
-  if (anchorIndex < 0 || targetIndex < 0) {
+  const anchorRoomIndex = ROOMS.findIndex(room => room.id === anchorShift.room);
+  const targetRoomIndex = ROOMS.findIndex(room => room.id === targetShift.room);
+  if (anchorRoomIndex < 0 || targetRoomIndex < 0) {
     selectOnlyShift(targetId);
     return;
   }
 
-  const start = Math.min(anchorIndex, targetIndex);
-  const end = Math.max(anchorIndex, targetIndex);
-
-  selectedShiftIds = new Set(
-    sameRoom.slice(start, end + 1).map(shift => shift.id)
+  const firstRoom = Math.min(anchorRoomIndex, targetRoomIndex);
+  const lastRoom = Math.max(anchorRoomIndex, targetRoomIndex);
+  const firstDate = anchorShift.date < targetShift.date ? anchorShift.date : targetShift.date;
+  const lastDate = anchorShift.date > targetShift.date ? anchorShift.date : targetShift.date;
+  const visibleIds = new Set(
+    [...planningGrid.querySelectorAll(".shift-card")]
+      .map(card => card.dataset.shiftId)
+      .filter(Boolean)
   );
+
+  selectedShiftIds = new Set(shifts
+    .filter(shift => {
+      const roomIndex = ROOMS.findIndex(room => room.id === shift.room);
+      return visibleIds.has(shift.id)
+        && roomIndex >= firstRoom
+        && roomIndex <= lastRoom
+        && shift.date >= firstDate
+        && shift.date <= lastDate;
+    })
+    .map(shift => shift.id));
   selectedCell = null;
 }
 
@@ -469,6 +543,9 @@ function pasteCopiedShifts() {
     return true;
   }
 
+  recordShiftUndo(isCut
+    ? (candidates.length === 1 ? "spostamento turno" : `spostamento di ${candidates.length} turni`)
+    : (candidates.length === 1 ? "incolla turno" : `incolla di ${candidates.length} turni`));
   if (isCut) {
     const movedById = new Map(candidates.map(candidate => [candidate.id, candidate]));
     shifts = shifts.map(shift => movedById.get(shift.id) || shift);
@@ -505,11 +582,6 @@ function updateSelectionBadge() {
 function toggleCommandSelection(id) {
   const target = shifts.find(shift => shift.id === id);
   if (!target) return;
-  const room = selectionRoom();
-  if (room && room !== target.room) {
-    selectOnlyShift(id);
-    return;
-  }
   if (selectedShiftIds.has(id)) {
     selectedShiftIds.delete(id);
     if (selectionAnchorId === id) selectionAnchorId = [...selectedShiftIds][0] || null;
@@ -556,6 +628,7 @@ function deleteSelectedShifts() {
   if (selected.some(shift => shift.confirmed)) return showToast("Il turno confermato è bloccato");
   if (!selected.length) return;
   if (!confirm(selected.length === 1 ? "Eliminare questo turno?" : `Eliminare ${selected.length} turni?`)) return;
+  recordShiftUndo(selected.length === 1 ? "eliminazione turno" : `eliminazione di ${selected.length} turni`);
   const ids = new Set(selected.map(s=>s.id));
   shifts = shifts.filter(s=>!ids.has(s.id));
   selected.forEach(s=>deleteShiftFromSupabase(s.id));
@@ -565,6 +638,7 @@ function deleteSelectedShifts() {
 function setSelectedStatus(status) {
   const selected = selectedShiftList();
   if (selected.some(shift => shift.confirmed)) return showToast("Il turno confermato è bloccato");
+  recordShiftUndo(selected.length === 1 ? `cambio stato in ${status}` : `cambio stato di ${selected.length} turni`);
   selected.forEach(s=>{ s.status=status; syncShiftToSupabase(s); });
   saveLocal(); renderPlanning();
   showToast(selected.length === 1 ? `Turno reso ${status}` : `${selected.length} turni aggiornati`);
@@ -582,10 +656,11 @@ function selectedGroupForDrag(sourceId) {
   }
 
   return selectedShiftList()
-    .filter(shift => shift.room === source.room && !shift.confirmed)
+    .filter(shift => !shift.confirmed)
     .map(shift => ({ ...shift }))
     .sort((a, b) =>
-      a.date.localeCompare(b.date)
+      (ROOMS.findIndex(room => room.id === a.room) - ROOMS.findIndex(room => room.id === b.room))
+      || a.date.localeCompare(b.date)
       || a.start.localeCompare(b.start)
       || a.id.localeCompare(b.id)
     );
@@ -593,6 +668,7 @@ function selectedGroupForDrag(sourceId) {
 
 async function setShiftConfirmed(shift, confirmed) {
   if (!shift) return;
+  recordShiftUndo(confirmed ? "conferma turno" : "annullamento conferma");
   shift.confirmed = confirmed;
   shift.confirmedAt = confirmed ? new Date().toISOString() : null;
   saveLocal();
@@ -605,6 +681,7 @@ async function confirmSelectedShift() {
   const selected = selectedShiftList().filter(shift => !shift.confirmed);
   if (!selected.length) return;
 
+  recordShiftUndo(selected.length === 1 ? "conferma turno" : `conferma di ${selected.length} turni`);
   const confirmedAt = new Date().toISOString();
   selected.forEach(shift => {
     shift.confirmed = true;
@@ -627,6 +704,7 @@ async function unconfirmSelectedShift() {
     : `Vuoi annullare la conferma di ${selected.length} turni?`;
   if (!confirm(message)) return;
 
+  recordShiftUndo(selected.length === 1 ? "annullamento conferma" : `annullamento conferma di ${selected.length} turni`);
   selected.forEach(shift => {
     shift.confirmed = false;
     shift.confirmedAt = null;
@@ -652,14 +730,20 @@ function buildMovedGroup(targetRoom, targetDate) {
   const sourceDate = new Date(`${activeDragSource.date}T12:00:00`);
   const destinationDate = new Date(`${targetDate}T12:00:00`);
   const offsetDays = Math.round((destinationDate - sourceDate) / 86400000);
+  const sourceRoomIndex = ROOMS.findIndex(room => room.id === activeDragSource.room);
+  const targetRoomIndex = ROOMS.findIndex(room => room.id === targetRoom);
+  if (sourceRoomIndex < 0 || targetRoomIndex < 0) return [];
 
-  return activeDragGroup.map(original => {
+  const candidates = activeDragGroup.map(original => {
     const movedDate = new Date(`${original.date}T12:00:00`);
     movedDate.setDate(movedDate.getDate() + offsetDays);
+    const originalRoomIndex = ROOMS.findIndex(room => room.id === original.room);
+    const movedRoom = ROOMS[targetRoomIndex + (originalRoomIndex - sourceRoomIndex)];
+    if (!movedRoom) return null;
 
     return {
       ...original,
-      room: targetRoom,
+      room: movedRoom.id,
       date: isoDate(
         movedDate.getFullYear(),
         movedDate.getMonth(),
@@ -667,6 +751,7 @@ function buildMovedGroup(targetRoom, targetDate) {
       )
     };
   });
+  return candidates.includes(null) ? [] : candidates;
 }
 
 function groupHasConflict(candidates) {
@@ -681,15 +766,24 @@ function groupHasConflict(candidates) {
         && a.date === b.date
         && overlaps(a, b)
       ) return true;
+      if (
+        a.editorId
+        && a.editorId === b.editorId
+        && a.date === b.date
+        && overlaps(a, b)
+      ) return true;
     }
   }
 
   return candidates.some(candidate =>
     shifts.some(existing =>
       !movingIds.has(existing.id)
-      && existing.room === candidate.room
       && existing.date === candidate.date
       && overlaps(existing, candidate)
+      && (
+        existing.room === candidate.room
+        || (candidate.editorId && existing.editorId === candidate.editorId)
+      )
     )
   );
 }
@@ -701,13 +795,11 @@ function clearActiveDrag() {
 
 function startMarquee(event, cell) {
   if (event.button !== 0 || event.target.closest('.shift-card')) return;
-  const row = cell.getBoundingClientRect();
   marqueeState = {
-    room: cell.dataset.room,
     startX: event.clientX,
+    startY: event.clientY,
     currentX: event.clientX,
-    rowTop: row.top,
-    rowBottom: row.bottom,
+    currentY: event.clientY,
     additive: event.metaKey || event.ctrlKey,
     active: false
   };
@@ -716,7 +808,10 @@ function startMarquee(event, cell) {
 function updateMarquee(event) {
   if (!marqueeState) return;
   marqueeState.currentX = event.clientX;
-  if (!marqueeState.active && Math.abs(marqueeState.currentX - marqueeState.startX) < 5) return;
+  marqueeState.currentY = event.clientY;
+  if (!marqueeState.active
+    && Math.abs(marqueeState.currentX - marqueeState.startX) < 5
+    && Math.abs(marqueeState.currentY - marqueeState.startY) < 5) return;
 
   if (!marqueeState.active) {
     marqueeState.active = true;
@@ -729,10 +824,10 @@ function updateMarquee(event) {
 
   const left = Math.min(marqueeState.startX, marqueeState.currentX);
   const right = Math.max(marqueeState.startX, marqueeState.currentX);
-  const top = marqueeState.rowTop + 2;
-  const bottom = marqueeState.rowBottom - 2;
+  const top = Math.min(marqueeState.startY, marqueeState.currentY);
+  const bottom = Math.max(marqueeState.startY, marqueeState.currentY);
   Object.assign(marqueeElement.style, {left:`${left}px`, top:`${top}px`, width:`${Math.max(1,right-left)}px`, height:`${Math.max(1,bottom-top)}px`});
-  document.querySelectorAll(`.planning-cell[data-room="${marqueeState.room}"] .shift-card`).forEach(card => {
+  document.querySelectorAll('.planning-cell .shift-card').forEach(card => {
     const r = card.getBoundingClientRect();
     if (!(r.right < left || r.left > right || r.bottom < top || r.top > bottom)) selectedShiftIds.add(card.dataset.shiftId);
   });
@@ -1193,6 +1288,7 @@ function bindPlanningEvents() {
     if (groupHasConflict(candidates)) {
       showToast('Orari non compatibili'); clearActiveDrag(); return removeDragGhost();
     }
+    recordShiftUndo(candidates.length === 1 ? 'spostamento turno' : `spostamento di ${candidates.length} turni`);
     const movedById = new Map(candidates.map(candidate => [candidate.id, candidate]));
     shifts = shifts.map(shift => movedById.get(shift.id) || shift);
     candidates.forEach(syncShiftToSupabase);
@@ -1238,7 +1334,63 @@ function populateShiftSelects() {
   const films = [...new Set(shifts.map(shift => shift.film).filter(Boolean))].sort();
   document.getElementById("productionSuggestions").innerHTML = productions.map(value => `<option value="${escapeHtml(value)}"></option>`).join("");
   document.getElementById("filmSuggestions").innerHTML = films.map(value => `<option value="${escapeHtml(value)}"></option>`).join("");
+  renderMultiRoomAssignments();
 }
+
+function sortedActiveEditors() {
+  return [...editors]
+    .filter(editor => editor.active !== false)
+    .sort((a, b) => fullEmployeeName(a).localeCompare(fullEmployeeName(b), "it"));
+}
+
+function editorOptions(selectedId = "") {
+  return `<option value="">— Nessun dipendente —</option>${sortedActiveEditors().map(editor =>
+    `<option value="${escapeHtml(editor.id)}" ${editor.id === selectedId ? "selected" : ""}>${escapeHtml(fullEmployeeName(editor))}</option>`
+  ).join("")}`;
+}
+
+function renderMultiRoomAssignments(selected = new Map()) {
+  const container = document.getElementById("multiRoomAssignments");
+  if (!container) return;
+  container.innerHTML = ROOMS.map(room => {
+    const assignment = selected.get(room.id);
+    return `<div class="multi-room-row" data-multi-room="${room.id}">
+      <label class="multi-room-check"><input type="checkbox" ${assignment ? "checked" : ""}><strong>${escapeHtml(room.label)}</strong></label>
+      <select aria-label="Dipendente per ${escapeHtml(room.label)}">${editorOptions(assignment?.editorId || "")}</select>
+    </div>`;
+  }).join("");
+  updateMultiRoomUI();
+}
+
+function updateMultiRoomUI() {
+  const enabled = Boolean(document.getElementById("multiRoomEnabled")?.checked);
+  const container = document.getElementById("multiRoomAssignments");
+  const singleRoom = document.getElementById("room");
+  const singleEditor = document.getElementById("editorSearchInput");
+  container?.classList.toggle("hidden", !enabled);
+  if (singleRoom) singleRoom.disabled = enabled;
+  if (singleEditor) {
+    singleEditor.disabled = enabled || Boolean(document.getElementById("isClient")?.checked);
+    singleEditor.closest("label")?.classList.toggle("disabled-field", enabled);
+  }
+}
+
+function selectedRoomAssignments() {
+  if (!document.getElementById("multiRoomEnabled")?.checked) {
+    return [{
+      room: document.getElementById("room").value,
+      editorId: document.getElementById("editor").value || null
+    }];
+  }
+  return [...document.querySelectorAll("#multiRoomAssignments .multi-room-row")]
+    .filter(row => row.querySelector('input[type="checkbox"]')?.checked)
+    .map(row => ({
+      room: row.dataset.multiRoom,
+      editorId: row.querySelector("select")?.value || null
+    }));
+}
+
+document.getElementById("multiRoomEnabled")?.addEventListener("change", updateMultiRoomUI);
 
 function setWeekdaySelection(values = ["all"]) {
   const selected = new Set(values.map(String));
@@ -1260,9 +1412,14 @@ function setStatusUI(status) {
 
 function updateClientUI() {
   const client = document.getElementById("isClient").checked;
+  const multiRoom = Boolean(document.getElementById("multiRoomEnabled")?.checked);
   const search = document.getElementById("editorSearchInput");
-  search.disabled = client;
+  search.disabled = client || multiRoom;
   if (client) { search.value = ""; document.getElementById("editor").value = ""; }
+  document.querySelectorAll("#multiRoomAssignments select").forEach(select => {
+    select.disabled = client;
+    if (client) select.value = "";
+  });
 }
 
 function resolveEditorInput(showError = false) {
@@ -1435,6 +1592,8 @@ function resetShiftForm(shift = {}) {
   document.getElementById("shiftNotes").value = noteValue;
   updateShiftNotesUI();
   document.getElementById("color").value = shift.color || "blue";
+  document.getElementById("multiRoomEnabled").checked = false;
+  renderMultiRoomAssignments();
   setStatusUI(shift.status || "definitivo");
   setWeekdaySelection(["all"]);
   updateClientUI();
@@ -1447,7 +1606,9 @@ function openNewShift(room = "sala-1", date = "") {
   document.getElementById("deleteShiftBtn").classList.add("hidden");
   document.querySelector(".date-range-field").classList.remove("calendar-disabled");
   document.querySelectorAll("#dateCalendarPopover button").forEach(button => button.disabled = false);
+  document.getElementById("dateFromTrigger").disabled = false;
   document.getElementById("weekdayPicker").classList.remove("disabled");
+  document.getElementById("multiRoomField")?.classList.remove("editing-disabled");
   resetShiftForm({ room, date: date || isoDate(currentMonth.getFullYear(), currentMonth.getMonth(), 1) });
   shiftDialog.showModal();
 }
@@ -1460,9 +1621,11 @@ function openEditShift(id) {
   document.getElementById("shiftDialogTitle").textContent = "Modifica turno";
   document.getElementById("deleteShiftBtn").classList.remove("hidden");
   resetShiftForm(shift);
-  document.querySelector(".date-range-field").classList.add("calendar-disabled");
-  document.querySelectorAll("#dateCalendarPopover button").forEach(button => button.disabled = true);
-  document.getElementById("weekdayPicker").classList.add("disabled");
+  document.querySelector(".date-range-field").classList.remove("calendar-disabled");
+  document.getElementById("dateFromTrigger").disabled = true;
+  document.getElementById("dateToTrigger").disabled = false;
+  document.getElementById("weekdayPicker").classList.remove("disabled");
+  document.getElementById("multiRoomField")?.classList.add("editing-disabled");
   shiftDialog.showModal();
 }
 
@@ -1488,18 +1651,21 @@ shiftForm.addEventListener("submit", event => {
   const error = document.getElementById("shiftFormError");
   error.textContent = "";
   if (!start || !end || timeToMinutes(end) <= timeToMinutes(start)) { error.textContent = "Inserisci un intervallo orario valido."; return; }
-  if (!document.getElementById("isClient").checked && !resolveEditorInput(true)) return;
+  const multiRoom = !editingShiftId && document.getElementById("multiRoomEnabled")?.checked;
+  if (!multiRoom && !document.getElementById("isClient").checked && !resolveEditorInput(true)) return;
 
-  const dates = editingShiftId ? [document.getElementById("dateFrom").value] : datesForFormRange();
+  const dates = datesForFormRange();
   if (!dates.length) { error.textContent = "Il periodo non contiene giorni selezionati."; return; }
 
+  const assignments = editingShiftId
+    ? [{ room: document.getElementById("room").value, editorId: document.getElementById("editor").value || null }]
+    : selectedRoomAssignments();
+  if (!assignments.length) { error.textContent = "Seleziona almeno una sala."; return; }
   const common = {
-    room: document.getElementById("room").value,
     production: document.getElementById("production").value.trim().replace(/\s+/g," ").toUpperCase(),
     film: document.getElementById("film").value.trim().replace(/\s+/g," ").toUpperCase(),
     start, end,
     workType: document.getElementById("workType").value,
-    editorId: document.getElementById("editor").value || null,
     isClient: document.getElementById("isClient").checked,
     isDoubleStation: document.getElementById("isDoubleStation").checked,
     isVariable: document.getElementById("isVariable").checked,
@@ -1511,28 +1677,82 @@ shiftForm.addEventListener("submit", event => {
     confirmed: false
   };
 
-  const candidates = dates.map((date,index) => ({ ...common, id: editingShiftId || crypto.randomUUID(), date }));
+  const original = editingShiftId ? shifts.find(item => item.id === editingShiftId) : null;
+  let candidates = assignments.flatMap(assignment => dates.map(date => ({
+    ...common,
+    id: editingShiftId && date === original?.date ? editingShiftId : crypto.randomUUID(),
+    room: assignment.room,
+    editorId: common.isClient ? null : assignment.editorId,
+    date
+  })));
+  if (editingShiftId) {
+    candidates = candidates.filter(candidate => candidate.id === editingShiftId || !shifts.some(existing =>
+      existing.id !== editingShiftId
+      && existing.room === candidate.room
+      && existing.date === candidate.date
+      && existing.start === candidate.start
+      && existing.end === candidate.end
+      && existing.production === candidate.production
+      && existing.film === candidate.film
+      && existing.workType === candidate.workType
+      && existing.editorId === candidate.editorId
+    ));
+  }
+  const employeeConflict = candidates.find((candidate, index) => candidate.editorId && (
+    candidates.some((other, otherIndex) => otherIndex !== index
+      && other.editorId === candidate.editorId
+      && other.date === candidate.date
+      && overlaps(other, candidate))
+    || shifts.some(existing => existing.id !== editingShiftId
+      && existing.editorId === candidate.editorId
+      && existing.date === candidate.date
+      && overlaps(existing, candidate))
+  ));
+  if (employeeConflict) {
+    const employee = getEditor(employeeConflict.editorId);
+    error.textContent = `${employee ? fullEmployeeName(employee) : "Il dipendente"} ha già un turno sovrapposto il ${new Date(employeeConflict.date+"T12:00:00").toLocaleDateString("it-IT")}.`;
+    return;
+  }
   const conflict = candidates.find(candidate => roomConflict(candidate, editingShiftId));
   if (conflict) { error.textContent = `La sala contiene già un turno sovrapposto il ${new Date(conflict.date+"T12:00:00").toLocaleDateString("it-IT")}.`; return; }
 
+  recordShiftUndo(editingShiftId
+    ? (candidates.length > 1 ? `modifica e prolungamento con ${candidates.length - 1} nuovi turni` : "modifica turno")
+    : (candidates.length === 1 ? "creazione turno" : `creazione di ${candidates.length} turni`));
   if (editingShiftId) {
     const previous = shifts.find(item => item.id === editingShiftId);
-    candidates[0].confirmed = Boolean(previous?.confirmed);
-    shifts[shifts.findIndex(item => item.id === editingShiftId)] = candidates[0];
+    const edited = candidates.find(item => item.id === editingShiftId);
+    if (!edited) { error.textContent = "Il turno originale non è disponibile."; return; }
+    edited.confirmed = Boolean(previous?.confirmed);
+    shifts[shifts.findIndex(item => item.id === editingShiftId)] = edited;
+    shifts.push(...candidates.filter(item => item.id !== editingShiftId));
   } else shifts.push(...candidates);
 
   saveLocal(); candidates.forEach(syncShiftToSupabase);
   selectedShiftIds = new Set(candidates.map(candidate => candidate.id)); selectionAnchorId = candidates[0].id; selectedCell = null;
   closeShiftDialog(); renderPlanning();
-  showToast(candidates.length === 1 ? "Turno salvato" : `${candidates.length} turni creati`);
+  showToast(candidates.length === 1
+    ? "Turno salvato"
+    : editingShiftId
+      ? `Turno modificato e prolungato: ${candidates.length - 1} nuovi turni`
+      : `${candidates.length} turni creati in ${assignments.length} ${assignments.length === 1 ? "sala" : "sale"}`);
 });
 
 document.getElementById("deleteShiftBtn").addEventListener("click", () => {
   const shift = shifts.find(item => item.id === editingShiftId);
   if (!editingShiftId || shift?.confirmed) return;
-  if (!confirm("Eliminare questo turno?")) return;
-  shifts = shifts.filter(item => item.id !== editingShiftId); saveLocal(); deleteShiftFromSupabase(editingShiftId);
+  const targets = [shift];
+  const unlocked = targets.filter(item => !item.confirmed);
+  const lockedCount = targets.length - unlocked.length;
+  const message = `Eliminare ${unlocked.length} ${unlocked.length === 1 ? "turno" : "turni"}${lockedCount ? `? ${lockedCount} confermati resteranno invariati.` : "?"}`;
+  if (!unlocked.length || !confirm(message)) return;
+  recordShiftUndo(unlocked.length === 1 ? "eliminazione turno" : `eliminazione di ${unlocked.length} turni`);
+  const ids = new Set(unlocked.map(item => item.id));
+  shifts = shifts.filter(item => !ids.has(item.id));
+  saveLocal();
+  unlocked.forEach(item => deleteShiftFromSupabase(item.id));
   selectedShiftIds.clear(); selectionAnchorId = null; closeShiftDialog(); renderPlanning();
+  showToast(`${unlocked.length} ${unlocked.length === 1 ? "turno eliminato" : "turni eliminati"}`);
 });
 
 document.getElementById("closeShiftDialog").addEventListener("click", closeShiftDialog);
@@ -1541,9 +1761,29 @@ document.getElementById("newShiftBtn").addEventListener("click", () => openNewSh
 
 document.getElementById("start").addEventListener("change", event => {
   const value = normalizeTime(event.target.value); if (!value) return;
+  event.target.value = value;
   const minutes = timeToMinutes(value) + 480;
   document.getElementById("end").value = minutes >= 1440 ? "24:00" : `${String(Math.floor(minutes/60)).padStart(2,"0")}:${String(minutes%60).padStart(2,"0")}`;
 });
+
+function bindTimeSegmentSelection(input) {
+  if (!input) return;
+  input.addEventListener("focus", () => {
+    requestAnimationFrame(() => input.setSelectionRange(0, 2));
+  });
+  input.addEventListener("mouseup", event => {
+    event.preventDefault();
+    const caret = input.selectionStart ?? 0;
+    requestAnimationFrame(() => {
+      if (caret >= 3) input.setSelectionRange(3, 5);
+      else input.setSelectionRange(0, 2);
+    });
+  });
+}
+
+bindTimeSegmentSelection(document.getElementById("start"));
+bindTimeSegmentSelection(document.getElementById("end"));
+
 document.getElementById("isClient").addEventListener("change", updateClientUI);
 document.getElementById("editorSearchInput").addEventListener("change", () => resolveEditorInput(false));
 document.querySelectorAll(".segmented-control [data-status]").forEach(button => button.addEventListener("click", () => setStatusUI(button.dataset.status)));
@@ -1641,7 +1881,14 @@ planningScroller.addEventListener("gesturechange", event => {
 
 document.addEventListener("keydown", event => {
   const target = event.target;
-  const isTyping = Boolean(target.closest("input, select, textarea"));
+  const isTyping = Boolean(target.closest?.("input, select, textarea, [contenteditable='true']"));
+
+  if (!isTyping && event.metaKey && event.key.toLowerCase() === "z") {
+    event.preventDefault();
+    if (event.shiftKey) redoShiftOperation();
+    else undoShiftOperation();
+    return;
+  }
 
   if (!isTyping && (event.metaKey || event.ctrlKey) && event.key.toLowerCase() === "c") {
     if (copySelectedShifts()) event.preventDefault();
@@ -1823,6 +2070,7 @@ async function deleteCurrentEditor() {
   if (!confirm(`Eliminare definitivamente ${fullEmployeeName(editor)}?\n\nQuesta operazione non può essere annullata.${warning}`)) return;
 
   if (linkedShifts) {
+    recordShiftUndo(`rimozione dipendente da ${linkedShifts} ${linkedShifts === 1 ? "turno" : "turni"}`);
     shifts = shifts.map(shift => shift.editorId === editingEditorId ? { ...shift, editorId: null } : shift);
     for (const shift of shifts.filter(item => item.editorId === null)) await syncShiftToSupabase(shift);
   }
@@ -2118,6 +2366,7 @@ async function confirmSummaryShifts(editorId) {
   if (!pending.length) return;
   const message = `Confermare ${pending.length} ${pending.length === 1 ? "turno" : "turni"} di ${fullEmployeeName(row.editor)} per ${monthName(summaryMonth)}? I turni verranno confermati indipendentemente dalla sala.`;
   if (!window.confirm(message)) return;
+  recordShiftUndo(pending.length === 1 ? "conferma turno da riepilogo" : `conferma di ${pending.length} turni da riepilogo`);
   const confirmedAt = new Date().toISOString();
   pending.forEach(shift => { shift.confirmed = true; shift.confirmedAt = confirmedAt; });
   saveLocal();
@@ -2286,7 +2535,7 @@ function openPrintPreview() {
       });
     });
     const weekLabel=`${shortPrintDate(week.start)} – ${shortPrintDate(week.end)}`;
-    return `<main class="paper"><header class="head"><div><h1>Digital Video Service</h1><p>PLANNING · ${escapeHtml(monthName(printMonth))}</p><small>Settimana ${escapeHtml(weekLabel)}</small></div><strong>${selectedRooms.length===ROOMS.length?'Tutte le sale':`${selectedRooms.length} sale selezionate`}</strong></header><section class="grid">${cells.join('')}</section><footer class="page-footer"><span>DVS Planning · v20.5</span><span>Pagina ${pageIndex+1} di ${selectedWeeks.length}</span></footer></main>`;
+    return `<main class="paper"><header class="head"><div><h1>Digital Video Service</h1><p>PLANNING · ${escapeHtml(monthName(printMonth))}</p><small>Settimana ${escapeHtml(weekLabel)}</small></div><strong>${selectedRooms.length===ROOMS.length?'Tutte le sale':`${selectedRooms.length} sale selezionate`}</strong></header><section class="grid">${cells.join('')}</section><footer class="page-footer"><span>DVS Planning · v22 FINALE</span><span>Pagina ${pageIndex+1} di ${selectedWeeks.length}</span></footer></main>`;
   }).join('');
   const popup=window.open('','_blank');
   if(!popup)return showToast('Consenti l’apertura della finestra di anteprima');
@@ -2485,7 +2734,7 @@ document.querySelectorAll("[data-settings-section]").forEach(button => button.ad
   const sections = {
     backup: { title:"Backup", subtitle:"Stato e autorizzazione", html:backupSettingsHtml() },
     print: { title:"Stampa", subtitle:"Centro Stampa", html:printSettingsHtml() },
-    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service.</p><div class="settings-info-meta"><div><span>Versione</span><strong>v20.5</strong></div><div><span>Ideazione e sviluppo</span><strong>Marco D'Agostino per Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div><p class="settings-info-copyright"><strong>Copyright © 2026 Marco D'Agostino per Digital Video Service</strong><br>Tutti i diritti riservati.</p>` }
+    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service.</p><div class="settings-info-meta"><div><span>Versione</span><strong>v22 – FINALE</strong></div><div><span>Stato</span><strong>Versione finale</strong></div><div><span>Ideazione e sviluppo</span><strong>Marco D'Agostino per Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div><p class="settings-info-copyright"><strong>Copyright © 2026 Marco D'Agostino per Digital Video Service</strong><br>Tutti i diritti riservati.</p>` }
   };
   const selected = sections[section];
   if (!selected) return;
