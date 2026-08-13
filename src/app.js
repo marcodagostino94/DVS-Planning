@@ -1,4 +1,4 @@
-// DVS Planning v24
+// DVS Planning v25
 
 const ROOMS = [
   ...Array.from({ length: 15 }, (_, index) => ({
@@ -64,7 +64,7 @@ const db = hasSupabaseConfig
     )
   : null;
 
-let currentMonth = new Date(2026, 6, 1);
+let currentMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 let summaryMonth = new Date(2026, 6, 1);
 let selectedSummaryEditorId = null;
 let editingShiftId = null;
@@ -172,6 +172,9 @@ const editorForm = document.getElementById("editorForm");
 const toast = document.getElementById("toast");
 const contextMenu = document.getElementById("contextMenu");
 const selectionBadge = document.getElementById("selectionBadge");
+const assignEditorDialog = document.getElementById("assignEditorDialog");
+const assignEditorForm = document.getElementById("assignEditorForm");
+const assignEditorSearch = document.getElementById("assignEditorSearch");
 
 function renderProfiles() {
   profileGrid.innerHTML = profiles.filter(profile => profile.active !== false).map(profile => `
@@ -640,6 +643,12 @@ function showContextMenu(event, targetCell) {
   contextMenu.querySelector('[data-action="confirm"]').disabled = !hasUnconfirmed;
   contextMenu.querySelector('[data-action="unconfirm"]').hidden = !hasConfirmed;
   contextMenu.querySelector('[data-action="unconfirm"]').disabled = !hasConfirmed;
+  const canChangeEditor = selectedShiftsEligibleForEditorChange();
+  const assignEditorButton = contextMenu.querySelector('[data-action="assign-editor"]');
+  assignEditorButton.hidden = !canChangeEditor;
+  assignEditorButton.textContent = selected.some(shift => shift.editorId)
+    ? "Modifica montatore"
+    : "Assegna montatore";
   contextMenu.querySelector('[data-action="copy"]').disabled = !selected.length;
   contextMenu.querySelector('[data-action="cut"]').disabled = !selected.length || hasConfirmed;
   contextMenu.querySelector('[data-action="paste"]').disabled = !copiedShifts.length || !targetCell;
@@ -798,24 +807,15 @@ function groupHasConflict(candidates) {
         && a.date === b.date
         && overlaps(a, b)
       ) return true;
-      if (
-        a.editorId
-        && a.editorId === b.editorId
-        && a.date === b.date
-        && overlaps(a, b)
-      ) return true;
     }
   }
 
   return candidates.some(candidate =>
     shifts.some(existing =>
       !movingIds.has(existing.id)
+      && existing.room === candidate.room
       && existing.date === candidate.date
       && overlaps(existing, candidate)
-      && (
-        existing.room === candidate.room
-        || (candidate.editorId && existing.editorId === candidate.editorId)
-      )
     )
   );
 }
@@ -1346,6 +1346,7 @@ contextMenu.addEventListener('click',event=>{
   if (action==='edit') { const s=selectedShiftList(); if (s.length===1) openEditShift(s[0].id); }
   else if (action==='confirm') confirmSelectedShift();
   else if (action==='unconfirm') unconfirmSelectedShift();
+  else if (action==='assign-editor') openAssignEditorDialog();
   else if (action==='copy') copySelectedShifts();
   else if (action==='cut') cutSelectedShifts();
   else if (action==='paste'&&targetCell) { selectedCell={room:targetCell.dataset.room,date:targetCell.dataset.date}; pasteCopiedShifts(); }
@@ -1375,6 +1376,80 @@ function sortedActiveEditors() {
     .filter(editor => editor.active !== false)
     .sort((a, b) => fullEmployeeName(a).localeCompare(fullEmployeeName(b), "it"));
 }
+
+function selectedShiftsEligibleForEditorChange() {
+  const selected = selectedShiftList();
+  return IS_MAC_APP && selected.length > 0
+    && selected.every(shift => !shift.isClient && !shift.confirmed);
+}
+
+function closeAssignEditorDialog() {
+  assignEditorDialog?.close();
+  assignEditorForm?.reset();
+  const error = document.getElementById("assignEditorError");
+  if (error) error.textContent = "";
+}
+
+function openAssignEditorDialog() {
+  if (!selectedShiftsEligibleForEditorChange()) {
+    showToast("Seleziona un turno modificabile");
+    return;
+  }
+  const selected = selectedShiftList();
+  const isChange = selected.some(shift => shift.editorId);
+  const activeEditors = sortedActiveEditors();
+  if (!activeEditors.length) {
+    showToast("Nessun montatore attivo disponibile");
+    return;
+  }
+  document.getElementById("assignEditorSuggestions").innerHTML = activeEditors.map(editor =>
+    `<option value="${escapeHtml(fullEmployeeName(editor))}"></option>`
+  ).join("");
+  document.getElementById("assignEditorDialogTitle").textContent = isChange
+    ? "Modifica montatore"
+    : "Assegna montatore";
+  document.getElementById("assignEditorSubmit").textContent = isChange ? "Modifica" : "Assegna";
+  document.getElementById("assignEditorSelectionCount").textContent = isChange
+    ? `Il nuovo montatore verrà applicato a tutti i ${selected.length} turni selezionati`
+    : `${selected.length} turni senza montatore selezionati`;
+  assignEditorForm.reset();
+  document.getElementById("assignEditorError").textContent = "";
+  assignEditorDialog.showModal();
+  requestAnimationFrame(() => assignEditorSearch.focus());
+}
+
+assignEditorForm?.addEventListener("submit", async event => {
+  event.preventDefault();
+  const error = document.getElementById("assignEditorError");
+  if (!selectedShiftsEligibleForEditorChange()) {
+    error.textContent = "La selezione non è più valida.";
+    return;
+  }
+  const requestedName = assignEditorSearch.value.trim().toLocaleLowerCase("it");
+  const editor = sortedActiveEditors().find(item =>
+    fullEmployeeName(item).toLocaleLowerCase("it") === requestedName
+  );
+  if (!editor) {
+    error.textContent = "Seleziona un montatore presente nell’elenco.";
+    assignEditorSearch.focus();
+    return;
+  }
+
+  const selected = selectedShiftList();
+  const isChange = selected.some(shift => shift.editorId);
+  recordShiftUndo(`${isChange ? "modifica" : "assegnazione"} montatore a ${selected.length} turni`);
+  selected.forEach(shift => { shift.editorId = editor.id; });
+  saveLocal();
+  closeAssignEditorDialog();
+  await Promise.all(selected.map(shift => syncShiftToSupabase(shift)));
+  renderPlanning();
+  renderDashboard();
+  renderSummaries();
+  showToast(`${fullEmployeeName(editor)} applicato a ${selected.length} turni`);
+});
+
+document.getElementById("cancelAssignEditor")?.addEventListener("click", closeAssignEditorDialog);
+document.getElementById("closeAssignEditorDialog")?.addEventListener("click", closeAssignEditorDialog);
 
 function editorOptions(selectedId = "") {
   return `<option value="">— Nessun dipendente —</option>${sortedActiveEditors().map(editor =>
@@ -1730,21 +1805,6 @@ shiftForm.addEventListener("submit", event => {
       && existing.workType === candidate.workType
       && existing.editorId === candidate.editorId
     ));
-  }
-  const employeeConflict = candidates.find((candidate, index) => candidate.editorId && (
-    candidates.some((other, otherIndex) => otherIndex !== index
-      && other.editorId === candidate.editorId
-      && other.date === candidate.date
-      && overlaps(other, candidate))
-    || shifts.some(existing => existing.id !== editingShiftId
-      && existing.editorId === candidate.editorId
-      && existing.date === candidate.date
-      && overlaps(existing, candidate))
-  ));
-  if (employeeConflict) {
-    const employee = getEditor(employeeConflict.editorId);
-    error.textContent = `${employee ? fullEmployeeName(employee) : "Il dipendente"} ha già un turno sovrapposto il ${new Date(employeeConflict.date+"T12:00:00").toLocaleDateString("it-IT")}.`;
-    return;
   }
   const conflict = candidates.find(candidate => roomConflict(candidate, editingShiftId));
   if (conflict) { error.textContent = `La sala contiene già un turno sovrapposto il ${new Date(conflict.date+"T12:00:00").toLocaleDateString("it-IT")}.`; return; }
@@ -2582,7 +2642,7 @@ function openPrintPreview() {
       });
     });
     const weekLabel=`${shortPrintDate(week.start)} – ${shortPrintDate(week.end)}`;
-    return `<main class="paper"><header class="head"><div><h1>Digital Video Service</h1><p>PLANNING · ${escapeHtml(monthName(printMonth))}</p><small>Settimana ${escapeHtml(weekLabel)}</small></div><strong>${selectedRooms.length===ROOMS.length?'Tutte le sale':`${selectedRooms.length} sale selezionate`}</strong></header><section class="grid">${cells.join('')}</section><footer class="page-footer"><span>DVS Planning · v24</span><span>Pagina ${pageIndex+1} di ${selectedWeeks.length}</span></footer></main>`;
+    return `<main class="paper"><header class="head"><div><h1>Digital Video Service</h1><p>PLANNING · ${escapeHtml(monthName(printMonth))}</p><small>Settimana ${escapeHtml(weekLabel)}</small></div><strong>${selectedRooms.length===ROOMS.length?'Tutte le sale':`${selectedRooms.length} sale selezionate`}</strong></header><section class="grid">${cells.join('')}</section><footer class="page-footer"><span>DVS Planning · v25</span><span>Pagina ${pageIndex+1} di ${selectedWeeks.length}</span></footer></main>`;
   }).join('');
   const popup=window.open('','_blank');
   if(!popup)return showToast('Consenti l’apertura della finestra di anteprima');
@@ -2724,7 +2784,12 @@ function updateIPhoneBackupLight() {
   light.classList.toggle("is-red", !healthy);
 }
 
-function openView(viewName) {
+function openView(viewName, keepPlanningMonth = false) {
+  if (viewName === "planning" && !keepPlanningMonth) {
+    const now = new Date();
+    currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    clearSelection();
+  }
   document.querySelectorAll(".nav-item[data-view]").forEach(item => item.classList.toggle("active", item.dataset.view === viewName));
   updateIPhoneChrome(viewName);
   document.querySelectorAll(".app-view").forEach(view => view.classList.remove("active"));
@@ -2732,6 +2797,7 @@ function openView(viewName) {
   if (viewName === "editors") renderEditors();
   if (viewName === "summaries") renderSummaries();
   if (viewName === "dashboard") renderDashboard();
+  if (viewName === "planning") renderPlanning();
   if (viewName === "connected") renderConnectedUsers();
   if (viewName === "settings") { showSettingsHome(); }
 }
@@ -2781,7 +2847,7 @@ document.querySelectorAll("[data-settings-section]").forEach(button => button.ad
   const sections = {
     backup: { title:"Backup", subtitle:"Stato e autorizzazione", html:backupSettingsHtml() },
     print: { title:"Stampa", subtitle:"Centro Stampa", html:printSettingsHtml() },
-    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service.</p><div class="settings-info-meta"><div><span>Versione</span><strong>v24</strong></div><div><span>Ideazione e sviluppo</span><strong>Marco D'Agostino per Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div><p class="settings-info-copyright"><strong>Copyright © 2026 Marco D'Agostino per Digital Video Service</strong><br>Tutti i diritti riservati.</p>` }
+    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service.</p><div class="settings-info-meta"><div><span>Versione</span><strong>v25</strong></div><div><span>Ideazione e sviluppo</span><strong>Marco D'Agostino per Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div><p class="settings-info-copyright"><strong>Copyright © 2026 Marco D'Agostino per Digital Video Service</strong><br>Tutti i diritti riservati.</p>` }
   };
   const selected = sections[section];
   if (!selected) return;
@@ -2795,13 +2861,8 @@ document.querySelectorAll("[data-settings-section]").forEach(button => button.ad
 function openPlanningToday() {
   const now = new Date();
   const targetMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-  const monthChanged = currentMonth.getFullYear() !== targetMonth.getFullYear()
-    || currentMonth.getMonth() !== targetMonth.getMonth();
   currentMonth = targetMonth;
-  openView("planning");
-
-  // Su iPad riutilizza la griglia già pronta se mese e dati non sono cambiati.
-  if (!IS_TOUCH_APPLE || monthChanged || planningNeedsRender()) renderPlanning();
+  openView("planning", true);
 
   requestAnimationFrame(() => {
     const todayCell = planningGrid.querySelector(`[data-date="${localTodayIso()}"]`);
