@@ -1,4 +1,4 @@
-// DVS Planning v26
+// DVS Planning v27
 
 const ROOMS = [
   ...Array.from({ length: 15 }, (_, index) => ({
@@ -834,6 +834,7 @@ function startMarquee(event, cell) {
     currentX: event.clientX,
     currentY: event.clientY,
     additive: event.metaKey || event.ctrlKey,
+    baseSelection: new Set(event.metaKey || event.ctrlKey ? selectedShiftIds : []),
     active: false
   };
 }
@@ -860,11 +861,15 @@ function updateMarquee(event) {
   const top = Math.min(marqueeState.startY, marqueeState.currentY);
   const bottom = Math.max(marqueeState.startY, marqueeState.currentY);
   Object.assign(marqueeElement.style, {left:`${left}px`, top:`${top}px`, width:`${Math.max(1,right-left)}px`, height:`${Math.max(1,bottom-top)}px`});
+  const nextSelection = new Set(marqueeState.baseSelection);
   document.querySelectorAll('.planning-cell .shift-card').forEach(card => {
     const r = card.getBoundingClientRect();
-    if (!(r.right < left || r.left > right || r.bottom < top || r.top > bottom)) selectedShiftIds.add(card.dataset.shiftId);
+    if (!(r.right < left || r.left > right || r.bottom < top || r.top > bottom)) nextSelection.add(card.dataset.shiftId);
   });
-  if (!selectionAnchorId) selectionAnchorId = [...selectedShiftIds][0] || null;
+  selectedShiftIds = nextSelection;
+  if (!selectionAnchorId || !selectedShiftIds.has(selectionAnchorId)) {
+    selectionAnchorId = [...selectedShiftIds][0] || null;
+  }
   document.querySelectorAll('.shift-card').forEach(card => card.classList.toggle('selected', selectedShiftIds.has(card.dataset.shiftId)));
   updateSelectionBadge();
 }
@@ -958,7 +963,7 @@ function fitAllCardText(immediate = false) {
     });
 
     const selectors = [
-      [".shift-production", 5.5], [".shift-time", 6], [".shift-film", 6],
+      [".shift-production", 5.5], [".shift-time", 6],
       [".shift-type", 6], [".shift-note", 8.5], [".editor-name", 6.5]
     ];
     for (const card of visibleCards) {
@@ -979,6 +984,24 @@ function fitAllCardText(immediate = false) {
     : requestAnimationFrame(run);
 }
 
+function normalizePlanningSlotHeights() {
+  for (const room of ROOMS) {
+    const roomCells = [...planningGrid.querySelectorAll(`.planning-cell[data-room="${room.id}"]`)];
+    const slotCount = Math.max(0, ...roomCells.map(cell => cell.querySelectorAll(".shift-time-slot").length));
+    for (let slotIndex = 0; slotIndex < slotCount; slotIndex += 1) {
+      const slots = roomCells
+        .map(cell => cell.querySelector(`.shift-time-slot[data-slot-index="${slotIndex}"]`))
+        .filter(Boolean);
+      slots.forEach(slot => { slot.style.height = "auto"; });
+      const requiredHeight = Math.max(88, ...slots.map(slot => {
+        const card = slot.querySelector(".shift-card");
+        return card ? Math.ceil(card.scrollHeight) : Number(slot.dataset.baseHeight || 88);
+      }));
+      slots.forEach(slot => { slot.style.height = `${requiredHeight}px`; });
+    }
+  }
+}
+
 function escapeHtml(value) {
   return String(value)
     .replaceAll("&", "&amp;")
@@ -990,6 +1013,8 @@ function escapeHtml(value) {
 
 function renderCard(shift) {
   const color = FILM_COLORS[shift.color] || FILM_COLORS.blue;
+  const workType = String(shift.workType || "").toUpperCase();
+  const isHighlightedWork = ["GRAFICA", "SOUND", "COLOR"].includes(workType);
   const editor = getEditor(shift.editorId);
   const warning = editorConflict(shift);
   const assignment = shift.isClient ? "CLIENTE" : editorDisplay(editor);
@@ -999,7 +1024,8 @@ function renderCard(shift) {
     shift.isDoubleStation ? "double-station" : "",
     selectedShiftIds.has(shift.id) ? "selected" : "",
     cutShiftIds.has(shift.id) ? "cut-pending" : "",
-    shift.notes ? "has-note" : ""
+    shift.notes ? "has-note" : "",
+    isHighlightedWork ? "highlighted-work" : ""
   ].filter(Boolean).join(" ");
 
   return `
@@ -1013,7 +1039,7 @@ function renderCard(shift) {
         <button class="iphone-shift-menu" type="button" aria-label="Azioni turno" title="Azioni turno">•••</button>
         <div class="shift-time">${escapeHtml(shift.start)} – ${escapeHtml(shift.end)}</div>
         <div class="shift-film">${escapeHtml(shift.film)}</div>
-        <div class="shift-type${["GRAFICA", "COLOR"].includes(String(shift.workType || "").toUpperCase()) ? " shift-type-red" : ""}">${escapeHtml(shift.workType)}${shift.isVariable ? '<span class="variable-label"> - VARIABILE</span>' : ""}${shift.isDoubleStation ? '<span class="double-station-label">DOPPIA POSTAZIONE</span>' : ""}</div>
+        <div class="shift-type${isHighlightedWork ? " shift-type-red" : ""}">${escapeHtml(shift.workType)}${shift.isVariable ? '<span class="variable-label"> - VARIABILE</span>' : ""}${shift.isDoubleStation ? '<span class="double-station-label">DOPPIA POSTAZIONE</span>' : ""}</div>
         ${shift.notes ? `<div class="shift-note">${escapeHtml(shift.notes)}</div>` : ""}
       </div>
       <div class="shift-editor">
@@ -1171,7 +1197,7 @@ function renderPlanning() {
       const dayShifts = shiftIndex.get(`${room.id}|${meta.iso}`) || [];
       const alignedShifts = alignDayShiftsToSlots(dayShifts, timeSlots);
       const alignedCards = dayShifts.length ? alignedShifts.map((shift, slotIndex) =>
-        `<div class="shift-time-slot${shift ? "" : " is-empty"}" style="height:${timeSlots[slotIndex].height}px">${shift ? renderCard(shift) : ""}</div>`
+        `<div class="shift-time-slot${shift ? "" : " is-empty"}" data-slot-index="${slotIndex}" data-base-height="${timeSlots[slotIndex].height}" style="min-height:${timeSlots[slotIndex].height}px">${shift ? renderCard(shift) : ""}</div>`
       ).join("") : "";
 
       html.push(`
@@ -1186,6 +1212,7 @@ function renderPlanning() {
 
   // Un'unica scrittura DOM evita centinaia di insertAdjacentHTML e relativi reflow.
   planningGrid.innerHTML = html.join("");
+  normalizePlanningSlotHeights();
 
   bindPlanningEvents();
   updateSelectionBadge();
@@ -1975,19 +2002,42 @@ function nearestZoomOption(value) {
   return options.reduce((best, option) => Math.abs(option - value) < Math.abs(best - value) ? option : best, 1);
 }
 
+function updateZoomSelectDisplay(forceFit = false) {
+  if (!zoomSelect) return;
+  zoomSelect.querySelector('option[data-custom-zoom]')?.remove();
+  if (forceFit) {
+    zoomSelect.value = "fit";
+    return;
+  }
+  const rounded = Math.round(planningZoom * 100) / 100;
+  const preset = [...zoomSelect.options].find(option =>
+    option.value !== "fit" && Math.abs(Number(option.value) - rounded) < .001
+  );
+  if (preset) {
+    zoomSelect.value = preset.value;
+    return;
+  }
+  const customOption = document.createElement("option");
+  customOption.dataset.customZoom = "true";
+  customOption.value = String(rounded);
+  customOption.textContent = `${Math.round(rounded * 100)}%`;
+  zoomSelect.insertBefore(customOption, zoomSelect.options[1] || null);
+  zoomSelect.value = customOption.value;
+}
+
 function fitPlanningToWindow() {
   planningCanvas.style.zoom = 1;
   const naturalWidth = planningCanvas.scrollWidth || 1;
   const availableWidth = Math.max(1, planningScroller.clientWidth - 4);
   planningZoom = clampZoom(availableWidth / naturalWidth);
   applyPlanningZoom();
-  zoomSelect.value = "fit";
+  updateZoomSelectDisplay(true);
 }
 
-function applyPlanningZoom(save = true) {
+function applyPlanningZoom(save = true, preserveFitLabel = zoomSelect?.value === "fit") {
   planningZoom = clampZoom(planningZoom);
   planningCanvas.style.zoom = planningZoom;
-  if (zoomSelect && zoomSelect.value !== "fit") zoomSelect.value = String(nearestZoomOption(planningZoom));
+  updateZoomSelectDisplay(preserveFitLabel);
   if (save) localStorage.setItem(ZOOM_STORAGE, String(planningZoom));
 }
 
@@ -1999,10 +2049,11 @@ planningScroller.addEventListener("wheel", event => {
   const mouseX = event.clientX - rect.left + planningScroller.scrollLeft;
   const mouseY = event.clientY - rect.top + planningScroller.scrollTop;
   const previous = planningZoom;
-  planningZoom = clampZoom(planningZoom + (event.deltaY < 0 ? .08 : -.08));
+  const continuousDelta = Math.max(-20, Math.min(20, event.deltaY));
+  planningZoom = clampZoom(planningZoom * Math.exp(-continuousDelta * .003));
 
   const ratio = planningZoom / previous;
-  applyPlanningZoom();
+  applyPlanningZoom(true, false);
 
   planningScroller.scrollLeft = mouseX * ratio - (event.clientX - rect.left);
   planningScroller.scrollTop = mouseY * ratio - (event.clientY - rect.top);
@@ -2017,7 +2068,7 @@ planningScroller.addEventListener("gesturestart", event => {
 planningScroller.addEventListener("gesturechange", event => {
   event.preventDefault();
   planningZoom = clampZoom(gestureStartZoom * event.scale);
-  applyPlanningZoom();
+  applyPlanningZoom(true, false);
 }, { passive: false });
 
 document.addEventListener("keydown", event => {
@@ -2690,7 +2741,7 @@ function openPrintPreview() {
       });
     });
     const weekLabel=`${shortPrintDate(week.start)} – ${shortPrintDate(week.end)}`;
-    return `<main class="paper"><header class="head"><div><h1>Digital Video Service</h1><p>PLANNING · ${escapeHtml(monthName(printMonth))}</p><small>Settimana ${escapeHtml(weekLabel)}</small></div><strong>${selectedRooms.length===ROOMS.length?'Tutte le sale':`${selectedRooms.length} sale selezionate`}</strong></header><section class="grid">${cells.join('')}</section><footer class="page-footer"><span>DVS Planning · v26</span><span>Pagina ${pageIndex+1} di ${selectedWeeks.length}</span></footer></main>`;
+    return `<main class="paper"><header class="head"><div><h1>Digital Video Service</h1><p>PLANNING · ${escapeHtml(monthName(printMonth))}</p><small>Settimana ${escapeHtml(weekLabel)}</small></div><strong>${selectedRooms.length===ROOMS.length?'Tutte le sale':`${selectedRooms.length} sale selezionate`}</strong></header><section class="grid">${cells.join('')}</section><footer class="page-footer"><span>DVS Planning · v27</span><span>Pagina ${pageIndex+1} di ${selectedWeeks.length}</span></footer></main>`;
   }).join('');
   const popup=window.open('','_blank');
   if(!popup)return showToast('Consenti l’apertura della finestra di anteprima');
@@ -2895,7 +2946,7 @@ document.querySelectorAll("[data-settings-section]").forEach(button => button.ad
   const sections = {
     backup: { title:"Backup", subtitle:"Stato e autorizzazione", html:backupSettingsHtml() },
     print: { title:"Stampa", subtitle:"Centro Stampa", html:printSettingsHtml() },
-    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service.</p><div class="settings-info-meta"><div><span>Versione</span><strong>v26</strong></div><div><span>Ideazione e sviluppo</span><strong>Marco D'Agostino per Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div><p class="settings-info-copyright"><strong>Copyright © 2026 Marco D'Agostino per Digital Video Service</strong><br>Tutti i diritti riservati.</p>` }
+    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service.</p><div class="settings-info-meta"><div><span>Versione</span><strong>v27</strong></div><div><span>Ideazione e sviluppo</span><strong>Marco D'Agostino per Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div><p class="settings-info-copyright"><strong>Copyright © 2026 Marco D'Agostino per Digital Video Service</strong><br>Tutti i diritti riservati.</p>` }
   };
   const selected = sections[section];
   if (!selected) return;
