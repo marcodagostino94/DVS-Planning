@@ -28,6 +28,8 @@ Release: agosto 2026
 - Il nome di film o programma non viene più troncato: va su più righe e la card
   cresce automaticamente; le fasce della stessa sala vengono riallineate usando
   l'altezza maggiore necessaria tra i giorni visualizzati.
+- Aprendo la sezione Riepiloghi viene ora selezionato automaticamente il mese
+  corrente, senza ritornare a luglio 2026.
 
 Pulizia archivio:
 - rimossi changelog delle versioni precedenti e note tecniche temporanee;

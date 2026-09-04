@@ -65,7 +65,7 @@ const db = hasSupabaseConfig
   : null;
 
 let currentMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
-let summaryMonth = new Date(2026, 6, 1);
+let summaryMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 let selectedSummaryEditorId = null;
 let editingShiftId = null;
 let editingEditorId = null;
@@ -2888,6 +2888,11 @@ function openView(viewName, keepPlanningMonth = false) {
     const now = new Date();
     currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
     clearSelection();
+  }
+  if (viewName === "summaries") {
+    const now = new Date();
+    summaryMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    selectedSummaryEditorId = null;
   }
   document.querySelectorAll(".nav-item[data-view]").forEach(item => item.classList.toggle("active", item.dataset.view === viewName));
   updateIPhoneChrome(viewName);
