@@ -1,6 +1,6 @@
-# DVS Planning v27
+# DVS Planning v28
 
-Versione pronta per il collaudo definitivo. La v27 migliora la leggibilità del
+Versione consolidata. La v28 migliora la leggibilità del
 Planning e consolida l'assegnazione dei montatori su Mac, iPad e iPhone.
 
 ## Funzioni Mac
