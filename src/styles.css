@@ -2557,3 +2557,34 @@ html.is-iphone .shift-film {
   text-overflow:clip;
   overflow-wrap:anywhere;
 }
+
+/* v30 TEST — panoramic planning, strictly iPhone only. */
+html.is-iphone-device .planning-grid {--room-width:88px;--day-width:138px;}
+html.is-iphone-device .shift-production,
+html.is-iphone-device .shift-type,
+html.is-iphone-device .shift-note {display:none!important;}
+html.is-iphone-device .shift-main {display:flex;flex-direction:column;padding:6px!important;gap:5px;overflow:visible!important;}
+html.is-iphone-device .shift-film {order:0;margin:0!important;font-size:18px!important;font-weight:750;line-height:1.18!important;white-space:normal!important;word-break:normal!important;overflow-wrap:break-word!important;overflow:visible!important;text-overflow:clip!important;}
+html.is-iphone-device .shift-time {order:1;margin:0!important;font-size:15px!important;font-weight:650;line-height:1.25!important;letter-spacing:-.3px;white-space:nowrap!important;overflow:visible!important;text-overflow:clip!important;}
+html.is-iphone-device .shift-editor {height:auto!important;min-height:28px;padding:5px 6px!important;gap:3px;align-items:flex-start;}
+html.is-iphone-device .editor-name {font-size:16px!important;line-height:1.2!important;white-space:normal!important;word-break:normal!important;overflow-wrap:break-word!important;overflow:visible!important;text-overflow:clip!important;}
+html.is-iphone-device .shift-card,html.is-iphone-device .shift-card.has-note {min-height:88px;border-radius:8px;box-shadow:none!important;}
+html.is-iphone-device .iphone-shift-menu {display:none!important;}
+html.is-iphone-device .shift-card.selected .iphone-shift-menu {display:grid!important;position:absolute;top:2px;right:2px;width:30px;height:28px;place-items:center;border:0;border-radius:6px;background:#fff;color:#343a42;z-index:8;}
+html.is-iphone-device .shift-card.selected .shift-film {padding-right:28px;}
+html.is-iphone-device .room-label {padding:8px 3px;}
+html.is-iphone-device .room-label-number {font-size:28px;}
+html.is-iphone-device .planning-scroller {padding-bottom:100px;scroll-padding-bottom:100px;}
+
+/* v31 TEST — iPhone: wider columns and surname on one line. */
+html.is-iphone-device .planning-grid {--day-width:var(--iphone-card-column,178px);}
+html.is-iphone-device .editor-name {white-space:nowrap!important;overflow-wrap:normal!important;word-break:normal!important;}
+
+/* v32 — show existing notes in red on iPhone cards. */
+html.is-iphone-device .shift-note {display:block!important;order:2;color:#b11122!important;font-size:15px!important;font-weight:700;line-height:1.25!important;margin:3px 0 0!important;white-space:normal!important;word-break:normal!important;overflow-wrap:break-word!important;overflow:visible!important;text-overflow:clip!important;max-height:none!important;}
+
+/* v33 — iPhone work labels, independent of notes. */
+.iphone-work-flags {display:none;}
+html.is-iphone-device .iphone-work-flags {display:flex;flex-direction:column;align-items:flex-start;gap:3px;order:2;margin-top:2px;color:#b11122;font-size:14px;font-weight:750;line-height:1.25;white-space:normal;overflow-wrap:break-word;}
+html.is-iphone-device .iphone-work-flags span {display:block;max-width:100%;}
+html.is-iphone-device .shift-note {order:3;}
