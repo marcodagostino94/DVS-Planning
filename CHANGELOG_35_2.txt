@@ -1,0 +1,1 @@
+v35.2: nuove note automatiche nel formato SPOSTATO AL 18 SET - MAIL / SPOSTATO DAL 15 SET - MAIL. Nessuna modifica ai turni già salvati. Tutto il resto della v35.1 invariato.
