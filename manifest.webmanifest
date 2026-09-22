@@ -1,7 +1,7 @@
 {
-  "name": "DVS Planning v35.4",
+  "name": "DVS Planning v35.5",
   "short_name": "DVS Planning",
-  "description": "DVS Planning v35.4",
+  "description": "DVS Planning v35.5",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
@@ -9,13 +9,13 @@
   "theme_color": "#09090b",
   "icons": [
     {
-      "src": "./assets/icons/dvs-planning-192.png?v=35-4-sidebar-brand",
+      "src": "./assets/icons/dvs-planning-192.png?v=35-5-planning-today",
       "sizes": "192x192",
       "type": "image/png",
       "purpose": "any"
     },
     {
-      "src": "./assets/icons/dvs-planning-512.png?v=35-4-sidebar-brand",
+      "src": "./assets/icons/dvs-planning-512.png?v=35-5-planning-today",
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"

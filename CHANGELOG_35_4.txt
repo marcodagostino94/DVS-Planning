@@ -1,1 +1,0 @@
-v35.4 — Logo nella barra laterale con stile Utility: nessun riquadro, logo originale 160 px, scritta PLANNING e alone rosso sfocato. Icone app e funzionamento invariati. Layout compatto iPhone orizzontale conservato.
