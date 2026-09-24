@@ -1,12 +1,9 @@
-# DVS Planning v35.6 TEST
-Base v34. Variazione: tasto destro su un turno → Variazione → nuova data, orari HH:MM e sala → VARIA. Annulla non modifica dati.
-L’originale rimane con X e senza montatore. Il nuovo mantiene programma, produzione, montatore e caratteristiche. Le nuove note usano il formato SPOSTATO AL 18 SET - MAIL / SPOSTATO DAL 15 SET - MAIL. Le note dei turni già salvati restano invariate. La X dipende dalla riga SPOSTATO AL: cancellarla rimuove la X. Le note precedenti vengono conservate; oltre 100 caratteri l’app chiede di accorciarle. In variazioni successive viene aggiornata l’indicazione automatica.
-Turni confermati: annullare prima la conferma. Un originale già barrato non può essere variato nuovamente; si varia il nuovo turno. Sale filtrate per data e fascia oraria, considerando occupanti anche i turni barrati. Conteggi e backup invariati. Nessuna migrazione SQL richiesta. Configurazione Supabase originale conservata: provare sul sito di test e verificare il database configurato. Nessuna pubblicazione automatica.
+# DVS Planning v36.0 — Definitiva
 
-Icone aggiornate dal PNG Planning originale fornito, senza ritocchi.
+Versione consolidata dalla v35.6 approvata. Nessuna ulteriore modifica a grafica o funzionamento.
 
-Barra laterale: logo senza riquadro, scritta PLANNING e alone rosso come Utility.
+Contiene le ottimizzazioni di selezione e sincronizzazione, le card iPhone, la funzione Variazione con filtro sale disponibili, le icone coordinate, il logo laterale, l’apertura sul giorno corrente e la X che lascia libera la nota rossa.
 
-Aprendo Planning dal menu, la griglia si posiziona sul giorno corrente senza cambiare zoom.
+Per aggiornare il sito, utilizzare i file di questa cartella mantenendo la configurazione Supabase prevista. Nessuna migrazione del database: non eseguire gli script SQL per questo aggiornamento. Installer Backup Agent e documentazione di installazione conservati.
 
-Prova grafica: X confinata al contenuto principale del turno; nota rossa libera sotto.
+La creazione di questo ZIP non pubblica automaticamente il sito.
