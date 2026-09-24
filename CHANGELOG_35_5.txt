@@ -1,1 +1,0 @@
-v35.5 — Apertura Planning dal menu sul mese e sul giorno corrente, centrato nello spazio disponibile accanto alle sale. Zoom e posizione verticale conservati. Navigazione a turni specifici invariata. Il pulsante Oggi usa lo stesso centraggio. Nessuna modifica database.

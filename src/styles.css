@@ -2599,3 +2599,10 @@ html:not(.is-iphone-landscape) .sidebar .brand img {position:relative;z-index:1;
 .sidebar .brand-glow {position:absolute;top:24px;left:50%;width:130px;height:42px;transform:translateX(-50%);border-radius:50%;background:rgba(177,17,34,.24);filter:blur(24px);pointer-events:none;}
 .sidebar .product-name {position:relative;z-index:1;color:rgba(255,255,255,.84);font-size:10px;font-weight:750;letter-spacing:.35em;text-indent:.35em;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text","Helvetica Neue",Arial,sans-serif;line-height:normal;}
 html.is-iphone-landscape .sidebar .brand-glow,html.is-iphone-landscape .sidebar .product-name{display:none;}
+
+/* v35.6: cross restricted to production/time/program/work; notes below. */
+.variation-content {position:relative;min-width:0;isolation:isolate;}
+.variation-content .variation-cross {overflow:hidden;}
+.variation-content .variation-cross path {stroke-opacity:.42;}
+.varied-shift .shift-note {position:relative;margin-top:6px;}
+html.is-iphone-device .variation-content {display:flex;flex-direction:column;gap:5px;order:0;}
