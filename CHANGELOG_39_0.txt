@@ -1,0 +1,6 @@
+DVS Planning v39.0 — Definitiva
+- Schema turni limitato alla produzione RAI; altre produzioni escluse solo da questa sezione.
+- Consolidate le funzioni Variabili, ID richiesta, Schema turni e orari ufficiali.
+- Aggiornati Informazioni, titolo, menu, manifest PWA e riferimenti cache.
+- Ripulita la documentazione: eliminati file di test, changelog intermedi e SQL storici/seed.
+- Nessuna nuova migrazione rispetto alla v37; conservata la 014 per chi aggiorna dalla v36.

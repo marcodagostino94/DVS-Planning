@@ -1,9 +1,20 @@
-# DVS Planning v36.0 — Definitiva
+# DVS Planning v39.0 — Definitiva
 
-Versione consolidata dalla v35.6 approvata. Nessuna ulteriore modifica a grafica o funzionamento.
+Pacchetto di aggiornamento dell’app esistente, basato sulla v38 approvata.
 
-Contiene le ottimizzazioni di selezione e sincronizzazione, le card iPhone, la funzione Variazione con filtro sale disponibili, le icone coordinate, il logo laterale, l’apertura sul giorno corrente e la X che lascia libera la nota rossa.
+## Pubblicazione
+1. Verificare che src/config.js punti al progetto Supabase destinato a tutti gli utenti.
+2. Se la migrazione 014 è già stata eseguita su quel progetto, non serve altro SQL. Altrimenti eseguire database/014_variable_request_id_v37.sql una sola volta prima di aggiornare il sito. Aggiunge soltanto il campo facoltativo request_id alla tabella shifts.
+3. Pubblicare index.html, src, assets, downloads, favicon.ico e manifest.webmanifest mantenendo la struttura delle cartelle.
+4. Ricaricare l’app. In Informazioni e nel menu deve comparire v39.0.
 
-Per aggiornare il sito, utilizzare i file di questa cartella mantenendo la configurazione Supabase prevista. Nessuna migrazione del database: non eseguire gli script SQL per questo aggiornamento. Installer Backup Agent e documentazione di installazione conservati.
+La preparazione dello ZIP non pubblica il sito e non esegue modifiche al database.
 
-La creazione di questo ZIP non pubblica automaticamente il sito.
+## Funzioni
+- Variabili: elenco mensile, ID richiesta facoltativo, totali per programma e stato con semaforo. Colonne allineate ed elenco scorrevole.
+- Schema turni: soltanto produzione RAI (ignora maiuscole/minuscole e spazi esterni), con uno spazio per programma e tabelle per lavorazione. ASSISTENTE confluisce in EDIT.
+- Una cella per turno; righe distinte per orario iniziale e standard/variabile. Provvisori arancioni, inclusi nei totali. Esclusi CLIENTE e originali barrati, incluse le destinazioni degli spostamenti.
+- Note UFFICI..., UFFICIAL., UFFICIALMENTE con intervalli come 10-18 o dalle 10 alle 18: orario ufficiale utilizzato solo nello schema, senza modificare la data o il Planning. Note ambigue segnalate e non conteggiate nei totali, dichiarati parziali.
+- Ore decimali: 7,5 = 7 ore e 30 minuti. Doppia postazione non raddoppia le ore.
+
+Conservati icone, logo e installer Backup Agent, collegato nell’app. Rimossi changelog intermedi, istruzioni di test e SQL storici/seed non necessari all’aggiornamento. Questo pacchetto non serve per creare da zero un nuovo database.
