@@ -1,4 +1,4 @@
-// DVS Planning v39.0
+// DVS Planning v39.1
 
 const ROOMS = [
   ...Array.from({ length: 15 }, (_, index) => ({
@@ -1942,6 +1942,15 @@ function variableDuration(minutes) {
 function renderVariables() {
   const picker = document.getElementById("variablesMonth");
   if (!picker.value) { const now = new Date(); picker.value = `${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,"0")}`; }
+  const [selectedYear, selectedMonth] = picker.value.split("-");
+  const currentYear = new Date().getFullYear();
+  const years = new Set(Array.from({length:11}, (_,i) => currentYear-5+i));
+  years.add(Number(selectedYear));
+  shifts.forEach(shift => { const year=Number(String(shift.date || "").slice(0,4)); if (year>=1900 && year<=9999) years.add(year); });
+  document.getElementById("variablesMonthSelect").value = selectedMonth;
+  const yearSelect = document.getElementById("variablesYearSelect");
+  yearSelect.innerHTML = [...years].sort((a,b)=>a-b).map(year => `<option value="${year}">${year}</option>`).join("");
+  yearSelect.value = selectedYear;
   const groups = variableGroups(shifts, picker.value);
   document.getElementById("variablesList").innerHTML = groups.length ? groups.map(production => `
     <section class="variable-production"><h2>${escapeHtml(production.name)}</h2>
@@ -1957,7 +1966,10 @@ function renderVariables() {
       ${production.programs.map(program => `<div><strong>${escapeHtml(program.name)}</strong><span>${program.count} turni · ${variableDuration(program.minutes)}${program.provisional ? ` · ${program.provisional} provvisori` : ""}</span></div>`).join("")}
       </footer></section>`).join("") : '<p class="variable-empty">Nessun turno variabile in questo mese.</p>';
 }
-document.getElementById("variablesMonth").addEventListener("change", renderVariables);
+["variablesMonthSelect", "variablesYearSelect"].forEach(id => document.getElementById(id).addEventListener("change", () => {
+  document.getElementById("variablesMonth").value = `${document.getElementById("variablesYearSelect").value}-${document.getElementById("variablesMonthSelect").value}`;
+  renderVariables();
+}));
 
 // Schema mensile: vista derivata, nessuna scrittura dei turni.
 function schemaTimeRange(shift) {
@@ -3056,7 +3068,7 @@ function openPrintPreview() {
       });
     });
     const weekLabel=`${shortPrintDate(week.start)} – ${shortPrintDate(week.end)}`;
-    return `<main class="paper"><header class="head"><div><h1>Digital Video Service</h1><p>PLANNING · ${escapeHtml(monthName(printMonth))}</p><small>Settimana ${escapeHtml(weekLabel)}</small></div><strong>${selectedRooms.length===ROOMS.length?'Tutte le sale':`${selectedRooms.length} sale selezionate`}</strong></header><section class="grid">${cells.join('')}</section><footer class="page-footer"><span>DVS Planning · v39.0</span><span>Pagina ${pageIndex+1} di ${selectedWeeks.length}</span></footer></main>`;
+    return `<main class="paper"><header class="head"><div><h1>Digital Video Service</h1><p>PLANNING · ${escapeHtml(monthName(printMonth))}</p><small>Settimana ${escapeHtml(weekLabel)}</small></div><strong>${selectedRooms.length===ROOMS.length?'Tutte le sale':`${selectedRooms.length} sale selezionate`}</strong></header><section class="grid">${cells.join('')}</section><footer class="page-footer"><span>DVS Planning · v39.1</span><span>Pagina ${pageIndex+1} di ${selectedWeeks.length}</span></footer></main>`;
   }).join('');
   const popup=window.open('','_blank');
   if(!popup)return showToast('Consenti l’apertura della finestra di anteprima');
@@ -3273,7 +3285,7 @@ document.querySelectorAll("[data-settings-section]").forEach(button => button.ad
   const sections = {
     backup: { title:"Backup", subtitle:"Stato e autorizzazione", html:backupSettingsHtml() },
     print: { title:"Stampa", subtitle:"Centro Stampa", html:printSettingsHtml() },
-    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service. Include Variabili con ID richiesta e Schema turni mensile riservato alla produzione RAI.</p><div class="settings-info-meta"><div><span>Versione</span><strong>v39.0</strong></div><div><span>Ideazione e sviluppo</span><strong>Marco D'Agostino per Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div><p class="settings-info-copyright"><strong>Copyright © 2026 Marco D'Agostino per Digital Video Service</strong><br>Tutti i diritti riservati.</p>` }
+    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service. Include Variabili con ID richiesta e Schema turni mensile riservato alla produzione RAI.</p><div class="settings-info-meta"><div><span>Versione</span><strong>v39.1</strong></div><div><span>Ideazione e sviluppo</span><strong>Marco D'Agostino per Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div><p class="settings-info-copyright"><strong>Copyright © 2026 Marco D'Agostino per Digital Video Service</strong><br>Tutti i diritti riservati.</p>` }
   };
   const selected = sections[section];
   if (!selected) return;
@@ -3846,7 +3858,7 @@ loadBackupStatus();
 backupStatusTimer = setInterval(loadBackupStatus, 60000);
 enableRealtime();
 
-// v39.0 — variation uses existing notes and one atomic multi-row upsert.
+// v39.1 — variation uses existing notes and one atomic multi-row upsert.
 let variationSourceSnapshot = null;
 let variationSaving = false;
 const variationDialog = document.getElementById("variationDialog");

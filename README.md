@@ -1,4 +1,4 @@
-# DVS Planning v39.0 — Definitiva
+# DVS Planning v39.1 — Definitiva
 
 Pacchetto di aggiornamento dell’app esistente, basato sulla v38 approvata.
 
@@ -6,7 +6,7 @@ Pacchetto di aggiornamento dell’app esistente, basato sulla v38 approvata.
 1. Verificare che src/config.js punti al progetto Supabase destinato a tutti gli utenti.
 2. Se la migrazione 014 è già stata eseguita su quel progetto, non serve altro SQL. Altrimenti eseguire database/014_variable_request_id_v37.sql una sola volta prima di aggiornare il sito. Aggiunge soltanto il campo facoltativo request_id alla tabella shifts.
 3. Pubblicare index.html, src, assets, downloads, favicon.ico e manifest.webmanifest mantenendo la struttura delle cartelle.
-4. Ricaricare l’app. In Informazioni e nel menu deve comparire v39.0.
+4. Ricaricare l’app. In Informazioni e nel menu deve comparire v39.1.
 
 La preparazione dello ZIP non pubblica il sito e non esegue modifiche al database.
 

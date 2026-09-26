@@ -2656,3 +2656,7 @@ html.is-iphone .iphone-nav-indicator{width:calc((100% - 10px) / 6)}
 html.is-iphone .iphone-bottom-nav{grid-template-columns:repeat(7,1fr)}
 html.is-iphone .iphone-nav-indicator{width:calc((100% - 10px) / 7)}
 @media(max-width:700px){.schema-page{padding:14px 10px 24px}.schema-work{padding:14px 10px}.schema-program-header{padding:16px 12px}.schema-view .topbar{flex-wrap:wrap;gap:10px}}
+
+/* v39.1 — scelta mese e anno senza digitazione */
+.variable-month select{font:inherit;padding:10px 14px;border:1px solid #d7dbe0;border-radius:12px;background:#fff;color:#20242a;cursor:pointer;min-height:42px}
+#variablesView .variable-month{flex-wrap:wrap;gap:8px}

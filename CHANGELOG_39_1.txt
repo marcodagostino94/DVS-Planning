@@ -1,0 +1,4 @@
+DVS Planning v39.1 — Definitiva
+- Variabili: selezione mese e anno tramite menu a tendina, senza digitazione.
+- Disponibili anche gli anni presenti nei turni storici.
+- Nessuna modifica ai conteggi o al database.
