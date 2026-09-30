@@ -1,0 +1,5 @@
+DVS Planning v39.2 — Definitiva
+- Calendario DA attivo anche in modifica. Spostamento data conserva ID del turno.
+- Per turno singolo DA aggiorna anche A; gli intervalli mantengono la logica di prolungamento.
+- Schema turni: menu mese e anno identici a Variabili.
+- Nessun nuovo SQL.

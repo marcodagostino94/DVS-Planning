@@ -2660,3 +2660,5 @@ html.is-iphone .iphone-nav-indicator{width:calc((100% - 10px) / 7)}
 /* v39.1 — scelta mese e anno senza digitazione */
 .variable-month select{font:inherit;padding:10px 14px;border:1px solid #d7dbe0;border-radius:12px;background:#fff;color:#20242a;cursor:pointer;min-height:42px}
 #variablesView .variable-month{flex-wrap:wrap;gap:8px}
+
+#schemaView .variable-month{flex-wrap:wrap;gap:8px}

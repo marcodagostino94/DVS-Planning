@@ -1,4 +1,4 @@
-// DVS Planning v39.1
+// DVS Planning v39.2
 
 const ROOMS = [
   ...Array.from({ length: 15 }, (_, index) => ({
@@ -1796,8 +1796,9 @@ function selectCalendarDate(value) {
   const error = document.getElementById("shiftFormError");
 
   if (activeDateField === "dateFrom") {
+    const wasSingleDay = from.value === to.value;
     from.value = value;
-    if (!to.value || to.value < value) to.value = value;
+    if (wasSingleDay || !to.value || to.value < value) to.value = value;
   } else {
     if (from.value && value < from.value) {
       if (error) error.textContent = "La data finale non può essere precedente alla data iniziale.";
@@ -2034,6 +2035,15 @@ function schemaHours(minutes) { return (minutes/60).toLocaleString('it-IT',{maxi
 function renderShiftSchema() {
   const picker=document.getElementById('schemaMonth');
   if (!picker.value) {const now=new Date();picker.value=`${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}`;}
+  const [selectedYear, selectedMonth] = picker.value.split("-");
+  const currentYear = new Date().getFullYear();
+  const years = new Set(Array.from({length:11}, (_,i) => currentYear-5+i));
+  years.add(Number(selectedYear));
+  shifts.forEach(shift => { const year=Number(String(shift.date || "").slice(0,4)); if (year>=1900 && year<=9999) years.add(year); });
+  document.getElementById("schemaMonthSelect").value = selectedMonth;
+  const yearSelect = document.getElementById("schemaYearSelect");
+  yearSelect.innerHTML = [...years].sort((a,b)=>a-b).map(year => `<option value="${year}">${year}</option>`).join("");
+  yearSelect.value = selectedYear;
   const [year,month]=picker.value.split('-').map(Number);
   const dayCount=new Date(year,month,0).getDate();
   const days=Array.from({length:dayCount},(_,i)=>i+1);
@@ -2051,7 +2061,10 @@ function renderShiftSchema() {
       return `<td class="${provisional?'schema-provisional':''}" title="${escapeHtml(title)}" aria-label="${escapeHtml(title)}, ${schemaHours(cell.minutes)} ore">${schemaHours(cell.minutes)}${cell.official?'<sup aria-hidden="true">*</sup>':''}</td>`;
     }).join('')}<td class="schema-row-total">${schemaHours(row.minutes)}</td></tr>`).join('')}</tbody><tfoot><tr><th colspan="${dayCount+1}">Totale ${escapeHtml(labels[work.type]||work.type)}</th><td>${schemaHours(work.minutes)}</td></tr></tfoot></table></div>`:'<p class="schema-warning">Nessun turno conteggiabile: controllare le note indicate sopra.</p>'}</div>`).join('')}</section>`).join(''):'<p class="variable-empty">Nessun turno in questo mese.</p>';
 }
-document.getElementById('schemaMonth').addEventListener('change',renderShiftSchema);
+["schemaMonthSelect", "schemaYearSelect"].forEach(id => document.getElementById(id).addEventListener("change", () => {
+  document.getElementById("schemaMonth").value = `${document.getElementById("schemaYearSelect").value}-${document.getElementById("schemaMonthSelect").value}`;
+  renderShiftSchema();
+}));
 
 function resetShiftForm(shift = {}) {
   const date = shift.date || isoDate(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
@@ -2109,7 +2122,7 @@ function openEditShift(id) {
   document.getElementById("deleteShiftBtn").classList.remove("hidden");
   resetShiftForm(shift);
   document.querySelector(".date-range-field").classList.remove("calendar-disabled");
-  document.getElementById("dateFromTrigger").disabled = true;
+  document.getElementById("dateFromTrigger").disabled = false;
   document.getElementById("dateToTrigger").disabled = false;
   document.getElementById("weekdayPicker").classList.remove("disabled");
   document.getElementById("multiRoomField")?.classList.add("editing-disabled");
@@ -2166,9 +2179,11 @@ shiftForm.addEventListener("submit", async event => {
   };
 
   const original = editingShiftId ? shifts.find(item => item.id === editingShiftId) : null;
+  if (editingShiftId && !original) { error.textContent = "Il turno originale non è disponibile. Riapri la modifica."; return; }
+  const editedDate = original && dates.includes(original.date) ? original.date : dates[0];
   let candidates = assignments.flatMap(assignment => dates.map(date => ({
     ...common,
-    id: editingShiftId && date === original?.date ? editingShiftId : crypto.randomUUID(),
+    id: editingShiftId && date === editedDate ? editingShiftId : crypto.randomUUID(),
     room: assignment.room,
     editorId: common.isClient ? null : assignment.editorId,
     date
@@ -3068,7 +3083,7 @@ function openPrintPreview() {
       });
     });
     const weekLabel=`${shortPrintDate(week.start)} – ${shortPrintDate(week.end)}`;
-    return `<main class="paper"><header class="head"><div><h1>Digital Video Service</h1><p>PLANNING · ${escapeHtml(monthName(printMonth))}</p><small>Settimana ${escapeHtml(weekLabel)}</small></div><strong>${selectedRooms.length===ROOMS.length?'Tutte le sale':`${selectedRooms.length} sale selezionate`}</strong></header><section class="grid">${cells.join('')}</section><footer class="page-footer"><span>DVS Planning · v39.1</span><span>Pagina ${pageIndex+1} di ${selectedWeeks.length}</span></footer></main>`;
+    return `<main class="paper"><header class="head"><div><h1>Digital Video Service</h1><p>PLANNING · ${escapeHtml(monthName(printMonth))}</p><small>Settimana ${escapeHtml(weekLabel)}</small></div><strong>${selectedRooms.length===ROOMS.length?'Tutte le sale':`${selectedRooms.length} sale selezionate`}</strong></header><section class="grid">${cells.join('')}</section><footer class="page-footer"><span>DVS Planning · v39.2</span><span>Pagina ${pageIndex+1} di ${selectedWeeks.length}</span></footer></main>`;
   }).join('');
   const popup=window.open('','_blank');
   if(!popup)return showToast('Consenti l’apertura della finestra di anteprima');
@@ -3285,7 +3300,7 @@ document.querySelectorAll("[data-settings-section]").forEach(button => button.ad
   const sections = {
     backup: { title:"Backup", subtitle:"Stato e autorizzazione", html:backupSettingsHtml() },
     print: { title:"Stampa", subtitle:"Centro Stampa", html:printSettingsHtml() },
-    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service. Include Variabili con ID richiesta e Schema turni mensile riservato alla produzione RAI.</p><div class="settings-info-meta"><div><span>Versione</span><strong>v39.1</strong></div><div><span>Ideazione e sviluppo</span><strong>Marco D'Agostino per Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div><p class="settings-info-copyright"><strong>Copyright © 2026 Marco D'Agostino per Digital Video Service</strong><br>Tutti i diritti riservati.</p>` }
+    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service. Include Variabili con ID richiesta e Schema turni mensile riservato alla produzione RAI.</p><div class="settings-info-meta"><div><span>Versione</span><strong>v39.2</strong></div><div><span>Ideazione e sviluppo</span><strong>Marco D'Agostino per Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div><p class="settings-info-copyright"><strong>Copyright © 2026 Marco D'Agostino per Digital Video Service</strong><br>Tutti i diritti riservati.</p>` }
   };
   const selected = sections[section];
   if (!selected) return;
@@ -3858,7 +3873,7 @@ loadBackupStatus();
 backupStatusTimer = setInterval(loadBackupStatus, 60000);
 enableRealtime();
 
-// v39.1 — variation uses existing notes and one atomic multi-row upsert.
+// v39.2 — variation uses existing notes and one atomic multi-row upsert.
 let variationSourceSnapshot = null;
 let variationSaving = false;
 const variationDialog = document.getElementById("variationDialog");

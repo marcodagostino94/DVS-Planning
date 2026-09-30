@@ -3,15 +3,15 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, viewport-fit=cover">
-  <title>DVS Planning v39.1</title>
+  <title>DVS Planning v39.2</title>
   <meta name="theme-color" content="#09090b">
-  <link rel="icon" href="./favicon.ico?v=39-1-definitiva" sizes="any">
-  <link rel="icon" type="image/png" sizes="32x32" href="./assets/icons/dvs-planning-32.png?v=39-1-definitiva">
-  <link rel="icon" type="image/png" sizes="16x16" href="./assets/icons/dvs-planning-16.png?v=39-1-definitiva">
-  <link rel="icon" type="image/png" sizes="64x64" href="./assets/icons/dvs-planning-64.png?v=39-1-definitiva">
-  <link rel="apple-touch-icon" sizes="180x180" href="./assets/icons/dvs-planning-180.png?v=39-1-definitiva">
-  <link rel="manifest" href="./manifest.webmanifest?v=39-1-definitiva">
-  <link rel="stylesheet" href="./src/styles.css?v=39-1-definitiva">
+  <link rel="icon" href="./favicon.ico?v=39-2-definitiva" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="./assets/icons/dvs-planning-32.png?v=39-2-definitiva">
+  <link rel="icon" type="image/png" sizes="16x16" href="./assets/icons/dvs-planning-16.png?v=39-2-definitiva">
+  <link rel="icon" type="image/png" sizes="64x64" href="./assets/icons/dvs-planning-64.png?v=39-2-definitiva">
+  <link rel="apple-touch-icon" sizes="180x180" href="./assets/icons/dvs-planning-180.png?v=39-2-definitiva">
+  <link rel="manifest" href="./manifest.webmanifest?v=39-2-definitiva">
+  <link rel="stylesheet" href="./src/styles.css?v=39-2-definitiva">
 </head>
 <body>
   <section id="profileGate" class="profile-gate" aria-label="Selezione profilo">
@@ -81,7 +81,7 @@
           <span class="nav-icon"><svg class="sf-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 5H5.5A2.5 2.5 0 0 0 3 7.5v9A2.5 2.5 0 0 0 5.5 19H10M14 8l4 4-4 4M8 12h10"/></svg></span><span>Esci</span>
         </button>
         <span id="activeProfileLabel" class="active-profile-label"></span>
-        <span class="build-pill">v39.1</span>
+        <span class="build-pill">v39.2</span>
       </div>
     </aside>
 
@@ -216,7 +216,7 @@
       </section>
 
       <section id="schemaView" class="app-view schema-view">
-        <header class="topbar"><div class="page-title"><h1>Schema turni</h1><p>Produzione RAI · Ore mensili per programma e lavorazione</p></div><div class="toolbar"><label class="variable-month">Mese <input id="schemaMonth" type="month"></label></div></header>
+        <header class="topbar"><div class="page-title"><h1>Schema turni</h1><p>Produzione RAI · Ore mensili per programma e lavorazione</p></div><div class="toolbar"><div class="variable-month"><label for="schemaMonthSelect">Mese</label><select id="schemaMonthSelect" aria-label="Mese dello schema turni"><option value="01">Gennaio</option><option value="02">Febbraio</option><option value="03">Marzo</option><option value="04">Aprile</option><option value="05">Maggio</option><option value="06">Giugno</option><option value="07">Luglio</option><option value="08">Agosto</option><option value="09">Settembre</option><option value="10">Ottobre</option><option value="11">Novembre</option><option value="12">Dicembre</option></select><select id="schemaYearSelect" aria-label="Anno dello schema turni"></select><input id="schemaMonth" type="hidden"></div></div></header>
         <div class="schema-page"><p class="schema-legend"><span class="schema-provisional">Arancione: provvisorio (incluso nei totali).</span> * Orario ufficiale letto dalle note. Ore espresse in decimali: 7,5 = 7 ore e 30 minuti.</p><div id="schemaList" aria-live="polite"></div></div>
       </section>
       <section id="variablesView" class="app-view variables-view">
@@ -310,7 +310,7 @@
             <h2>DVS Planning</h2>
             <p>Applicazione collaborativa per la gestione del Planning di Digital Video Service.</p>
             <div class="settings-info-meta">
-              <div><span>Versione</span><strong>v39.1</strong></div>
+              <div><span>Versione</span><strong>v39.2</strong></div>
               <div><span>Ideazione e sviluppo</span><strong>Marco D'Agostino per Digital Video Service</strong></div>
               <div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div>
             </div>
@@ -631,6 +631,6 @@
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="./src/config.js?v=11.0"></script>
-  <script src="./src/app.js?v=39-1-definitiva"></script>
+  <script src="./src/app.js?v=39-2-definitiva"></script>
 </body>
 </html>
