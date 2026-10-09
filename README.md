@@ -1,9 +1,7 @@
-# DVS Planning v39.3 TEST
+# DVS Planning v39.4 TEST
 
-Versione di prova delle ottimizzazioni, basata sulla v39.2.
-Il primo accesso costruisce la griglia quando viene aperto Planning. Gli accessi successivi riutilizzano la griglia se i dati e le dimensioni sono invariati. Gli aggiornamenti ai turni, anche a parità di numero, invalidano il riutilizzo. I controlli per la griglia riguardano soltanto le date mostrate.
+Correzione dei tagli di nomi, orari e card su desktop. Il testo viene nuovamente adattato dopo zoom/scorrimento e le altezze ricalcolate. Il lavoro parte dopo una breve pausa del gesto, evitando di bloccare ogni movimento. Quando si ingrandisce di nuovo, il carattere riparte dalla dimensione originale.
 
-CSS, card, ridimensionamento testi e altezze sono quelli della v39.2.
-Non serve nuovo SQL rispetto alla v39.2. Configurazione Supabase conservata; una copia di test con lo stesso database modifica gli stessi dati.
+Zoom continuo, struttura della griglia, colori e contenuti conservati. Nessun nuovo SQL. Configurazione Supabase invariata: una copia collegata allo stesso database modifica gli stessi dati.
 
-Prova consigliata: aprire ottobre, passare a Dashboard e tornare a Planning; controllare i testi, poi modificare un turno e verificare che il rientro mostri la modifica. Confrontare sullo stesso Mac e allo stesso zoom. Nessuna velocità reale sul Mac è stata misurata in questa verifica.
+Verificare sul Mac al 50%, 63%, 66% e 100%, anche tornando a ingrandire e scorrendo verso altre sale/date. La resa effettiva Safari/macOS deve essere confermata sul dispositivo; non è stata verificata qui con un confronto grafico nel browser.

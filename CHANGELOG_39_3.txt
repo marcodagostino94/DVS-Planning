@@ -1,6 +1,0 @@
-DVS Planning v39.3 TEST
-- Riutilizzo della griglia quando mese, dati, giorno corrente, zoom e dimensioni sono invariati.
-- Costruzione della griglia rinviata finché Planning è visibile.
-- Indici e conflitti calcolati sulle date mostrate, non sull’intero storico.
-- Mantenuti invariati stile, card, misure altezze e algoritmo dimensionamento scritte.
-- Nessun nuovo SQL. Tempi effettivi da verificare sul Mac.

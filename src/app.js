@@ -1,4 +1,4 @@
-// DVS Planning v39.3 TEST
+// DVS Planning v39.4 TEST
 
 const ROOMS = [
   ...Array.from({ length: 15 }, (_, index) => ({
@@ -980,14 +980,39 @@ function isHoliday(date) {
 }
 
 function fitText(element, minSize) {
-  const original = Number(getComputedStyle(element).fontSize.replace("px", ""));
-  let size = original;
-  element.style.fontSize = `${size}px`;
-
+  // Start from the stylesheet size again: zooming back in must restore the text.
+  element.style.fontSize = "";
+  element.style.transform = "";
+  element.style.transformOrigin = "";
+  let size = parseFloat(getComputedStyle(element).fontSize);
   while (element.scrollWidth > element.clientWidth && size > minSize) {
-    size -= .35;
+    size = Math.max(minSize, size - .35);
     element.style.fontSize = `${size}px`;
   }
+  // Some WebKit configurations enforce a minimum font size. Measure the ink,
+  // not just the CSS size, and contain the single-line text if still too wide.
+  if (getComputedStyle(element).whiteSpace === "nowrap" && element.textContent.trim()) {
+    const range = document.createRange();
+    range.selectNodeContents(element);
+    const textWidth = range.getBoundingClientRect().width;
+    const available = element.getBoundingClientRect().width;
+    if (available > 0 && textWidth > available) {
+      element.style.transformOrigin = "left center";
+      element.style.transform = `scaleX(${Math.max(.01, (available - 1) / textWidth)})`;
+    }
+  }
+}
+
+let planningLayoutTimer = null;
+function schedulePlanningTextLayout() {
+  if (IS_TOUCH_APPLE) return;
+  clearTimeout(planningLayoutTimer);
+  planningLayoutTimer = setTimeout(() => {
+    if (!document.getElementById("planningView").classList.contains("active")) return;
+    if (document.body.classList.contains("dvs-drag-active")) { schedulePlanningTextLayout(); return; }
+    fitAllCardText(true);
+    normalizePlanningSlotHeights();
+  }, 100);
 }
 
 function fitAllCardText(immediate = false) {
@@ -1313,12 +1338,13 @@ function renderPlanning() {
 
   // Un'unica scrittura DOM evita centinaia di insertAdjacentHTML e relativi reflow.
   planningGrid.innerHTML = html.join("");
+  planningCanvas.style.zoom = clampZoom(planningZoom);
   normalizePlanningSlotHeights();
 
   bindPlanningEvents();
   updateSelectionBadge();
   // Mac: comportamento stabile esistente. iPad: niente fit sincrono del testo.
-  if (!IS_TOUCH_APPLE) fitAllCardText(true);
+  if (!IS_TOUCH_APPLE) { fitAllCardText(true); normalizePlanningSlotHeights(); }
   applyPlanningZoom(false);
   planningRenderSignature = currentPlanningSignature();
   if (document.getElementById("variationDialog")?.open) updateVariationRooms();
@@ -2387,9 +2413,13 @@ function fitPlanningToWindow() {
 function applyPlanningZoom(save = true, preserveFitLabel = zoomSelect?.value === "fit") {
   planningZoom = clampZoom(planningZoom);
   planningCanvas.style.zoom = planningZoom;
+  schedulePlanningTextLayout();
   updateZoomSelectDisplay(preserveFitLabel);
   if (save) localStorage.setItem(ZOOM_STORAGE, String(planningZoom));
 }
+
+planningScroller.addEventListener("scroll", schedulePlanningTextLayout, { passive:true });
+window.addEventListener("resize", schedulePlanningTextLayout);
 
 planningScroller.addEventListener("wheel", event => {
   if (!(event.metaKey || event.ctrlKey)) return;
@@ -3093,7 +3123,7 @@ function openPrintPreview() {
       });
     });
     const weekLabel=`${shortPrintDate(week.start)} – ${shortPrintDate(week.end)}`;
-    return `<main class="paper"><header class="head"><div><h1>Digital Video Service</h1><p>PLANNING · ${escapeHtml(monthName(printMonth))}</p><small>Settimana ${escapeHtml(weekLabel)}</small></div><strong>${selectedRooms.length===ROOMS.length?'Tutte le sale':`${selectedRooms.length} sale selezionate`}</strong></header><section class="grid">${cells.join('')}</section><footer class="page-footer"><span>DVS Planning · v39.3 TEST</span><span>Pagina ${pageIndex+1} di ${selectedWeeks.length}</span></footer></main>`;
+    return `<main class="paper"><header class="head"><div><h1>Digital Video Service</h1><p>PLANNING · ${escapeHtml(monthName(printMonth))}</p><small>Settimana ${escapeHtml(weekLabel)}</small></div><strong>${selectedRooms.length===ROOMS.length?'Tutte le sale':`${selectedRooms.length} sale selezionate`}</strong></header><section class="grid">${cells.join('')}</section><footer class="page-footer"><span>DVS Planning · v39.4 TEST</span><span>Pagina ${pageIndex+1} di ${selectedWeeks.length}</span></footer></main>`;
   }).join('');
   const popup=window.open('','_blank');
   if(!popup)return showToast('Consenti l’apertura della finestra di anteprima');
@@ -3311,7 +3341,7 @@ document.querySelectorAll("[data-settings-section]").forEach(button => button.ad
   const sections = {
     backup: { title:"Backup", subtitle:"Stato e autorizzazione", html:backupSettingsHtml() },
     print: { title:"Stampa", subtitle:"Centro Stampa", html:printSettingsHtml() },
-    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service. Include Variabili con ID richiesta e Schema turni mensile riservato alla produzione RAI.</p><div class="settings-info-meta"><div><span>Versione</span><strong>v39.3 TEST</strong></div><div><span>Ideazione e sviluppo</span><strong>Marco D'Agostino per Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div><p class="settings-info-copyright"><strong>Copyright © 2026 Marco D'Agostino per Digital Video Service</strong><br>Tutti i diritti riservati.</p>` }
+    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service. Include Variabili con ID richiesta e Schema turni mensile riservato alla produzione RAI.</p><div class="settings-info-meta"><div><span>Versione</span><strong>v39.4 TEST</strong></div><div><span>Ideazione e sviluppo</span><strong>Marco D'Agostino per Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div><p class="settings-info-copyright"><strong>Copyright © 2026 Marco D'Agostino per Digital Video Service</strong><br>Tutti i diritti riservati.</p>` }
   };
   const selected = sections[section];
   if (!selected) return;
@@ -3884,7 +3914,7 @@ loadBackupStatus();
 backupStatusTimer = setInterval(loadBackupStatus, 60000);
 enableRealtime();
 
-// v39.3 TEST — variation uses existing notes and one atomic multi-row upsert.
+// v39.4 TEST — variation uses existing notes and one atomic multi-row upsert.
 let variationSourceSnapshot = null;
 let variationSaving = false;
 const variationDialog = document.getElementById("variationDialog");
