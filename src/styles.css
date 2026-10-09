@@ -2662,7 +2662,3 @@ html.is-iphone .iphone-nav-indicator{width:calc((100% - 10px) / 7)}
 #variablesView .variable-month{flex-wrap:wrap;gap:8px}
 
 #schemaView .variable-month{flex-wrap:wrap;gap:8px}
-
-/* v39.4 — desktop card content must not squeeze the editor footer. */
-html:not(.is-ipad):not(.is-iphone-device) .planning-grid .shift-editor{flex-shrink:0}
-html:not(.is-ipad):not(.is-iphone-device) .planning-grid .shift-main{min-height:min-content}

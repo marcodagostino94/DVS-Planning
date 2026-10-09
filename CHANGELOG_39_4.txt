@@ -1,6 +1,0 @@
-DVS Planning v39.4 TEST
-- Ricalcolo testi e altezze dopo zoom, scorrimento e cambio dimensioni finestra su desktop.
-- Ripristino dimensione originale del testo prima di ogni adattamento.
-- Contenimento orizzontale dei testi che superano il minimo carattere del browser.
-- Fascia montatore non comprimibile su desktop.
-- Zoom continuo conservato; nessun nuovo SQL.

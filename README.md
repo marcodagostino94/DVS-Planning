@@ -1,7 +1,10 @@
-# DVS Planning v39.4 TEST
+# DVS Planning v40
 
-Correzione dei tagli di nomi, orari e card su desktop. Il testo viene nuovamente adattato dopo zoom/scorrimento e le altezze ricalcolate. Il lavoro parte dopo una breve pausa del gesto, evitando di bloccare ogni movimento. Quando si ingrandisce di nuovo, il carattere riparte dalla dimensione originale.
+Versione definitiva basata esattamente sulla v39.3 TEST approvata.
+Funzionamento, grafica, zoom e gestione dei turni invariati rispetto alla v39.3 TEST.
+Le modifiche sperimentali della v39.4 non sono incluse.
 
-Zoom continuo, struttura della griglia, colori e contenuti conservati. Nessun nuovo SQL. Configurazione Supabase invariata: una copia collegata allo stesso database modifica gli stessi dati.
-
-Verificare sul Mac al 50%, 63%, 66% e 100%, anche tornando a ingrandire e scorrendo verso altre sale/date. La resa effettiva Safari/macOS deve essere confermata sul dispositivo; non è stata verificata qui con un confronto grafico nel browser.
+Aggiornati soltanto i riferimenti di versione, i parametri di cache delle risorse e la documentazione.
+Per aggiornare il sito utilizzare il contenuto della cartella DVS-Planning_v40.
+Non occorre nuovo SQL per passare dalla v39.3 alla v40. La migrazione già esistente per ID richiesta è conservata nella cartella database.
+Configurazione Supabase e installer del Backup Agent conservati.

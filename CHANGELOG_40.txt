@@ -1,0 +1,6 @@
+DVS Planning v40
+- Consolidamento della v39.3 TEST senza modifiche funzionali o grafiche.
+- Aggiornati titolo, Informazioni, stampa, manifest e riferimenti di versione delle risorse.
+- Escluse tutte le modifiche della v39.4.
+- Documentazione aggiornata; archivio senza changelog precedenti o file temporanei.
+- Nessuna nuova migrazione SQL.
