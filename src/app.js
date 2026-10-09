@@ -1,4 +1,4 @@
-// DVS Planning v39.2
+// DVS Planning v39.3 TEST
 
 const ROOMS = [
   ...Array.from({ length: 15 }, (_, index) => ({
@@ -1117,9 +1117,9 @@ let renderConflictIds = new Set();
 let fitTextJob = null;
 let planningEventsBound = false;
 
-function buildRenderConflictIds() {
+function buildRenderConflictIds(source = shifts) {
   const byEditorDate = new Map();
-  for (const shift of shifts) {
+  for (const shift of source) {
     if (!shift.editorId) continue;
     const key = `${shift.editorId}|${shift.date}`;
     const bucket = byEditorDate.get(key);
@@ -1143,9 +1143,9 @@ function buildRenderConflictIds() {
   return conflicts;
 }
 
-function buildPlanningShiftIndex() {
+function buildPlanningShiftIndex(source = shifts) {
   const index = new Map();
-  for (const shift of shifts) {
+  for (const shift of source) {
     const key = `${shift.room}|${shift.date}`;
     const bucket = index.get(key);
     if (bucket) bucket.push(shift);
@@ -1159,7 +1159,11 @@ function buildPlanningShiftIndex() {
 
 
 function currentPlanningSignature() {
-  return `${currentMonth.getFullYear()}-${currentMonth.getMonth()}|${shifts.length}|${editors.length}`;
+  const dates = planningDates(currentMonth).map(isoFromDate);
+  const first = dates[0], last = dates[dates.length-1];
+  return JSON.stringify([currentMonth.getFullYear(), currentMonth.getMonth(), isoFromDate(new Date()),
+    shifts.filter(shift => shift.date >= first && shift.date <= last), editors,
+    planningScroller.clientWidth, planningScroller.clientHeight, planningZoom]);
 }
 
 function planningNeedsRender() {
@@ -1217,12 +1221,18 @@ function shouldSpanTwoPlanningSlots(dayShifts, timeSlots) {
 function renderPlanning() {
   if (document.getElementById("schemaView")?.classList.contains("active")) renderShiftSchema();
   if (document.getElementById("variablesView")?.classList.contains("active")) renderVariables();
+  if (!document.getElementById("planningView").classList.contains("active")) {
+    planningRenderSignature = "";
+    return;
+  }
   const dates = planningDates(currentMonth);
   const activeMonth = currentMonth.getMonth();
   const now = new Date();
-  const shiftIndex = buildPlanningShiftIndex();
+  const visibleDates = new Set(dates.map(isoFromDate));
+  const visibleShifts = shifts.filter(shift => visibleDates.has(shift.date));
+  const shiftIndex = buildPlanningShiftIndex(visibleShifts);
   renderEditorMap = new Map(editors.map(editor => [editor.id, editor]));
-  renderConflictIds = buildRenderConflictIds();
+  renderConflictIds = buildRenderConflictIds(visibleShifts);
   const dateMeta = dates.map((date, index) => ({
     dateObject: date,
     iso: isoFromDate(date),
@@ -3083,7 +3093,7 @@ function openPrintPreview() {
       });
     });
     const weekLabel=`${shortPrintDate(week.start)} – ${shortPrintDate(week.end)}`;
-    return `<main class="paper"><header class="head"><div><h1>Digital Video Service</h1><p>PLANNING · ${escapeHtml(monthName(printMonth))}</p><small>Settimana ${escapeHtml(weekLabel)}</small></div><strong>${selectedRooms.length===ROOMS.length?'Tutte le sale':`${selectedRooms.length} sale selezionate`}</strong></header><section class="grid">${cells.join('')}</section><footer class="page-footer"><span>DVS Planning · v39.2</span><span>Pagina ${pageIndex+1} di ${selectedWeeks.length}</span></footer></main>`;
+    return `<main class="paper"><header class="head"><div><h1>Digital Video Service</h1><p>PLANNING · ${escapeHtml(monthName(printMonth))}</p><small>Settimana ${escapeHtml(weekLabel)}</small></div><strong>${selectedRooms.length===ROOMS.length?'Tutte le sale':`${selectedRooms.length} sale selezionate`}</strong></header><section class="grid">${cells.join('')}</section><footer class="page-footer"><span>DVS Planning · v39.3 TEST</span><span>Pagina ${pageIndex+1} di ${selectedWeeks.length}</span></footer></main>`;
   }).join('');
   const popup=window.open('','_blank');
   if(!popup)return showToast('Consenti l’apertura della finestra di anteprima');
@@ -3248,7 +3258,8 @@ function openView(viewName, keepPlanningMonth = false) {
   if (viewName === "summaries") renderSummaries();
   if (viewName === "dashboard") renderDashboard();
   if (viewName === "planning") {
-    renderPlanning();
+    if (planningNeedsRender()) renderPlanning();
+    else { syncPlanningSelectionUI(); }
     if (!keepPlanningMonth) scrollPlanningToToday();
   }
   if (viewName === "connected") renderConnectedUsers();
@@ -3300,7 +3311,7 @@ document.querySelectorAll("[data-settings-section]").forEach(button => button.ad
   const sections = {
     backup: { title:"Backup", subtitle:"Stato e autorizzazione", html:backupSettingsHtml() },
     print: { title:"Stampa", subtitle:"Centro Stampa", html:printSettingsHtml() },
-    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service. Include Variabili con ID richiesta e Schema turni mensile riservato alla produzione RAI.</p><div class="settings-info-meta"><div><span>Versione</span><strong>v39.2</strong></div><div><span>Ideazione e sviluppo</span><strong>Marco D'Agostino per Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div><p class="settings-info-copyright"><strong>Copyright © 2026 Marco D'Agostino per Digital Video Service</strong><br>Tutti i diritti riservati.</p>` }
+    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service. Include Variabili con ID richiesta e Schema turni mensile riservato alla produzione RAI.</p><div class="settings-info-meta"><div><span>Versione</span><strong>v39.3 TEST</strong></div><div><span>Ideazione e sviluppo</span><strong>Marco D'Agostino per Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div><p class="settings-info-copyright"><strong>Copyright © 2026 Marco D'Agostino per Digital Video Service</strong><br>Tutti i diritti riservati.</p>` }
   };
   const selected = sections[section];
   if (!selected) return;
@@ -3873,7 +3884,7 @@ loadBackupStatus();
 backupStatusTimer = setInterval(loadBackupStatus, 60000);
 enableRealtime();
 
-// v39.2 — variation uses existing notes and one atomic multi-row upsert.
+// v39.3 TEST — variation uses existing notes and one atomic multi-row upsert.
 let variationSourceSnapshot = null;
 let variationSaving = false;
 const variationDialog = document.getElementById("variationDialog");
