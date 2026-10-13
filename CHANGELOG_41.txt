@@ -1,0 +1,7 @@
+DVS Planning v41
+- Blocchi sala indipendenti con nota, data, orari, modifica, eliminazione, Realtime e avvisi superabili.
+- Finestra aggiunta/modifica riordinata; ID richiesta e Note sotto i comandi.
+- Sette colori con quadratini selezionabili e grigio riservato ai provvisori.
+- Migrazione colori e copia delle associazioni originali per ripristino.
+- Modifica multipla esplicita, atomica e con protezione delle note di variazione.
+- Base v40 e algoritmi zoom invariati. Nessuna modifica della v39.4.
