@@ -1,4 +1,4 @@
-// DVS Planning v41
+// DVS Planning v42
 
 const ROOMS = [
   ...Array.from({ length: 15 }, (_, index) => ({
@@ -183,6 +183,8 @@ const IS_IPAD = !IS_IPHONE && (/iPad/.test(navigator.userAgent)
   || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
 const IS_TOUCH_APPLE = IS_IPAD || IS_IPHONE;
 const IS_MAC_APP = !IS_TOUCH_APPLE;
+const IS_DESKTOP_MAC = IS_MAC_APP && /Macintosh|MacIntel/.test(`${navigator.userAgent} ${navigator.platform}`);
+if (IS_DESKTOP_MAC) document.documentElement.classList.add("planning-desktop-mac");
 function updateAppleDeviceLayout() {
   const iphoneLandscape = IS_IPHONE && window.matchMedia("(orientation: landscape)").matches;
   document.documentElement.classList.toggle("is-iphone-device", IS_IPHONE);
@@ -986,6 +988,7 @@ function isHoliday(date) {
 }
 
 function fitText(element, minSize) {
+  if (IS_DESKTOP_MAC && element.classList.contains("editor-name")) element.style.fontSize = "11px";
   const original = Number(getComputedStyle(element).fontSize.replace("px", ""));
   let size = original;
   element.style.fontSize = `${size}px`;
@@ -1042,12 +1045,26 @@ function normalizePlanningSlotHeights() {
       const slots = roomCells
         .map(cell => cell.querySelector(`.shift-time-slot[data-slot-index="${slotIndex}"]`))
         .filter(Boolean);
-      slots.forEach(slot => { slot.style.height = "auto"; });
+      slots.forEach(slot => {
+        slot.style.height = "auto";
+        // Measure natural contents before stretching; never reuse a filled height.
+        if (IS_DESKTOP_MAC) {
+          const card = slot.querySelector(".shift-card, .room-block");
+          if (card) card.style.height = "auto";
+        }
+      });
       const requiredHeight = Math.max(88, ...slots.map(slot => {
         const card = slot.querySelector(".shift-card, .room-block");
+        if (IS_DESKTOP_MAC) return Math.max(Number(slot.dataset.baseHeight || 88), card ? card.offsetHeight : 0);
         return card ? Math.ceil(card.scrollHeight) : Number(slot.dataset.baseHeight || 88);
       }));
-      slots.forEach(slot => { slot.style.height = `${requiredHeight}px`; });
+      slots.forEach(slot => {
+        slot.style.height = `${requiredHeight}px`;
+        if (IS_DESKTOP_MAC) {
+          const card = slot.querySelector(".shift-card, .room-block");
+          if (card) card.style.height = "100%";
+        }
+      });
     }
     roomCells.forEach(cell => {
       const spanningSlot = cell.querySelector(".shift-time-slot.spans-two");
@@ -2398,7 +2415,8 @@ function fitPlanningToWindow() {
 
 function applyPlanningZoom(save = true, preserveFitLabel = zoomSelect?.value === "fit") {
   planningZoom = clampZoom(planningZoom);
-  planningCanvas.style.zoom = planningZoom;
+  if (window.DVSPlanningScale) window.DVSPlanningScale.apply(planningZoom);
+  else planningCanvas.style.zoom = planningZoom;
   updateZoomSelectDisplay(preserveFitLabel);
   if (save) localStorage.setItem(ZOOM_STORAGE, String(planningZoom));
 }
@@ -3271,6 +3289,10 @@ function openView(viewName, keepPlanningMonth = false) {
   if (viewName === "summaries") renderSummaries();
   if (viewName === "dashboard") renderDashboard();
   if (viewName === "planning") {
+    if (!keepPlanningMonth && IS_DESKTOP_MAC) {
+      planningZoom = .8;
+      applyPlanningZoom(true, false);
+    }
     if (planningNeedsRender()) renderPlanning();
     else { syncPlanningSelectionUI(); }
     if (!keepPlanningMonth) scrollPlanningToToday();
@@ -3324,7 +3346,7 @@ document.querySelectorAll("[data-settings-section]").forEach(button => button.ad
   const sections = {
     backup: { title:"Backup", subtitle:"Stato e autorizzazione", html:backupSettingsHtml() },
     print: { title:"Stampa", subtitle:"Centro Stampa", html:printSettingsHtml() },
-    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service. Include blocchi sala, modifica multipla, palette a sette colori, Variabili con ID richiesta e Schema turni mensile riservato alla produzione RAI.</p><div class="settings-info-meta"><div><span>Versione</span><strong>v41</strong></div><div><span>Ideazione e sviluppo</span><strong>Marco D'Agostino per Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div><p class="settings-info-copyright"><strong>Copyright © 2026 Marco D'Agostino per Digital Video Service</strong><br>Tutti i diritti riservati.</p>` }
+    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service. Include blocchi sala, modifica multipla, palette a sette colori, Variabili con ID richiesta e Schema turni mensile riservato alla produzione RAI.</p><div class="settings-info-meta"><div><span>Versione</span><strong>v42</strong></div><div><span>Ideazione e sviluppo</span><strong>Marco D'Agostino per Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div><p class="settings-info-copyright"><strong>Copyright © 2026 Marco D'Agostino per Digital Video Service</strong><br>Tutti i diritti riservati.</p>` }
   };
   const selected = sections[section];
   if (!selected) return;
