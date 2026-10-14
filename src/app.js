@@ -1,4 +1,4 @@
-// DVS Planning v40
+// DVS Planning v41
 
 const ROOMS = [
   ...Array.from({ length: 15 }, (_, index) => ({
@@ -19,19 +19,21 @@ const GROUPS = {
 };
 
 const FILM_COLORS = {
-  amber:  { label: "Ambra", rgb: "225, 166, 34" },
-  blue:   { label: "Blu", rgb: "61, 125, 235" },
-  green:  { label: "Verde", rgb: "54, 165, 91" },
-  violet: { label: "Viola", rgb: "135, 79, 225" },
-  cyan:   { label: "Azzurro", rgb: "35, 167, 192" },
-  orange: { label: "Arancione", rgb: "235, 126, 39" },
-  pink:   { label: "Rosa", rgb: "226, 74, 151" },
-  red:    { label: "Rosso", rgb: "218, 56, 70" },
-  lime:   { label: "Lime", rgb: "111, 174, 57" },
-  indigo: { label: "Indaco", rgb: "78, 84, 203" },
-  teal:   { label: "Petrolio", rgb: "28, 145, 134" },
-  coral:  { label: "Corallo", rgb: "224, 102, 84" }
+  amber: {label:"Giallo",rgb:"242, 210, 46"},
+  blue: {label:"Blu",rgb:"61, 125, 235"},
+  green: {label:"Verde",rgb:"54, 165, 91"},
+  violet: {label:"Viola",rgb:"135, 79, 225"},
+  cyan: {label:"Azzurro",rgb:"35, 167, 192"},
+  orange: {label:"Arancione",rgb:"235, 126, 39"},
+  pink: {label:"Rosa",rgb:"226, 74, 151"}
 };
+const LEGACY_COLORS = {indigo:"violet",lime:"green",teal:"cyan",red:"violet",coral:"orange"};
+function paletteKey(key) { return LEGACY_COLORS[key] || key; }
+let roomBlocks = [];
+let roomBlocksReady = false;
+let blockWriteBusy = false;
+let bulkSnapshot = [];
+
 
 const ITALIAN_FIXED_HOLIDAYS = new Set([
   "01-01", "01-06", "04-25", "05-01", "06-02",
@@ -606,6 +608,7 @@ function pasteCopiedShifts() {
     return true;
   }
 
+  if (!approveBlockOverlaps(candidates)) return true;
   recordShiftUndo(isCut
     ? (candidates.length === 1 ? "spostamento turno" : `spostamento di ${candidates.length} turni`)
     : (candidates.length === 1 ? "incolla turno" : `incolla di ${candidates.length} turni`));
@@ -672,7 +675,10 @@ function showContextMenu(event, targetCell) {
   const hasConfirmed = selected.some(shift => shift.confirmed);
   const hasUnconfirmed = selected.some(shift => !shift.confirmed);
   const exactlyOne = selected.length === 1;
-  contextMenu.querySelector('[data-action="edit"]').disabled = !exactlyOne || hasConfirmed;
+  contextMenu.querySelector('[data-action="edit"]').disabled = !(exactlyOne || canBulkEdit(selected)) || hasConfirmed;
+  contextMenu.querySelector('[data-action="edit"]').textContent = selected.length > 1 ? "Modifica turni selezionati" : "Modifica turno";
+  if (!contextMenu.querySelector('[data-action="block"]')) contextMenu.insertAdjacentHTML('afterbegin','<button data-action="block">Aggiungi blocco sala</button>');
+  contextMenu.querySelector('[data-action="block"]').disabled = !targetCell;
   contextMenu.querySelector('[data-action="variation"]').disabled = !exactlyOne || hasConfirmed || selected.some(isVariedShift);
   contextMenu.querySelector('[data-action="confirm"]').hidden = !hasUnconfirmed;
   contextMenu.querySelector('[data-action="confirm"]').disabled = !hasUnconfirmed;
@@ -1038,7 +1044,7 @@ function normalizePlanningSlotHeights() {
         .filter(Boolean);
       slots.forEach(slot => { slot.style.height = "auto"; });
       const requiredHeight = Math.max(88, ...slots.map(slot => {
-        const card = slot.querySelector(".shift-card");
+        const card = slot.querySelector(".shift-card, .room-block");
         return card ? Math.ceil(card.scrollHeight) : Number(slot.dataset.baseHeight || 88);
       }));
       slots.forEach(slot => { slot.style.height = `${requiredHeight}px`; });
@@ -1068,7 +1074,8 @@ function escapeHtml(value) {
 
 function isVariedShift(shift) { return /^SPOSTATO AL \d{1,2} /m.test(shift.notes || ""); }
 function renderCard(shift) {
-  const color = FILM_COLORS[shift.color] || FILM_COLORS.blue;
+  if (shift.isRoomBlock) return renderRoomBlock(shift);
+  const color = FILM_COLORS[paletteKey(shift.color)] || FILM_COLORS.blue;
   const workType = String(shift.workType || "").toUpperCase();
   const isHighlightedWork = ["GRAFICA", "SOUND", "COLOR"].includes(workType);
   const editor = getEditor(shift.editorId);
@@ -1152,7 +1159,7 @@ function buildPlanningShiftIndex(source = shifts) {
     else index.set(key, [shift]);
   }
   for (const bucket of index.values()) {
-    bucket.sort((a, b) => String(a.start || "").localeCompare(String(b.start || "")));
+    bucket.sort((a, b) => Number(Boolean(b.isRoomBlock && b.all_day))-Number(Boolean(a.isRoomBlock && a.all_day)) || String(a.start || "").localeCompare(String(b.start || "")));
   }
   return index;
 }
@@ -1162,7 +1169,7 @@ function currentPlanningSignature() {
   const dates = planningDates(currentMonth).map(isoFromDate);
   const first = dates[0], last = dates[dates.length-1];
   return JSON.stringify([currentMonth.getFullYear(), currentMonth.getMonth(), isoFromDate(new Date()),
-    shifts.filter(shift => shift.date >= first && shift.date <= last), editors,
+    shifts.filter(shift => shift.date >= first && shift.date <= last), roomBlocks, editors,
     planningScroller.clientWidth, planningScroller.clientHeight, planningZoom]);
 }
 
@@ -1230,7 +1237,7 @@ function renderPlanning() {
   const now = new Date();
   const visibleDates = new Set(dates.map(isoFromDate));
   const visibleShifts = shifts.filter(shift => visibleDates.has(shift.date));
-  const shiftIndex = buildPlanningShiftIndex(visibleShifts);
+  const shiftIndex = buildPlanningShiftIndex([...visibleShifts,...roomBlocks.filter(b=>visibleDates.has(b.date)).map(b=>({...b,isRoomBlock:true,start:b.all_day?"00:00":b.start,end:b.all_day?"24:00":b.end}))]);
   renderEditorMap = new Map(editors.map(editor => [editor.id, editor]));
   renderConflictIds = buildRenderConflictIds(visibleShifts);
   const dateMeta = dates.map((date, index) => ({
@@ -1291,7 +1298,7 @@ function renderPlanning() {
       const isSelected = selectedCell?.room === room.id && selectedCell?.date === meta.iso;
       const dayShifts = shiftIndex.get(`${room.id}|${meta.iso}`) || [];
       const spansTwoSlots = shouldSpanTwoPlanningSlots(dayShifts, timeSlots);
-      const alignedShifts = spansTwoSlots ? [] : alignDayShiftsToSlots(dayShifts, timeSlots);
+      const alignedShifts = spansTwoSlots ? [] : (dayShifts.some(s=>s.isRoomBlock) ? [...dayShifts,...Array(timeSlots.length-dayShifts.length).fill(null)] : alignDayShiftsToSlots(dayShifts, timeSlots));
       const spanningHeight = spansTwoSlots
         ? timeSlots[0].height + timeSlots[1].height + 5
         : 0;
@@ -1316,6 +1323,7 @@ function renderPlanning() {
   normalizePlanningSlotHeights();
 
   bindPlanningEvents();
+  bindRoomBlockEvents();
   updateSelectionBadge();
   // Mac: comportamento stabile esistente. iPad: niente fit sincrono del testo.
   if (!IS_TOUCH_APPLE) fitAllCardText(true);
@@ -1504,6 +1512,7 @@ function bindPlanningEvents() {
     if (groupHasConflict(candidates)) {
       showToast('Orari non compatibili'); clearActiveDrag(); return removeDragGhost();
     }
+    if (!approveBlockOverlaps(candidates)) { clearActiveDrag(); return removeDragGhost(); }
     recordShiftUndo(candidates.length === 1 ? 'spostamento turno' : `spostamento di ${candidates.length} turni`);
     const movedById = new Map(candidates.map(candidate => [candidate.id, candidate]));
     shifts = shifts.map(shift => movedById.get(shift.id) || shift);
@@ -1543,7 +1552,8 @@ document.addEventListener('click',event=>{ if (!contextMenu.contains(event.targe
 contextMenu.addEventListener('click',event=>{
   const button=event.target.closest('button[data-action]'); if (!button||button.disabled) return;
   const action=button.dataset.action, targetCell=contextTargetCell; hideContextMenu();
-  if (action==='edit') { const s=selectedShiftList(); if (s.length===1) openEditShift(s[0].id); }
+  if (action==='edit') { const s=selectedShiftList(); if (s.length===1) openEditShift(s[0].id); else openBulkEdit(); }
+  else if (action==='block' && targetCell) openBlockDialog(null,targetCell.dataset.room,targetCell.dataset.date);
   else if (action==='variation') { const list=selectedShiftList(); if(list.length===1) openVariationDialog(list[0].id); }
   else if (action==='confirm') confirmSelectedShift();
   else if (action==='unconfirm') unconfirmSelectedShift();
@@ -1726,6 +1736,7 @@ function setStatusUI(status) {
   const color = document.getElementById("color");
   color.disabled = status === "provvisorio";
   document.getElementById("colorField").classList.toggle("disabled-field", status === "provvisorio");
+  renderColorSwatches();
 }
 
 function updateClientUI() {
@@ -2101,7 +2112,7 @@ function resetShiftForm(shift = {}) {
   document.getElementById("hasShiftNotes").checked = Boolean(noteValue);
   document.getElementById("shiftNotes").value = noteValue;
   updateShiftNotesUI();
-  document.getElementById("color").value = shift.color || "blue";
+  document.getElementById("color").value = paletteKey(shift.color) || "blue";
   document.getElementById("multiRoomEnabled").checked = false;
   renderMultiRoomAssignments();
   setStatusUI(shift.status || "definitivo");
@@ -2227,6 +2238,7 @@ shiftForm.addEventListener("submit", async event => {
     }
   }
 
+  if (!approveBlockOverlaps(candidates)) return;
   recordShiftUndo(editingShiftId
     ? (candidates.length > 1 ? `modifica e prolungamento con ${candidates.length - 1} nuovi turni` : "modifica turno")
     : (candidates.length === 1 ? "creazione turno" : `creazione di ${candidates.length} turni`));
@@ -2422,7 +2434,7 @@ planningScroller.addEventListener("gesturechange", event => {
 }, { passive: false });
 
 document.addEventListener("keydown", event => {
-  if (document.getElementById("variationDialog")?.open) return;
+  if (document.getElementById("variationDialog")?.open || document.getElementById("bulkShiftDialog")?.open || document.getElementById("roomBlockDialog")?.open) return;
   const target = event.target;
   const isTyping = Boolean(target.closest?.("input, select, textarea, [contenteditable='true']"));
 
@@ -3062,7 +3074,8 @@ function bindPrintSettings() {
 }
 
 function printCardHtml(shift) {
-  const color=FILM_COLORS[shift.color]||FILM_COLORS.blue;
+  if(shift.isRoomBlock)return `<article class="p-shift" style="background:#ff4055;color:#000;padding:7px"><b>BLOCCO SALA</b>${shift.all_day?'':`<div>${escapeHtml(shift.start)} – ${escapeHtml(shift.end)}</div>`}<div style="white-space:pre-wrap">${escapeHtml(shift.note)}</div></article>`;
+  const color=FILM_COLORS[paletteKey(shift.color)]||FILM_COLORS.blue;
   const editor=getEditor(shift.editorId);
   const assignment=shift.isClient?'CLIENTE':editorDisplay(editor);
   return `<article class="p-shift ${escapeHtml(shift.status||'definitivo')} ${shift.confirmed?'confirmed':''}" style="--accent:${color.rgb}"><div class="p-main"><b>${escapeHtml(shift.production||'')}</b><time>${escapeHtml(shift.start)} – ${escapeHtml(shift.end)}</time><strong>${escapeHtml(shift.film||'')}</strong><em>${escapeHtml(shift.workType||'')}${shift.isVariable?' - VARIABILE':''}</em>${shift.notes?`<small>${escapeHtml(shift.notes)}</small>`:''}</div><footer>${escapeHtml(assignment)}</footer></article>`;
@@ -3088,12 +3101,12 @@ function openPrintPreview() {
       cells.push(`<div class="p-room">${escapeHtml(room.label.replace(/^Remote /,'Remoto '))}</div>`);
       week.dates.forEach(date=>{
         const iso=isoFromDate(date);
-        const dayShifts=shifts.filter(s=>s.room===room.id&&s.date===iso).sort((a,b)=>a.start.localeCompare(b.start));
+        const dayShifts=[...shifts.filter(s=>s.room===room.id&&s.date===iso),...roomBlocks.filter(b=>b.room===room.id&&b.date===iso).map(b=>({...b,isRoomBlock:true,start:b.all_day?"00:00":b.start}))].sort((a,b)=>Number(Boolean(b.all_day))-Number(Boolean(a.all_day))||a.start.localeCompare(b.start));
         cells.push(`<div class="p-cell ${[0,6].includes(date.getDay())?'weekend':''}">${dayShifts.map(printCardHtml).join('')}</div>`);
       });
     });
     const weekLabel=`${shortPrintDate(week.start)} – ${shortPrintDate(week.end)}`;
-    return `<main class="paper"><header class="head"><div><h1>Digital Video Service</h1><p>PLANNING · ${escapeHtml(monthName(printMonth))}</p><small>Settimana ${escapeHtml(weekLabel)}</small></div><strong>${selectedRooms.length===ROOMS.length?'Tutte le sale':`${selectedRooms.length} sale selezionate`}</strong></header><section class="grid">${cells.join('')}</section><footer class="page-footer"><span>DVS Planning · v40</span><span>Pagina ${pageIndex+1} di ${selectedWeeks.length}</span></footer></main>`;
+    return `<main class="paper"><header class="head"><div><h1>Digital Video Service</h1><p>PLANNING · ${escapeHtml(monthName(printMonth))}</p><small>Settimana ${escapeHtml(weekLabel)}</small></div><strong>${selectedRooms.length===ROOMS.length?'Tutte le sale':`${selectedRooms.length} sale selezionate`}</strong></header><section class="grid">${cells.join('')}</section><footer class="page-footer"><span>DVS Planning · v41</span><span>Pagina ${pageIndex+1} di ${selectedWeeks.length}</span></footer></main>`;
   }).join('');
   const popup=window.open('','_blank');
   if(!popup)return showToast('Consenti l’apertura della finestra di anteprima');
@@ -3311,7 +3324,7 @@ document.querySelectorAll("[data-settings-section]").forEach(button => button.ad
   const sections = {
     backup: { title:"Backup", subtitle:"Stato e autorizzazione", html:backupSettingsHtml() },
     print: { title:"Stampa", subtitle:"Centro Stampa", html:printSettingsHtml() },
-    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service. Include Variabili con ID richiesta e Schema turni mensile riservato alla produzione RAI.</p><div class="settings-info-meta"><div><span>Versione</span><strong>v40</strong></div><div><span>Ideazione e sviluppo</span><strong>Marco D'Agostino per Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div><p class="settings-info-copyright"><strong>Copyright © 2026 Marco D'Agostino per Digital Video Service</strong><br>Tutti i diritti riservati.</p>` }
+    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service. Include blocchi sala, modifica multipla, palette a sette colori, Variabili con ID richiesta e Schema turni mensile riservato alla produzione RAI.</p><div class="settings-info-meta"><div><span>Versione</span><strong>v41</strong></div><div><span>Ideazione e sviluppo</span><strong>Marco D'Agostino per Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div><p class="settings-info-copyright"><strong>Copyright © 2026 Marco D'Agostino per Digital Video Service</strong><br>Tutti i diritti riservati.</p>` }
   };
   const selected = sections[section];
   if (!selected) return;
@@ -3544,7 +3557,7 @@ function shiftDatabaseRow(shift) {
     status: shift.status,
     confirmed: Boolean(shift.confirmed),
     confirmed_at: shift.confirmed ? (shift.confirmedAt || new Date().toISOString()) : null,
-    color_key: shift.color
+    color_key: paletteKey(shift.color)
   };
 }
 async function persistShiftToSupabase(shift) {
@@ -3615,9 +3628,10 @@ async function loadSupabaseData() {
   const readSequence = ++dataReadSequence;
   const readRevision = localMutationRevision;
 
-  const [staffResult, shiftsResult] = await Promise.all([
+  const [staffResult, shiftsResult, blocksResult] = await Promise.all([
     fetchAllSupabaseRows("staff", query => query.order("first_name").order("last_name").order("id")),
-    fetchAllSupabaseRows("shifts", query => query.order("shift_date").order("start_time").order("room_code").order("id"))
+    fetchAllSupabaseRows("shifts", query => query.order("shift_date").order("start_time").order("room_code").order("id")),
+    fetchAllSupabaseRows("room_blocks", query => query.order("date").order("id"))
   ]);
 
   if (staffResult.error) {
@@ -3636,6 +3650,8 @@ async function loadSupabaseData() {
   if (pendingShiftWrites || readRevision !== localMutationRevision || planningInteractionBusy()) {
     scheduleRealtimeDataRefresh(); return;
   }
+  if (!blocksResult.error && !blockWriteBusy) { roomBlocks=blocksResult.data || []; roomBlocksReady=true; }
+  else if (blocksResult.error) { roomBlocksReady=false; }
   editors = (staffResult.data || []).map(row => ({
     id: String(row.id),
     firstName: row.first_name,
@@ -3662,7 +3678,7 @@ async function loadSupabaseData() {
     requestId: String(row.request_id || ""),
     notes: String(row.notes || "").slice(0, 100),
     status: row.status,
-    color: row.color_key,
+    color: paletteKey(row.color_key),
     confirmed: Boolean(row.confirmed),
     confirmedAt: row.confirmed_at || null
   }));
@@ -3691,6 +3707,7 @@ function enableRealtime() {
   if (!db) return;
 
   db.channel("dvs-planning-realtime")
+    .on("postgres_changes", { event: "*", schema: "public", table: "room_blocks" }, scheduleRealtimeDataRefresh)
     .on("postgres_changes", { event: "*", schema: "public", table: "staff" }, scheduleRealtimeDataRefresh)
     .on("postgres_changes", { event: "*", schema: "public", table: "shifts" }, scheduleRealtimeDataRefresh)
     .on("postgres_changes", { event: "*", schema: "public", table: "reminders" }, loadRemindersFromSupabase)
@@ -3884,7 +3901,7 @@ loadBackupStatus();
 backupStatusTimer = setInterval(loadBackupStatus, 60000);
 enableRealtime();
 
-// v40 — variation uses existing notes and one atomic multi-row upsert.
+// v41 — variation uses existing notes and one atomic multi-row upsert.
 let variationSourceSnapshot = null;
 let variationSaving = false;
 const variationDialog = document.getElementById("variationDialog");
@@ -3957,6 +3974,7 @@ document.getElementById("variationForm").addEventListener("submit", async event 
   if (!availableVariationRooms(date,start,end).some(item=>item.id===room)) { updateVariationRooms(); errorBox.textContent="La sala non è più disponibile. Scegli un’altra sala."; return; }
   let pair;
   try {pair=createVariationPair(source,date,start,end,room,crypto.randomUUID());} catch(error) {errorBox.textContent=error.message;return;}
+  if (!approveBlockOverlaps([pair[1]])) return;
   variationSaving=true;
   document.querySelectorAll("#variationForm button, #variationForm input, #variationForm select").forEach(el=>el.disabled=true);
   pendingShiftWrites++; localMutationRevision++;
@@ -3975,3 +3993,137 @@ document.getElementById("variationForm").addEventListener("submit", async event 
     scheduleRealtimeDataRefresh();
   }
 });
+
+// v41 — palette, blocchi sala separati, modifica multipla esplicita.
+function renderColorSwatches() {
+  const select=document.getElementById('color'), holder=document.getElementById('colorSwatches');
+  if(!holder)return;
+  holder.innerHTML=Object.entries(FILM_COLORS).map(([key,c])=>`<button type="button" class="color-swatch" style="--swatch:rgb(${c.rgb})" aria-label="${c.label}" title="${c.label}" aria-pressed="${select.value===key}" ${select.disabled?'disabled':''} data-color="${key}"></button>`).join('');
+  holder.querySelectorAll('button').forEach(b=>b.onclick=()=>{select.value=b.dataset.color;renderColorSwatches();});
+}
+function blockOverlaps(b,s) {
+  return b.room===s.room && b.date===s.date && (b.all_day || (timeToMinutes(b.start)<timeToMinutes(s.end) && timeToMinutes(s.start)<timeToMinutes(b.end)));
+}
+function approveBlockOverlaps(candidates) {
+  if(db && !roomBlocksReady) return confirm('I blocchi sala non sono disponibili: impossibile verificare le sovrapposizioni. Proseguire comunque?');
+  const hits=roomBlocks.filter(b=>candidates.some(s=>blockOverlaps(b,s)));
+  return !hits.length || confirm('In questa fascia sono presenti blocchi sala:\n'+hits.map(b=>`${b.date} · ${ROOMS.find(r=>r.id===b.room)?.label||b.room} · ${b.note}`).join('\n')+'\nProseguire comunque?');
+}
+function renderRoomBlock(b) {
+  return `<button type="button" class="room-block" data-block-id="${escapeHtml(b.id)}" title="Modifica blocco sala"><span class="room-block-label">BLOCCO SALA</span>${b.all_day?'':`<strong>${escapeHtml(b.start)} – ${escapeHtml(b.end)}</strong>`}<span class="room-block-note">${escapeHtml(b.note)}</span></button>`;
+}
+function bindRoomBlockEvents() {
+  planningGrid.querySelectorAll('.room-block').forEach(el=>{
+    ['pointerdown','mousedown','dblclick'].forEach(type=>el.addEventListener(type,e=>e.stopPropagation()));
+    ['click','contextmenu'].forEach(type=>el.addEventListener(type,e=>{e.preventDefault();e.stopPropagation();clearTimeout(emptyCellClickTimer);openBlockDialog(el.dataset.blockId);}));
+  });
+}
+function makeV41Dialog(id,title,body) {
+  document.getElementById(id)?.remove();
+  const el=document.createElement('dialog');el.id=id;el.className='app-dialog v41-dialog';
+  el.innerHTML=`<form><div class="dialog-header"><h2>${title}</h2><button type="button" class="dialog-close" data-close aria-label="Chiudi">×</button></div>${body}<div class="form-error" role="alert"></div><div class="dialog-actions"><button type="button" class="secondary-btn" data-close>Annulla</button><button type="submit" class="primary-btn">Salva</button></div></form>`;
+  document.body.append(el);el.querySelectorAll('[data-close]').forEach(b=>b.onclick=()=>el.close());return el;
+}
+function openBlockDialog(id=null,room='sala-1',date=isoFromDate(new Date())) {
+  if(db && !roomBlocksReady) return showToast('Blocchi sala non disponibili. Esegui lo SQL v41 e ricarica; verifica la connessione.');
+  const original=id?roomBlocks.find(b=>b.id===id):null;
+  if(id&&!original)return;
+  const b=original||{room,date,all_day:true,start:'10:00',end:'18:00',note:''};
+  const snapshot=JSON.stringify(original);
+  const d=makeV41Dialog('roomBlockDialog',id?'Modifica blocco sala':'Aggiungi blocco sala',`<div class="form-grid"><label>Sala<select name="room">${ROOMS.map(r=>`<option value="${r.id}" ${r.id===b.room?'selected':''}>${r.label}</option>`).join('')}</select></label><label>Data<input name="date" type="date" required value="${escapeHtml(b.date)}"></label><label class="checkbox-label form-wide"><input name="all_day" type="checkbox" ${b.all_day?'checked':''}>Tutto il giorno</label><label>Dalle<input name="start" placeholder="10:00" value="${escapeHtml(b.start||'10:00')}"></label><label>Alle<input name="end" placeholder="18:00" value="${escapeHtml(b.end||'18:00')}"></label><label class="form-wide">Nota<textarea name="note" required maxlength="200" rows="3">${escapeHtml(b.note)}</textarea></label></div>${id?'<button type="button" class="danger-btn" data-delete>Elimina blocco</button>':''}`);
+  const f=d.querySelector('form'),error=d.querySelector('.form-error');let busy=false;
+  const update=()=>{f.elements.start.disabled=f.elements.end.disabled=f.elements.all_day.checked;};f.elements.all_day.onchange=update;update();
+  d.addEventListener('cancel',e=>{if(busy)e.preventDefault();});
+  async function persist(next,remove=false) {
+    if(busy)return;
+    if(id&&JSON.stringify(roomBlocks.find(x=>x.id===id))!==snapshot){error.textContent='Il blocco è cambiato. Chiudi e riapri.';return;}
+    busy=true;blockWriteBusy=true;pendingShiftWrites++;localMutationRevision++;
+    d.querySelectorAll('button').forEach(x=>x.disabled=true);
+    try {
+      if(db){const result=remove?await db.from('room_blocks').delete().eq('id',id):await db.from('room_blocks').upsert(next);if(result.error)throw result.error;}
+      roomBlocks=roomBlocks.filter(x=>x.id!==(id||next.id));if(!remove)roomBlocks.push(next);
+      if(!db)localStorage.setItem('dvs-room-blocks-v41',JSON.stringify(roomBlocks));
+      renderPlanning();d.close();showToast(remove?'Blocco eliminato':'Blocco sala salvato');
+    }catch(e){error.textContent=`Operazione non confermata: ${e.message}. Verifica la connessione e riprova.`;}
+    finally{busy=false;blockWriteBusy=false;pendingShiftWrites--;d.querySelectorAll('button').forEach(x=>x.disabled=false);if(db)scheduleRealtimeDataRefresh();}
+  }
+  f.onsubmit=e=>{
+    e.preventDefault();const all=f.elements.all_day.checked,start=all?null:normalizeTime(f.elements.start.value),raw=normalizeTime(f.elements.end.value),end=all?null:(raw==='00:00'?'24:00':raw);
+    if(!all&&(!start||!end||timeToMinutes(start)>=timeToMinutes(end))){error.textContent='Inserisci orari validi, ad esempio 10:00 e 18:00.';return;}
+    const next={id:id||crypto.randomUUID(),room:f.elements.room.value,date:f.elements.date.value,all_day:all,start,end,note:f.elements.note.value.trim()};
+    if(!next.note){error.textContent='Inserisci una nota.';return;}
+    const hits=shifts.filter(s=>!isVariedShift(s)&&blockOverlaps(next,s));
+    if(hits.length&&!confirm(`Sono presenti ${hits.length} turni nella fascia del blocco. Proseguire comunque?`))return;
+    persist(next);
+  };
+  if(id)d.querySelector('[data-delete]').onclick=()=>{if(confirm('Eliminare questo blocco sala?'))persist(null,true);};d.showModal();
+}
+function canBulkEdit(list) {
+  return list.length>1 && !list.some(s=>s.confirmed) && list.every(s=>s.production===list[0].production && s.film===list[0].film && paletteKey(s.color)===paletteKey(list[0].color));
+}
+function preserveVariationNote(original,value,mode) {
+  if(mode==='keep')return original||'';
+  const lines=String(original||'').split('\n');
+  const protectedLines=lines.filter(l=>/^SPOSTATO (AL|DAL)\s/i.test(l.trim()));
+  if(mode==='append')return [original,value].filter(Boolean).join('\n');
+  return [...protectedLines,value].filter(Boolean).join('\n');
+}
+function bulkCandidates(list,patch) {
+  return list.map(original=>{
+    const next={...original};
+    for(const key of ['production','film','color','workType','status','isVariable','isClient','isDoubleStation'])if(Object.hasOwn(patch,key))next[key]=patch[key];
+    if(patch.notes)next.notes=preserveVariationNote(original.notes,patch.notes.value,patch.notes.mode);
+    if(patch.isClient===true)next.editorId=null;
+    if(patch.isVariable===false)next.requestId='';
+    else if(next.isVariable && Object.hasOwn(patch,'requestId'))next.requestId=patch.requestId;
+    return next;
+  });
+}
+function openBulkEdit() {
+  const list=selectedShiftList();if(!canBulkEdit(list))return showToast('Seleziona turni non confermati con stessa produzione, programma e colore.');
+  bulkSnapshot=structuredClone(list);
+  const same=key=>list.every(s=>s[key]===list[0][key]);
+  const labels={production:'Produzione',film:'Programma',status:'Stato',color:'Colore',workType:'Lavorazione',isVariable:'Variabile',isClient:'Cliente',isDoubleStation:'Doppia postazione',requestId:'ID richiesta'};
+  const options={status:[['definitivo','Definitivo'],['provvisorio','Provvisorio']],workType:['EDIT','ASSISTENTE','GRAFICA','COLOR','SOUND','REDAZIONE'].map(x=>[x,x])};
+  ['isVariable','isClient','isDoubleStation'].forEach(k=>options[k]=[['true','Sì'],['false','No']]);
+  const fields=Object.entries(labels).map(([key,label])=>{
+    let control;
+    if(key==='color')control=`<div class="color-swatches" data-bulk-colors>${Object.entries(FILM_COLORS).map(([k,c])=>`<button type="button" class="color-swatch" style="--swatch:rgb(${c.rgb})" title="${c.label}" aria-label="${c.label}" aria-pressed="${k===paletteKey(list[0].color)}" data-color="${k}" disabled></button>`).join('')}</div><input name="color" type="hidden" value="${paletteKey(list[0].color)}">`;
+    else if(options[key])control=`<select name="${key}" disabled>${options[key].map(([v,t])=>`<option value="${v}" ${String(list[0][key])===v?'selected':''}>${t}</option>`).join('')}</select>`;
+    else control=`<input name="${key}" value="${same(key)?escapeHtml(list[0][key]||''):''}" maxlength="100" disabled>`;
+    return `<div class="bulk-field"><label class="checkbox-label"><input type="checkbox" data-apply="${key}">Modifica ${label.toLowerCase()}</label>${control}<small>${same(key)?'Lascia invariato se non selezionato':'Valori diversi — lascia invariati'}</small></div>`;
+  }).join('');
+  const d=makeV41Dialog('bulkShiftDialog',`Modifica ${list.length} turni selezionati`,`<p>Data, orario e sala restano invariati. Il dipendente cambia solo attivando Cliente, che rimuove l’assegnazione. Seleziona solo i campi da applicare a tutti i turni.</p><div class="form-grid">${fields}<label class="form-wide">Note<select name="noteMode"><option value="keep">Lascia invariate</option><option value="append">Aggiungi a ogni turno</option><option value="replace">Sostituisci (conserva SPOSTATO AL/DAL)</option></select><textarea name="noteValue" maxlength="100" disabled></textarea></label></div>`);
+  const f=d.querySelector('form'),error=d.querySelector('.form-error');let busy=false;
+  function sync(){
+    d.querySelectorAll('[data-apply]').forEach(c=>{const input=f.elements[c.dataset.apply];if(input)input.disabled=!c.checked;});
+    const provisional=f.querySelector('[data-apply="status"]').checked?f.elements.status.value==='provvisorio':list.some(s=>s.status==='provvisorio');
+    const colorApply=f.querySelector('[data-apply="color"]');colorApply.disabled=provisional;if(provisional)colorApply.checked=false;
+    d.querySelectorAll('[data-bulk-colors] button').forEach(b=>b.disabled=provisional||!colorApply.checked);
+    f.elements.noteValue.disabled=f.elements.noteMode.value==='keep';
+  }
+  f.onchange=sync;sync();d.querySelectorAll('[data-bulk-colors] button').forEach(b=>b.onclick=()=>{f.elements.color.value=b.dataset.color;d.querySelectorAll('[data-bulk-colors] button').forEach(x=>x.setAttribute('aria-pressed',String(x===b)));});
+  d.addEventListener('cancel',e=>{if(busy)e.preventDefault();});
+  f.onsubmit=async e=>{
+    e.preventDefault();if(busy)return;error.textContent='';
+    if(pendingShiftWrites||unsavedShiftOverrides.size){error.textContent='Attendi la sincronizzazione dei turni prima di salvare.';return;}
+    if(bulkSnapshot.some(old=>JSON.stringify(shifts.find(s=>s.id===old.id))!==JSON.stringify(old))){error.textContent='Un turno è cambiato. Chiudi e riapri la modifica.';return;}
+    const patch={};d.querySelectorAll('[data-apply]:checked').forEach(c=>{const key=c.dataset.apply;let value=f.elements[key].value;if(key.startsWith('is'))value=value==='true';else if(['production','film'].includes(key))value=value.trim().replace(/\s+/g,' ').toUpperCase();patch[key]=value;});
+    if((Object.hasOwn(patch,'production')&&!patch.production)||(Object.hasOwn(patch,'film')&&!patch.film)){error.textContent='Produzione e programma non possono essere vuoti.';return;}
+    if(f.elements.noteMode.value!=='keep')patch.notes={mode:f.elements.noteMode.value,value:f.elements.noteValue.value.trim()};
+    if(!Object.keys(patch).length){error.textContent='Seleziona almeno un campo da modificare.';return;}
+    const candidates=bulkCandidates(bulkSnapshot,patch);
+    if(candidates.some(s=>String(s.notes||'').length>100)){error.textContent='Le note risultanti superano 100 caratteri per alcuni turni. Riduci il testo; nessuna nota è stata tagliata.';return;}
+    const needIds=candidates.filter((s,i)=>s.isVariable&&s.status==='definitivo'&&bulkSnapshot[i].status==='provvisorio');
+    if(needIds.length){const ids=await askRequestIds(needIds);if(ids===null)return;candidates.forEach(s=>{if(Object.hasOwn(ids,s.id))s.requestId=ids[s.id];});}
+    if(bulkSnapshot.some(old=>JSON.stringify(shifts.find(s=>s.id===old.id))!==JSON.stringify(old))||pendingShiftWrites){error.textContent='I dati sono cambiati. Chiudi e riapri la modifica.';return;}
+    if(!confirm(`Applicare le modifiche scelte a ${candidates.length} turni?`))return;
+    busy=true;pendingShiftWrites++;localMutationRevision++;d.querySelectorAll('button').forEach(b=>b.disabled=true);
+    try{
+      if(db){const result=await db.from('shifts').upsert(candidates.map(shiftDatabaseRow));if(result.error)throw result.error;}
+      recordShiftUndo(`modifica di ${candidates.length} turni`);const byId=new Map(candidates.map(s=>[s.id,s]));shifts=shifts.map(s=>byId.get(s.id)||s);saveLocal();candidates.forEach(syncShiftSuggestions);renderPlanning();renderDashboard();renderSummaries();d.close();showToast(`${candidates.length} turni modificati`);
+    }catch(err){error.textContent=`Modifica non confermata: ${err.message}. Verifica i dati prima di riprovare.`;}
+    finally{pendingShiftWrites--;busy=false;d.querySelectorAll('button').forEach(b=>b.disabled=false);sync();if(db)scheduleRealtimeDataRefresh();}
+  };d.showModal();
+}
+if(!db){roomBlocks=loadLocal('dvs-room-blocks-v41',[]);roomBlocksReady=true;}
