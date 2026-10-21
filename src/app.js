@@ -1,4 +1,4 @@
-// DVS Planning v42
+// DVS Planning v43
 
 const ROOMS = [
   ...Array.from({ length: 15 }, (_, index) => ({
@@ -66,7 +66,7 @@ const db = hasSupabaseConfig
     )
   : null;
 
-let currentMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
+let currentMonth = planningMonthForDate(new Date());
 let summaryMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 let selectedSummaryEditorId = null;
 let editingShiftId = null;
@@ -379,16 +379,20 @@ function addDays(date, amount) {
   return copy;
 }
 
+// Each Monday–Sunday week belongs to the month of its Thursday.
+function planningMonthForDate(date) {
+  const thursday = addDays(date, 3 - (date.getDay() + 6) % 7);
+  return new Date(thursday.getFullYear(), thursday.getMonth(), 1);
+}
+
 function startOfPlanningMonth(monthDate) {
-  const first = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1);
-  const mondayOffset = (first.getDay() + 6) % 7;
-  return addDays(first, -mondayOffset);
+  const fourth = new Date(monthDate.getFullYear(), monthDate.getMonth(), 4);
+  return addDays(fourth, -(fourth.getDay() + 6) % 7);
 }
 
 function endOfPlanningMonth(monthDate) {
-  const last = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 0);
-  const sundayOffset = (7 - last.getDay()) % 7;
-  return addDays(last, sundayOffset);
+  const nextMonth = new Date(monthDate.getFullYear(), monthDate.getMonth() + 1, 1);
+  return addDays(startOfPlanningMonth(nextMonth), -1);
 }
 
 function planningDates(monthDate) {
@@ -2351,7 +2355,7 @@ document.getElementById("nextMonth").addEventListener("click", () => {
 
 document.getElementById("todayBtn").addEventListener("click", () => {
   const now = new Date();
-  currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  currentMonth = planningMonthForDate(now);
   clearSelection();
   renderPlanning();
 
@@ -2989,7 +2993,7 @@ function exportSummaryPdf() {
 
 
 // Build 16.2 — Mesi dinamici — Centro Stampa
-let printMonth = new Date(currentMonth.getFullYear(), currentMonth.getMonth(), 1);
+let printMonth = new Date(new Date().getFullYear(), new Date().getMonth(), 1);
 
 function printMonthWeeks(monthDate) {
   const first = new Date(monthDate.getFullYear(), monthDate.getMonth(), 1, 12);
@@ -3271,7 +3275,7 @@ function updateIPhoneBackupLight() {
 function openView(viewName, keepPlanningMonth = false) {
   if (viewName === "planning" && !keepPlanningMonth) {
     const now = new Date();
-    currentMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+    currentMonth = planningMonthForDate(now);
     clearSelection();
   }
   if (viewName === "summaries") {
@@ -3346,7 +3350,7 @@ document.querySelectorAll("[data-settings-section]").forEach(button => button.ad
   const sections = {
     backup: { title:"Backup", subtitle:"Stato e autorizzazione", html:backupSettingsHtml() },
     print: { title:"Stampa", subtitle:"Centro Stampa", html:printSettingsHtml() },
-    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service. Include blocchi sala, modifica multipla, palette a sette colori, Variabili con ID richiesta e Schema turni mensile riservato alla produzione RAI.</p><div class="settings-info-meta"><div><span>Versione</span><strong>v42</strong></div><div><span>Ideazione e sviluppo</span><strong>Marco D'Agostino per Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div><p class="settings-info-copyright"><strong>Copyright © 2026 Marco D'Agostino per Digital Video Service</strong><br>Tutti i diritti riservati.</p>` }
+    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service. Include blocchi sala, modifica multipla, palette a sette colori, Variabili con ID richiesta e Schema turni mensile riservato alla produzione RAI.</p><div class="settings-info-meta"><div><span>Versione</span><strong>v43</strong></div><div><span>Ideazione e sviluppo</span><strong>Marco D'Agostino per Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div><p class="settings-info-copyright"><strong>Copyright © 2026 Marco D'Agostino per Digital Video Service</strong><br>Tutti i diritti riservati.</p>` }
   };
   const selected = sections[section];
   if (!selected) return;
@@ -3359,7 +3363,7 @@ document.querySelectorAll("[data-settings-section]").forEach(button => button.ad
 
 function openPlanningToday() {
   const now = new Date();
-  const targetMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  const targetMonth = planningMonthForDate(now);
   currentMonth = targetMonth;
   openView("planning", true);
 
