@@ -402,8 +402,7 @@ button { -webkit-tap-highlight-color: transparent; }
 .day-head .dow { font-style:italic; font-weight:400; }
 .day-head .num { color:#111419; font-weight:700; }
 
-.day-head.weekend,
-.day-head.holiday {
+.day-head.weekend {
   background: rgba(215,155,160,.27);
 }
 
@@ -483,8 +482,7 @@ button { -webkit-tap-highlight-color: transparent; }
   transition: background .13s ease, box-shadow .13s ease;
 }
 
-.planning-cell.weekend,
-.planning-cell.holiday {
+.planning-cell.weekend {
   background: var(--cell-weekend);
 }
 
@@ -493,8 +491,7 @@ button { -webkit-tap-highlight-color: transparent; }
   box-shadow: inset 0 0 0 1px rgba(10,132,255,.035);
 }
 
-.planning-cell.weekend:hover,
-.planning-cell.holiday:hover {
+.planning-cell.weekend:hover {
   background: color-mix(in srgb, var(--cell-weekend) 96%, #ffffff 4%);
 }
 
@@ -2707,4 +2704,19 @@ html.safari-planning-scale body.dvs-drag-active #planningGrid .shift-card.draggi
   will-change:auto;
   backface-visibility:visible;
   transition:box-shadow .15s ease,border-color .15s ease;
+}
+
+/* Festivi: più intensi del weekend, anche nelle intestazioni fisse Safari. */
+.day-head.holiday,
+.planning-cell.holiday {
+  background: #f0c1c7;
+}
+.planning-cell.holiday:hover {
+  background: #f2c7cd;
+}
+.day-head.holiday,
+.day-head.holiday .dow,
+.day-head.holiday .num,
+.day-head.holiday .month-mini {
+  color: #b51e32;
 }

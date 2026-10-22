@@ -1,3 +1,7 @@
+DVS Planning v43.2
+Festivi: colonna rosata più intensa e intestazione rossa. Aggiunti 29 giugno, Pasqua e Pasquetta.
+Conservata la correzione triangolino della v43.1.
+
 DVS Planning v43.1
 Triangolino per assegnazioni multiple dello stesso montatore nello stesso giorno, indipendentemente dall’orario.
 Base v43 confermata; nessuna modifica database.

@@ -1,4 +1,4 @@
-// DVS Planning v43.1
+// DVS Planning v43.2
 
 const ROOMS = [
   ...Array.from({ length: 15 }, (_, index) => ({
@@ -37,7 +37,7 @@ let bulkSnapshot = [];
 
 const ITALIAN_FIXED_HOLIDAYS = new Set([
   "01-01", "01-06", "04-25", "05-01", "06-02",
-  "08-15", "11-01", "12-08", "12-25", "12-26"
+  "06-29", "08-15", "11-01", "12-08", "12-25", "12-26"
 ]);
 
 const SHIFT_STORAGE = "dvs-planning-build-10-shifts";
@@ -987,7 +987,27 @@ function removeDragGhost() {
 
 function isHoliday(date) {
   const key = `${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
-  return ITALIAN_FIXED_HOLIDAYS.has(key);
+  if (ITALIAN_FIXED_HOLIDAYS.has(key)) return true;
+  // Gregorian Easter (Meeus/Jones/Butcher), using local dates.
+  const year = date.getFullYear();
+  const a = year % 19;
+  const b = Math.floor(year / 100);
+  const c = year % 100;
+  const d = Math.floor(b / 4);
+  const e = b % 4;
+  const f = Math.floor((b + 8) / 25);
+  const g = Math.floor((b - f + 1) / 3);
+  const h = (19 * a + b - d - g + 15) % 30;
+  const i = Math.floor(c / 4);
+  const k = c % 4;
+  const l = (32 + 2 * e + 2 * i - h - k) % 7;
+  const m = Math.floor((a + 11 * h + 22 * l) / 451);
+  const month = Math.floor((h + l - 7 * m + 114) / 31);
+  const day = (h + l - 7 * m + 114) % 31 + 1;
+  const easter = new Date(year, month - 1, day);
+  const easterMonday = addDays(easter, 1);
+  return date.toDateString() === easter.toDateString()
+    || date.toDateString() === easterMonday.toDateString();
 }
 
 function fitText(element, minSize) {
@@ -3342,7 +3362,7 @@ document.querySelectorAll("[data-settings-section]").forEach(button => button.ad
   const sections = {
     backup: { title:"Backup", subtitle:"Stato e autorizzazione", html:backupSettingsHtml() },
     print: { title:"Stampa", subtitle:"Centro Stampa", html:printSettingsHtml() },
-    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service. Include blocchi sala, modifica multipla, palette a sette colori, Variabili con ID richiesta e Schema turni mensile riservato alla produzione RAI.</p><div class="settings-info-meta"><div><span>Versione</span><strong>v43.1</strong></div><div><span>Ideazione e sviluppo</span><strong>Marco D'Agostino per Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div><p class="settings-info-copyright"><strong>Copyright © 2026 Marco D'Agostino per Digital Video Service</strong><br>Tutti i diritti riservati.</p>` }
+    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service. Include blocchi sala, modifica multipla, palette a sette colori, Variabili con ID richiesta e Schema turni mensile riservato alla produzione RAI.</p><div class="settings-info-meta"><div><span>Versione</span><strong>v43.2</strong></div><div><span>Ideazione e sviluppo</span><strong>Marco D'Agostino per Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div><p class="settings-info-copyright"><strong>Copyright © 2026 Marco D'Agostino per Digital Video Service</strong><br>Tutti i diritti riservati.</p>` }
   };
   const selected = sections[section];
   if (!selected) return;
