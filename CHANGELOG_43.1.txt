@@ -1,3 +1,7 @@
+DVS Planning v43.1
+Triangolino per assegnazioni multiple dello stesso montatore nello stesso giorno, indipendentemente dall’orario.
+Base v43 confermata; nessuna modifica database.
+
 DVS Planning v43 — da verificare prima della pubblicazione
 
 Base: v42 definitiva.

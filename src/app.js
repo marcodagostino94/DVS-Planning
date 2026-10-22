@@ -1,4 +1,4 @@
-// DVS Planning v43
+// DVS Planning v43.1
 
 const ROOMS = [
   ...Array.from({ length: 15 }, (_, index) => ({
@@ -458,7 +458,6 @@ function editorConflict(shift) {
     other.id !== shift.id
     && other.date === shift.date
     && other.editorId === shift.editorId
-    && overlaps(other, shift)
   );
 }
 
@@ -1134,7 +1133,7 @@ function renderCard(shift) {
       <div class="shift-editor">
         <span class="editor-name${shift.confirmed ? " confirmed-name" : ""}">${escapeHtml(assignment)}</span>
         ${shift.confirmed ? '<span class="confirmed-lock" title="Turno confermato">●</span>' : ""}
-        ${warning ? '<span class="editor-warning" title="Dipendente presente su più turni sovrapposti">▲</span>' : ""}
+        ${warning ? '<span class="editor-warning" title="Montatore presente su più turni nella stessa giornata">▲</span>' : ""}
       </div>
     </article>
   `;
@@ -1157,15 +1156,8 @@ function buildRenderConflictIds(source = shifts) {
 
   const conflicts = new Set();
   for (const bucket of byEditorDate.values()) {
-    bucket.sort((a, b) => timeToMinutes(a.start) - timeToMinutes(b.start));
-    for (let i = 0; i < bucket.length; i += 1) {
-      for (let j = i + 1; j < bucket.length; j += 1) {
-        if (timeToMinutes(bucket[j].start) >= timeToMinutes(bucket[i].end)) break;
-        if (overlaps(bucket[i], bucket[j])) {
-          conflicts.add(bucket[i].id);
-          conflicts.add(bucket[j].id);
-        }
-      }
+    if (bucket.length > 1) {
+      for (const shift of bucket) conflicts.add(shift.id);
     }
   }
   return conflicts;
@@ -3350,7 +3342,7 @@ document.querySelectorAll("[data-settings-section]").forEach(button => button.ad
   const sections = {
     backup: { title:"Backup", subtitle:"Stato e autorizzazione", html:backupSettingsHtml() },
     print: { title:"Stampa", subtitle:"Centro Stampa", html:printSettingsHtml() },
-    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service. Include blocchi sala, modifica multipla, palette a sette colori, Variabili con ID richiesta e Schema turni mensile riservato alla produzione RAI.</p><div class="settings-info-meta"><div><span>Versione</span><strong>v43</strong></div><div><span>Ideazione e sviluppo</span><strong>Marco D'Agostino per Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div><p class="settings-info-copyright"><strong>Copyright © 2026 Marco D'Agostino per Digital Video Service</strong><br>Tutti i diritti riservati.</p>` }
+    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service. Include blocchi sala, modifica multipla, palette a sette colori, Variabili con ID richiesta e Schema turni mensile riservato alla produzione RAI.</p><div class="settings-info-meta"><div><span>Versione</span><strong>v43.1</strong></div><div><span>Ideazione e sviluppo</span><strong>Marco D'Agostino per Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div><p class="settings-info-copyright"><strong>Copyright © 2026 Marco D'Agostino per Digital Video Service</strong><br>Tutti i diritti riservati.</p>` }
   };
   const selected = sections[section];
   if (!selected) return;
