@@ -1,24 +1,11 @@
-# DVS Planning v43.2
+# DVS Planning v43.3 TEST iPad
 
-Versione da provare sul sito di test prima della pubblicazione. Base: v42 definitiva.
+Base v43.2. Versione da verificare su iPad con tastiera e trackpad prima della pubblicazione.
 
-## Installazione
-Sostituire i file del sito con il contenuto della cartella DVS-Planning_v43.2. Nessuno SQL da eseguire.
+Sostituire i file del sito di test con il contenuto della cartella. Nessuno SQL.
 
-## Visualizzazione mensile
-Ogni settimana completa, da lunedì a domenica, compare una sola volta: nel mese del giovedì, che contiene almeno quattro giorni della settimana. Vale anche tra dicembre e gennaio.
-I giorni degli altri mesi hanno lo sfondo normale (restano evidenziati weekend e festivi) e il mese abbreviato in grassetto accanto al numero.
-Oggi e apertura Planning scelgono il mese che contiene la settimana odierna: a cavallo del mese il titolo può quindi indicare il mese adiacente.
+Solo iPad: layout desktop, zoom Safari come Mac, apertura Planning a 80%, selezione con Cmd/Ctrl e Maiusc, selezione a riquadro e trascinamento multiplo. Doppio clic modifica il turno; clic destro apre le azioni. Rimossi i tre puntini. Il touch resta disponibile per scorrere.
 
-## Funzioni conservate
-Nessuna modifica a date, dati, riepiloghi, Variabili, Schema turni o Centro Stampa. Zoom, intestazioni fisse e card restano quelli della v42.
+Verificare sul dispositivo: 50/80/100/200%, intestazioni fisse durante lo scorrimento, doppio clic, clic destro, selezione con Cmd e Maiusc e trascinamento. I turni confermati conservano i blocchi esistenti. Non è stata eseguita una prova su iPad fisico nell'ambiente di preparazione.
 
-## Verifica
-Controllati sintassi JavaScript, continuità e unicità delle settimane, anni bisestili e cambio anno. Verifica grafica Safari/Chrome da effettuare sul Mac.
-
-## Correzione v43.2
-Triangolino su tutti i turni dello stesso montatore nella stessa giornata, anche con orari consecutivi o separati. Il controllo è un avviso e non impedisce l’assegnazione. Nessuna modifica SQL.
-
-## Festivi v43.2
-Colonna festiva rosata più intensa rispetto al weekend; giorno, numero e mese esterno in rosso. Inclusi il 29 giugno a Roma, Pasqua e Pasquetta calcolate ogni anno. Lo stile festivo prevale sul weekend.
-Controllata la logica delle date e la sintassi; resa grafica da verificare sul Mac. Nessuno SQL.
+Le condizioni Mac e iPhone restano invariate, inclusa la modalità iPhone orizzontale. Conservate settimane senza duplicazioni, triangolino giornaliero e festività della v43.2.

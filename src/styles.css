@@ -2720,3 +2720,10 @@ html.safari-planning-scale body.dvs-drag-active #planningGrid .shift-card.draggi
 .day-head.holiday .month-mini {
   color: #b51e32;
 }
+
+/* iPad with desktop Planning: prevent independent text enlargement. */
+html.is-ipad-desktop #planningView {
+  -webkit-text-size-adjust: none;
+  text-size-adjust: none;
+}
+html.is-ipad-desktop .iphone-shift-menu { display:none !important; }

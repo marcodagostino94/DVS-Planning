@@ -1,4 +1,4 @@
-// DVS Planning v43.2
+// DVS Planning v43.3 TEST iPad
 
 const ROOMS = [
   ...Array.from({ length: 15 }, (_, index) => ({
@@ -182,15 +182,16 @@ const IS_IPHONE = /iPhone|iPod/.test(navigator.userAgent) || IS_SMALL_APPLE_TOUC
 const IS_IPAD = !IS_IPHONE && (/iPad/.test(navigator.userAgent)
   || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1));
 const IS_TOUCH_APPLE = IS_IPAD || IS_IPHONE;
-const IS_MAC_APP = !IS_TOUCH_APPLE;
-const IS_DESKTOP_MAC = IS_MAC_APP && /Macintosh|MacIntel/.test(`${navigator.userAgent} ${navigator.platform}`);
+const IS_MAC_APP = !IS_IPHONE; // iPad supports desktop selection and keyboard commands.
+const IS_DESKTOP_MAC = IS_IPAD || (IS_MAC_APP && /Macintosh|MacIntel/.test(`${navigator.userAgent} ${navigator.platform}`));
 if (IS_DESKTOP_MAC) document.documentElement.classList.add("planning-desktop-mac");
 function updateAppleDeviceLayout() {
   const iphoneLandscape = IS_IPHONE && window.matchMedia("(orientation: landscape)").matches;
   document.documentElement.classList.toggle("is-iphone-device", IS_IPHONE);
   document.documentElement.classList.toggle("is-iphone-landscape", iphoneLandscape);
   document.documentElement.classList.toggle("is-iphone", IS_IPHONE && !iphoneLandscape);
-  document.documentElement.classList.toggle("is-ipad", IS_IPAD || iphoneLandscape);
+  document.documentElement.classList.toggle("is-ipad", iphoneLandscape);
+  document.documentElement.classList.toggle("is-ipad-desktop", IS_IPAD);
 }
 updateAppleDeviceLayout();
 window.addEventListener("orientationchange", () => requestAnimationFrame(updateAppleDeviceLayout));
@@ -1142,7 +1143,7 @@ function renderCard(shift) {
         ${isVariedShift(shift) ? '<div class="variation-content">' : ""}
       ${isVariedShift(shift) ? '<svg class="variation-cross" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true"><path d="M4 4L96 96M96 4L4 96"/></svg>' : ""}
         <div class="shift-production">${escapeHtml(shift.production)}</div>
-        <button class="iphone-shift-menu" type="button" aria-label="Azioni turno" title="Azioni turno">•••</button>
+        ${IS_IPAD ? "" : '<button class="iphone-shift-menu" type="button" aria-label="Azioni turno" title="Azioni turno">•••</button>'}
         <div class="shift-time">${escapeHtml(displayTime(shift.start))}${IS_IPHONE ? "–" : " – "}${escapeHtml(displayTime(shift.end))}</div>
         <div class="shift-film">${escapeHtml(shift.film)}</div>
         <div class="shift-type${isHighlightedWork ? " shift-type-red" : ""}">${escapeHtml(shift.workType)}${shift.isVariable ? '<span class="variable-label"> - VARIABILE</span>' : ""}${shift.isDoubleStation ? '<span class="double-station-label">DOPPIA POSTAZIONE</span>' : ""}</div>
@@ -1359,7 +1360,7 @@ function renderPlanning() {
   bindRoomBlockEvents();
   updateSelectionBadge();
   // Mac: comportamento stabile esistente. iPad: niente fit sincrono del testo.
-  if (!IS_TOUCH_APPLE) fitAllCardText(true);
+  if (!IS_TOUCH_APPLE || IS_IPAD) fitAllCardText(true);
   applyPlanningZoom(false);
   planningRenderSignature = currentPlanningSignature();
   if (document.getElementById("variationDialog")?.open) updateVariationRooms();
@@ -3362,7 +3363,7 @@ document.querySelectorAll("[data-settings-section]").forEach(button => button.ad
   const sections = {
     backup: { title:"Backup", subtitle:"Stato e autorizzazione", html:backupSettingsHtml() },
     print: { title:"Stampa", subtitle:"Centro Stampa", html:printSettingsHtml() },
-    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service. Include blocchi sala, modifica multipla, palette a sette colori, Variabili con ID richiesta e Schema turni mensile riservato alla produzione RAI.</p><div class="settings-info-meta"><div><span>Versione</span><strong>v43.2</strong></div><div><span>Ideazione e sviluppo</span><strong>Marco D'Agostino per Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div><p class="settings-info-copyright"><strong>Copyright © 2026 Marco D'Agostino per Digital Video Service</strong><br>Tutti i diritti riservati.</p>` }
+    info: { title:"Informazioni", subtitle:"DVS Planning", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>DVS Planning</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service. Include blocchi sala, modifica multipla, palette a sette colori, Variabili con ID richiesta e Schema turni mensile riservato alla produzione RAI.</p><div class="settings-info-meta"><div><span>Versione</span><strong>v43.3 TEST iPad</strong></div><div><span>Ideazione e sviluppo</span><strong>Marco D'Agostino per Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div><p class="settings-info-copyright"><strong>Copyright © 2026 Marco D'Agostino per Digital Video Service</strong><br>Tutti i diritti riservati.</p>` }
   };
   const selected = sections[section];
   if (!selected) return;
@@ -3915,7 +3916,7 @@ document.getElementById("backupStatusCard")?.addEventListener("click", () => {
 
 loadProfilesFromSupabase().then(() => { initializeProfileGate(); if (activeProfile) { setCurrentProfileOnline(); startPresenceTracking(); } });
 populateShiftSelects();
-if (IS_TOUCH_APPLE && !localStorage.getItem("dvs-planning-touch-zoom-initialized")) {
+if (IS_IPHONE && !localStorage.getItem("dvs-planning-touch-zoom-initialized")) {
   zoomSelect.value = "fit";
 } else {
   zoomSelect.value = String(nearestZoomOption(planningZoom));
@@ -3923,7 +3924,7 @@ if (IS_TOUCH_APPLE && !localStorage.getItem("dvs-planning-touch-zoom-initialized
 applyPlanningZoom(false);
 renderPlanning();
 updateIPhoneChrome("dashboard");
-if (IS_TOUCH_APPLE && !localStorage.getItem("dvs-planning-touch-zoom-initialized")) {
+if (IS_IPHONE && !localStorage.getItem("dvs-planning-touch-zoom-initialized")) {
   requestAnimationFrame(() => {
     fitPlanningToWindow();
     localStorage.setItem("dvs-planning-touch-zoom-initialized", "1");
