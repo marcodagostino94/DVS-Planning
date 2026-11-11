@@ -1,6 +1,0 @@
-DVS Planning v44 — Backup Agent 2.1.1
-Installer completo aggiornato nel pulsante Scarica Backup Agent.
-Ultime 7 coppie Excel + JSON per anno, data/ora e identificativo univoco. Nessuna sovrascrittura delle coppie.
-Riconoscimento delle copie valide già presenti sulla destinazione, anche su nuovo Mac.
-Base interfaccia: v43.3 TEST iPad, con tutte le modifiche precedenti. Nessuna ulteriore modifica al layout.
-Nessuno SQL.
