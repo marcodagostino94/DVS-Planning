@@ -1,0 +1,3 @@
+Planning DVS 50.4 — 16 novembre 2026
+Versione definitiva approvata.
+Sfondo scuro con alone rosso della dashboard esteso alle pagine desktop/tablet, mantenendo chiare tabelle, riquadri e barre superiori. Interfaccia iPhone invariata. Conservate tutte le funzioni della 50.3, inclusi orario e semafori automatici nella dashboard. Nessuna SQL necessaria.
