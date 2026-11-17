@@ -1,8 +1,11 @@
-# Planning DVS 50.4
+# Planning DVS 50.5
 
-Versione definitiva con lo sfondo approvato: alone rosso e fondo scuro nelle pagine desktop/tablet; tabelle, turni, riquadri e barre superiori mantengono i colori previsti. Interfaccia iPhone invariata.
+Aggiornamento dell'interfaccia iPhone: dashboard verticale, riepiloghi con elenco e dettaglio separati, sfondo coordinato e barra inferiore nello stile Utility.
 
 ## Pubblicazione
-Estrarre lo ZIP e caricare tutti i file contenuti nella cartella Planning-DVS-50.4 nel repository, mantenendo index.html nella radice pubblicata. Dopo la pubblicazione ricaricare l’app e verificare la dicitura Planning DVS 50.4.
+Estrarre lo ZIP e caricare il contenuto della cartella Planning-DVS-50.5 nel repository, mantenendo index.html nella radice pubblicata. Ricaricare l'app e verificare la versione 50.5.
 
-Configurazione database e funzioni invariate. Nessuna SQL necessaria. Backup Agent 2.2.0 incluso e invariato; non serve reinstallarlo se già presente.
+Grafica Mac/iPad, dati e funzioni Planning invariati. Nessuna SQL necessaria. Backup Agent 2.2.0 incluso e invariato; non serve reinstallarlo.
+
+## Verifica
+Controllate sintassi JavaScript, navigazione elenco/dettaglio e integrità del pacchetto. La resa finale e lo scorrimento vanno verificati su iPhone: non è stata eseguita una prova su un dispositivo iOS reale.
