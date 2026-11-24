@@ -1,11 +1,11 @@
-# Planning DVS 50.5
+# Planning DVS 51
 
-Aggiornamento dell'interfaccia iPhone: dashboard verticale, riepiloghi con elenco e dettaglio separati, sfondo coordinato e barra inferiore nello stile Utility.
+Versione basata sulla 50.5 approvata, con grafica originale e protezione dallo zoom accidentale del browser in tutte le schermate. Lo zoom interno del Planning e il doppio clic sui turni restano disponibili.
 
 ## Pubblicazione
-Estrarre lo ZIP e caricare il contenuto della cartella Planning-DVS-50.5 nel repository, mantenendo index.html nella radice pubblicata. Ricaricare l'app e verificare la versione 50.5.
+Caricare il contenuto della cartella Planning-DVS-51 nel repository. Riaprire e ricaricare l’app, verificando la versione 51 nelle Informazioni. Versione 51 con blocco zoom, basata sulla 50.5 approvata.
 
-Grafica Mac/iPad, dati e funzioni Planning invariati. Nessuna SQL necessaria. Backup Agent 2.2.0 incluso e invariato; non serve reinstallarlo.
+Nessuna SQL necessaria. Backup Agent 2.2.0 invariato.
 
-## Verifica
-Controllate sintassi JavaScript, navigazione elenco/dettaglio e integrità del pacchetto. La resa finale e lo scorrimento vanno verificati su iPhone: non è stata eseguita una prova su un dispositivo iOS reale.
+## Verifica sul dispositivo
+Verificare doppi tocchi rapidi su dashboard e menu, apertura turno con doppio clic, scorrimento, campi di inserimento e selettore zoom del Planning. Controllati codice e integrità ZIP; prova reale su Safari/iPhone da effettuare. Le impostazioni di accessibilità o i comandi nativi del browser possono prevalere sul blocco della pagina.

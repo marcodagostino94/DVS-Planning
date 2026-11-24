@@ -1,9 +1,0 @@
-Planning DVS 50.5
-- Solo iPhone: dashboard Oggi rettangolare, sale e turni verticali, separatori tra uffici.
-- Sfondo scuro con alone rosso nelle pagine iPhone; contenuti chiari preservati.
-- Riepiloghi: elenco completo scorrevole, dettaglio dedicato e ritorno all'elenco.
-- Comandi mese, ricerca ed Esporta PDF riordinati su iPhone.
-- Barra inferiore nello stile Utility, solo icone, senza puntino rosso.
-- Spazio riservato alla barra per raggiungere tutti i contenuti.
-- Mac, iPad, database, turni Planning e Backup Agent invariati.
-Nessuna SQL necessaria.
