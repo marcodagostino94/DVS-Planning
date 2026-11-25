@@ -1,8 +1,0 @@
-Planning DVS 51.2 — 25 novembre 2026
-- Trascinamento fra sale di turni con X e turni attivi collegati.
-- Collegamenti aggiornati senza creare duplicati, nuove X o cambiare le date.
-- X consentite in sale occupate; conflitti controllati per i turni attivi.
-- Annullamento della variazione nella sala attuale del turno originale.
-- Salvataggio atomico anche per gruppi e turni intermedi in una catena.
-- SQL incrementale 002_spostamento_sale.sql incluso.
-- Grafica e Backup Agent 2.3.0 invariati.

@@ -1,4 +1,4 @@
-// Planning DVS 51.2
+// Planning DVS 51.3
 
 const ROOMS = [
   ...Array.from({ length: 15 }, (_, index) => ({
@@ -2058,7 +2058,7 @@ function renderVariables() {
 
 // Schema mensile: vista derivata, nessuna scrittura dei turni.
 function schemaTimeRange(shift) {
-  const notes = String(shift.notes || '');
+  const notes = String(shift.notes || '').replace(/^SPOSTATO (?:AL|DAL) \d{1,2} [A-Z]{3} - (?:VEDI MAIL|NON UFFICIALE|MAIL)\s*$/gm,'');
   const markers = [...notes.matchAll(/\bUFFICI[A-ZÀ-Ü]*\b/gi)];
   let start = shift.start, end = shift.end, official = false;
   if (markers.length) {
@@ -2081,10 +2081,27 @@ function schemaTimeRange(shift) {
   const format = n => `${String(Math.floor(n/60)).padStart(2,'0')}:${String(n%60).padStart(2,'0')}`;
   return { start:format(a), end:format(b), minutes:b-a, official };
 }
+// One accounting row per active chain. Unofficial edges preserve the last official slot.
+function schemaAccountingShifts(allShifts, links=variations) {
+  const byId=new Map(allShifts.map(s=>[String(s.id),s]));
+  const incoming=new Map(links.map(v=>[String(v.target_id),v]));
+  return allShifts.filter(s=>!isVariedShift(s)).map(shift=>{
+    let slot=shift;
+    const visited=new Set([String(slot.id)]);
+    while(incoming.has(String(slot.id))) {
+      const link=incoming.get(String(slot.id));
+      if(link.is_official!==false) break;
+      const source=byId.get(String(link.source_id));
+      if(!source || visited.has(String(source.id))) break;
+      slot=source; visited.add(String(slot.id));
+    }
+    return slot===shift ? shift : {...shift,date:slot.date,room:slot.room,start:slot.start,end:slot.end,notes:slot.notes};
+  });
+}
 function schemaPrograms(allShifts, month) {
   const programs = new Map();
   const compare = (a,b) => String(a).localeCompare(String(b),'it',{numeric:true,sensitivity:'base'});
-  const selected = allShifts.filter(s => String(s.production || "").trim().toUpperCase() === "RAI" && !s.isClient && !isVariedShift(s) && s.date?.slice(0,7)===month);
+  const selected = schemaAccountingShifts(allShifts).filter(s => String(s.production || "").trim().toUpperCase() === "RAI" && !s.isClient && !isVariedShift(s) && s.date?.slice(0,7)===month);
   for (const shift of selected) {
     const name=String(shift.film || 'Senza programma').trim();
     const key=name.toLocaleUpperCase('it');
@@ -3210,12 +3227,12 @@ function openPrintPreview() {
       });
     });
     const weekLabel=`${shortPrintDate(week.start)} – ${shortPrintDate(week.end)}`;
-    return `<main class="paper"><header class="head"><div><h1>Digital Video Service</h1><p>PLANNING · ${escapeHtml(monthName(printMonth))}</p><small>Settimana ${escapeHtml(weekLabel)}</small></div><strong>${selectedRooms.length===ROOMS.length?'Tutte le sale':`${selectedRooms.length} sale selezionate`}</strong></header><section class="grid">${cells.join('')}</section><footer class="page-footer"><span>Planning DVS 51.2</span><span>Pagina ${pageIndex+1} di ${selectedWeeks.length}</span></footer></main>`;
+    return `<main class="paper"><header class="head"><div><h1>Digital Video Service</h1><p>PLANNING · ${escapeHtml(monthName(printMonth))}</p><small>Settimana ${escapeHtml(weekLabel)}</small></div><strong>${selectedRooms.length===ROOMS.length?'Tutte le sale':`${selectedRooms.length} sale selezionate`}</strong></header><section class="grid">${cells.join('')}</section><footer class="page-footer"><span>Planning DVS 51.3</span><span>Pagina ${pageIndex+1} di ${selectedWeeks.length}</span></footer></main>`;
   }).join('');
   const popup=window.open('','_blank');
   if(!popup)return showToast('Consenti l’apertura della finestra di anteprima');
   popup.document.open();
-  popup.document.write(`<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Planning DVS 51.2 · ${escapeHtml(periodLabel)}</title><style>
+  popup.document.write(`<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Planning DVS 51.3 · ${escapeHtml(periodLabel)}</title><style>
   :root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#17181b;background:#e9eaed}*{box-sizing:border-box}body{margin:0}.preview-bar{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;padding:14px 22px;background:#111318;color:#fff;box-shadow:0 5px 20px #0003}.preview-bar div{display:flex;gap:10px}.preview-bar button{border:0;border-radius:10px;padding:10px 16px;font-weight:700;cursor:pointer}.preview-bar .print{background:#e54b57;color:#fff}.paper{margin:24px auto;background:#fff;width:min(1500px,calc(100vw - 48px));padding:22px;box-shadow:0 12px 45px #0002;break-after:page;page-break-after:always}.paper:last-child{break-after:auto;page-break-after:auto}.head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #17181b;padding-bottom:12px;margin-bottom:14px}.head h1{margin:0;font-size:24px}.head p{margin:4px 0 0;color:#5d626c}.head small{display:block;margin-top:3px;color:#777}.head strong{font-size:13px}.grid{display:grid;grid-template-columns:95px repeat(7,${autoFit?'minmax(0,1fr)':'150px'});width:100%;border:1px solid #cfd2d8;border-right:0;border-bottom:0}.grid>div{border-right:1px solid #cfd2d8;border-bottom:1px solid #cfd2d8}.p-corner,.p-day{height:50px;background:#f1f2f4;display:flex;align-items:center;justify-content:center}.p-corner{font-size:11px;font-weight:800}.p-day{flex-direction:column}.p-day span{font-size:9px;font-weight:800}.p-day b{font-size:18px}.p-day small{font-size:7px}.p-day.weekend,.p-cell.weekend{background:#f7f1f2}.p-day.outside{opacity:.55}.p-room{padding:8px;font-size:11px;font-weight:800;background:#f6f7f8;display:flex;align-items:flex-start}.p-cell{min-height:94px;padding:4px;background:#fff}.p-shift{--accent:61,125,235;border:1px solid rgba(var(--accent),.55);border-radius:7px;background:rgba(var(--accent),.18);overflow:hidden;margin-bottom:4px;font-size:7px;break-inside:avoid}.p-shift.provvisorio{background:#fff;border-style:dashed}.p-main{padding:5px}.p-main b,.p-main strong,.p-main em,.p-main time,.p-main small{display:block;white-space:normal;overflow-wrap:anywhere}.p-main b{font-size:8px}.p-main time{font-weight:700;margin:2px 0}.p-main strong{font-size:8px}.p-main em{font-style:normal;font-weight:700;margin-top:2px}.p-main small{margin-top:3px;border-top:1px solid #0002;padding-top:2px}.p-shift footer{background:rgba(var(--accent),.32);padding:4px 5px;font-weight:800}.p-shift.confirmed footer:after{content:'  ●';font-size:6px}.page-footer{margin-top:12px;display:flex;justify-content:space-between;font-size:9px;color:#777}@page{size:A4 landscape;margin:8mm}@media print{body{background:#fff}.preview-bar{display:none}.paper{margin:0;padding:0;box-shadow:none;width:100%;height:auto;break-after:page;page-break-after:always}.paper:last-child{break-after:auto;page-break-after:auto}.grid{width:100%;grid-template-columns:72px repeat(7,minmax(0,1fr))}.p-cell{min-height:60px;padding:2px}.p-room{font-size:8px;padding:4px}.p-day{height:38px}.p-day b{font-size:13px}.p-shift{font-size:5px;border-radius:3px;margin-bottom:2px}.p-main{padding:2px}.p-main b,.p-main strong{font-size:5.5px}.p-shift footer{padding:2px}.head{margin-bottom:6px;padding-bottom:6px}.head h1{font-size:16px}.head p,.head strong,.head small{font-size:8px}.page-footer{font-size:7px}}
   </style></head><body><div class="preview-bar"><button onclick="window.close()">‹ Torna alle impostazioni</button><div><button class="print" onclick="window.print()">Stampa / Salva PDF</button></div></div>${pages}</body></html>`);
   popup.document.close();
@@ -3240,7 +3257,7 @@ function updateIPhoneChrome(viewName) {
   document.querySelectorAll(".iphone-nav-item[data-view]").forEach(item => item.classList.toggle("active", item.dataset.view === viewName));
   updateIPhoneNavIndicator(viewName);
   const title = document.getElementById("iphoneSectionTitle");
-  if (title) title.textContent = IPHONE_VIEW_TITLES[viewName] || "Planning DVS 51.2";
+  if (title) title.textContent = IPHONE_VIEW_TITLES[viewName] || "Planning DVS 51.3";
   const action = document.getElementById("iphoneContextAction");
   if (!action) return;
   action.classList.add("hidden");
@@ -3433,7 +3450,7 @@ document.querySelectorAll("[data-settings-section]").forEach(button => button.ad
   const sections = {
     backup: { title:"Backup", subtitle:"Stato e autorizzazione", html:backupSettingsHtml() },
     print: { title:"Stampa", subtitle:"Centro Stampa", html:printSettingsHtml() },
-    info: { title:"Informazioni", subtitle:"Planning DVS 51.2", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>Planning DVS 51.2</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service. Include variazioni collegate con modifica e annullamento, disponibilità sale indipendente dai turni con X, blocchi sala, modifica multipla, Variabili con ID richiesta e Schema turni mensile riservato alla produzione RAI.</p><div class="settings-info-meta"><div><span>Versione</span><strong>Planning DVS 51.2</strong></div><div><span>Ideazione e sviluppo</span><strong>Marco D'Agostino per Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div><p class="settings-info-copyright"><strong>Copyright © 2026 Marco D'Agostino per Digital Video Service</strong><br>Tutti i diritti riservati.</p>` }
+    info: { title:"Informazioni", subtitle:"Planning DVS 51.3", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>Planning DVS 51.3</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service. Include variazioni ufficiali e non ufficiali collegate, con Schema turni basato sulla collocazione ufficiale, modifica e annullamento, disponibilità sale indipendente dai turni con X, blocchi sala, modifica multipla, Variabili con ID richiesta e Schema turni mensile riservato alla produzione RAI.</p><div class="settings-info-meta"><div><span>Versione</span><strong>Planning DVS 51.3</strong></div><div><span>Ideazione e sviluppo</span><strong>Marco D'Agostino per Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div><p class="settings-info-copyright"><strong>Copyright © 2026 Marco D'Agostino per Digital Video Service</strong><br>Tutti i diritti riservati.</p>` }
   };
   const selected = sections[section];
   if (!selected) return;
@@ -3772,7 +3789,7 @@ async function loadSupabaseData() {
     fetchAllSupabaseRows("staff", query => query.order("first_name").order("last_name").order("id")),
     fetchAllSupabaseRows("shifts", query => query.order("shift_date").order("start_time").order("room_code").order("id")),
     fetchAllSupabaseRows("room_blocks", query => query.order("date").order("id")),
-    fetchAllSupabaseRows("shift_variations", query => query.order("id"))
+    fetchAllSupabaseRows("shift_variations", query => query.select("*,is_official").order("id"))
   ]);
 
   if (staffResult.error) {
@@ -3789,7 +3806,7 @@ async function loadSupabaseData() {
 
   if (variationsResult.error || (shiftsResult.data || []).some(row => !Object.hasOwn(row,'is_varied'))) {
     variationsReady=false;
-    showToast('Versione 51.2: esegui prima lo script SQL delle variazioni e ricarica.'); return;
+    showToast('Versione 51.3: esegui prima lo script SQL delle variazioni e ricarica.'); return;
   }
   if (readSequence !== dataReadSequence) return;
   if (pendingShiftWrites || readRevision !== localMutationRevision || planningInteractionBusy()) {
@@ -4035,12 +4052,24 @@ loadBackupStatus();
 backupStatusTimer = setInterval(loadBackupStatus, 60000);
 enableRealtime();
 
-// 51.2 — structured variations. Notes never determine status or relationships.
+// 51.3 — structured variations. Notes never determine status or relationships.
 let variationSourceSnapshot=null;
 let variationTargetSnapshot=null;
 let variationLinkSnapshot=null;
 let variationMode='create';
 let variationSaving=false;
+let variationOfficial=true;
+function setVariationOfficial(value) {
+  variationOfficial=value;
+  document.querySelectorAll('[data-variation-official]').forEach(button=>{
+    const selected=(button.dataset.variationOfficial==='true')===value;
+    button.classList.toggle('active',selected);button.setAttribute('aria-pressed',String(selected));
+  });
+  document.getElementById('variationOfficialHelp').textContent=value
+    ? 'Lo Schema turni seguirà la nuova data e il nuovo orario. Nota: VEDI MAIL.'
+    : 'Lo Schema turni manterrà l’ultima data e l’ultimo orario ufficiali. Nota: NON UFFICIALE.';
+}
+document.querySelectorAll('[data-variation-official]').forEach(button=>button.addEventListener('click',()=>setVariationOfficial(button.dataset.variationOfficial==='true')));
 const variationDialog=document.getElementById('variationDialog');
 const cancelVariationDialog=document.getElementById('cancelVariationDialog');
 function hasVariationLink(id) { return variations.some(v=>String(v.source_id)===id || String(v.target_id)===id); }
@@ -4099,6 +4128,7 @@ function updateVariationRooms() {
 ['variationDate','variationStart','variationEnd'].forEach(id=>document.getElementById(id).addEventListener('input',updateVariationRooms));
 function openVariationDialog(id,mode='create') {
   if (!prepareVariation(id,mode)) return;
+  setVariationOfficial(variationLinkSnapshot?.is_official!==false);
   const slot=variationTargetSnapshot || variationSourceSnapshot;
   document.querySelector('#variationDialog h2').textContent=mode==='edit' ? 'Modifica variazione' : 'Variazione';
   document.querySelector('#variationForm button[type="submit"]').textContent=mode==='edit' ? 'SALVA MODIFICA' : 'VARIA';
@@ -4128,7 +4158,7 @@ cancelVariationDialog.addEventListener('cancel',e=>{if(variationSaving)e.prevent
 async function submitStructuredVariation(destination,errorBox,dialog) {
   if(variationSaving)return;
   errorBox.textContent='';
-  if(!db || !variationsReady) { errorBox.textContent='Database non pronto: ricarica dopo aver eseguito SQL 51.2.';return; }
+  if(!db || !variationsReady) { errorBox.textContent='Database non pronto: ricarica dopo aver eseguito SQL 51.3.';return; }
   if(pendingShiftWrites || unsavedShiftOverrides.size) { errorBox.textContent='Attendi i salvataggi in corso prima di proseguire.';return; }
   for(const snapshot of [variationSourceSnapshot,variationTargetSnapshot].filter(Boolean)) {
     if(JSON.stringify(shifts.find(s=>s.id===snapshot.id))!==JSON.stringify(snapshot)) {errorBox.textContent='Il turno è cambiato: chiudi e riapri la finestra.';return;}
@@ -4151,7 +4181,7 @@ async function submitStructuredVariation(destination,errorBox,dialog) {
     const {data,error}=await db.rpc('apply_shift_variation',{
       operation:mode,expected_source:shiftDatabaseRow(variationSourceSnapshot),
       expected_target:variationTargetSnapshot ? shiftDatabaseRow(variationTargetSnapshot) : null,
-      link_id:linkId || null,destination:destination || null
+      link_id:linkId || null,destination:{...(destination || {}),official:variationOfficial,...(variationLinkSnapshot ? {expected_updated_at:variationLinkSnapshot.updated_at} : {})}
     });
     if(error)throw error;
     if(!data?.source)throw new Error('Risposta incompleta: ricarica e verifica prima di riprovare.');
@@ -4323,7 +4353,7 @@ function openBulkEdit() {
 }
 if(!db){roomBlocks=loadLocal('dvs-room-blocks-v41',[]);roomBlocksReady=true;}
 
-// 51.2: room-only drag preserves all variation identifiers and dates.
+// 51.3: room-only drag preserves all variation identifiers and dates.
 async function moveLinkedRooms(candidates, originals) {
   if (!db || !variationsReady || pendingShiftWrites || unsavedShiftOverrides.size) {
     showToast('Attendi il completamento dei salvataggi e riprova.'); return;

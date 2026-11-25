@@ -1,0 +1,8 @@
+Planning DVS 51.3
+- Pulsanti UFFICIALE / NON UFFICIALE in Variazione e Modifica variazione.
+- Nuovo campo is_official nei collegamenti; esistenti ufficiali per default.
+- Schema turni alla collocazione ufficiale, senza duplicati, anche nelle catene e fra mesi/anni.
+- Note AL/DAL con VEDI MAIL oppure NON UFFICIALE; le altre note sono conservate.
+- Compatibilità con gli orari ufficiali scritti manualmente nelle note.
+- SQL incrementale 003; Backup Agent 2.3.0 invariato.
+- Conservate disponibilità, spostamenti fra sale, annullamento e grafica delle altre schermate.
