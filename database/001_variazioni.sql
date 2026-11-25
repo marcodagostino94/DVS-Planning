@@ -4,6 +4,7 @@ BEGIN;
 CREATE TABLE IF NOT EXISTS public.planning_migrations (
   name text PRIMARY KEY, applied_at timestamptz NOT NULL DEFAULT now(), details jsonb
 );
+ALTER TABLE public.planning_migrations ENABLE ROW LEVEL SECURITY;
 REVOKE ALL ON public.planning_migrations FROM anon, authenticated;
 ALTER TABLE public.shifts ADD COLUMN IF NOT EXISTS is_varied boolean NOT NULL DEFAULT false;
 DO $$

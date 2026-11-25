@@ -1,4 +1,4 @@
-/* Planning DVS 51.1: cancel native zoom, never stop application events. */
+/* Planning DVS 51.2: cancel native zoom, never stop application events. */
 (() => {
   'use strict';
   const cancelNative = event => {
