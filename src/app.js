@@ -1,4 +1,4 @@
-// Planning DVS 51
+// Planning DVS 51.1
 
 const ROOMS = [
   ...Array.from({ length: 15 }, (_, index) => ({
@@ -29,6 +29,8 @@ const FILM_COLORS = {
 };
 const LEGACY_COLORS = {indigo:"violet",lime:"green",teal:"cyan",red:"violet",coral:"orange"};
 function paletteKey(key) { return LEGACY_COLORS[key] || key; }
+let variations = [];
+let variationsReady = false;
 let roomBlocks = [];
 let roomBlocksReady = false;
 let blockWriteBusy = false;
@@ -319,6 +321,13 @@ async function restoreShiftHistory(sourceStack, destinationStack, actionName) {
     if (!sourceStack.length) showToast(actionName === "Annullata" ? "Nessuna operazione da annullare" : "Nessuna operazione da ripristinare");
     return;
   }
+  const historyState=sourceStack[sourceStack.length-1].state;
+  const allIds=new Set([...shifts,...historyState].map(s=>s.id));
+  if ([...allIds].some(id=>{
+    if (!hasVariationLink(id)) return false;
+    const a=shifts.find(s=>s.id===id), b=historyState.find(s=>s.id===id);
+    return !a || !b || !sameSlot(a,b) || a.isVaried!==b.isVaried;
+  })) { showToast('Questa operazione coinvolge una variazione: usa Modifica o Annulla variazione.'); return; }
   shiftHistoryBusy = true;
   try {
     const entry = sourceStack.pop();
@@ -426,7 +435,7 @@ function timeToMinutes(value) {
 }
 
 function overlaps(a, b) {
-  return timeToMinutes(a.start) < timeToMinutes(b.end)
+  return !isVariedShift(a) && !isVariedShift(b) && timeToMinutes(a.start) < timeToMinutes(b.end)
     && timeToMinutes(b.start) < timeToMinutes(a.end);
 }
 
@@ -454,9 +463,10 @@ function fullEmployeeName(editor) {
 }
 
 function editorConflict(shift) {
-  if (!shift.editorId) return false;
+  if (!shift.editorId || isVariedShift(shift)) return false;
   return shifts.some(other =>
     other.id !== shift.id
+    && !isVariedShift(other)
     && other.date === shift.date
     && other.editorId === shift.editorId
   );
@@ -545,6 +555,7 @@ function copySelectedShifts() {
 }
 
 function cutSelectedShifts() {
+  if (selectedShiftList().some(s=>hasVariationLink(s.id))) { showToast("Usa Modifica variazione per spostare un turno collegato."); return false; }
   const selected = selectedShiftList()
     .sort((a, b) =>
       a.date.localeCompare(b.date)
@@ -579,6 +590,7 @@ function pasteCopiedShifts() {
     return true;
   }
 
+  if (isCut && copiedShifts.some(s=>hasVariationLink(s.id))) { showToast("Usa Modifica variazione per spostare un turno collegato."); return true; }
   const candidates = copiedShifts.map(source => {
     const sourceDate = new Date(`${source.date}T12:00:00`);
     sourceDate.setDate(sourceDate.getDate() + offsetDays);
@@ -588,6 +600,7 @@ function pasteCopiedShifts() {
     return {
       ...source,
       id: isCut ? source.id : crypto.randomUUID(),
+      isVaried: isCut ? Boolean(source.isVaried) : false,
       confirmed: isCut ? Boolean(source.confirmed) : false,
       confirmedAt: null,
       room: targetRoom.id,
@@ -685,7 +698,13 @@ function showContextMenu(event, targetCell) {
   contextMenu.querySelector('[data-action="edit"]').textContent = selected.length > 1 ? "Modifica turni selezionati" : "Modifica turno";
   if (!contextMenu.querySelector('[data-action="block"]')) contextMenu.insertAdjacentHTML('afterbegin','<button data-action="block">Aggiungi blocco sala</button>');
   contextMenu.querySelector('[data-action="block"]').disabled = !targetCell;
-  contextMenu.querySelector('[data-action="variation"]').disabled = !exactlyOne || hasConfirmed || selected.some(isVariedShift);
+  contextMenu.querySelector('[data-action="variation"]').disabled = !variationsReady || !exactlyOne || hasConfirmed || selected.some(isVariedShift);
+  const manageable = exactlyOne && manageableVariation(selected[0].id);
+  for (const action of ['edit-variation','cancel-variation']) {
+    const button=contextMenu.querySelector(`[data-action="${action}"]`);
+    button.disabled = !manageable || hasConfirmed;
+    button.hidden = !exactlyOne || !hasVariationLink(selected[0]?.id);
+  }
   contextMenu.querySelector('[data-action="confirm"]').hidden = !hasUnconfirmed;
   contextMenu.querySelector('[data-action="confirm"]').disabled = !hasUnconfirmed;
   contextMenu.querySelector('[data-action="unconfirm"]').hidden = !hasConfirmed;
@@ -711,6 +730,7 @@ function showContextMenu(event, targetCell) {
 
 function deleteSelectedShifts() {
   const selected = selectedShiftList();
+  if (selected.some(s=>hasVariationLink(s.id))) return showToast("Turno collegato: usa Annulla variazione, partendo dall’ultimo spostamento.");
   if (selected.some(shift => shift.confirmed)) return showToast("Il turno confermato è bloccato");
   if (!selected.length) return;
   if (!confirm(selected.length === 1 ? "Eliminare questo turno?" : `Eliminare ${selected.length} turni?`)) return;
@@ -739,6 +759,7 @@ async function setSelectedStatus(status) {
 }
 
 function selectedGroupForDrag(sourceId) {
+  if (hasVariationLink(sourceId) || selectedShiftList().some(s=>hasVariationLink(s.id))) { showToast("Usa Modifica variazione per spostare un turno collegato."); return []; }
   const source = shifts.find(shift => shift.id === sourceId);
   if (!source || source.confirmed) {
     if (source?.confirmed) showToast("Il turno confermato è bloccato");
@@ -1113,7 +1134,7 @@ function escapeHtml(value) {
     .replaceAll("'", "&#039;");
 }
 
-function isVariedShift(shift) { return /^SPOSTATO AL \d{1,2} /m.test(shift.notes || ""); }
+function isVariedShift(shift) { return Boolean(shift?.isVaried); }
 function renderCard(shift) {
   if (shift.isRoomBlock) return renderRoomBlock(shift);
   const color = FILM_COLORS[paletteKey(shift.color)] || FILM_COLORS.blue;
@@ -1168,7 +1189,7 @@ let planningEventsBound = false;
 function buildRenderConflictIds(source = shifts) {
   const byEditorDate = new Map();
   for (const shift of source) {
-    if (!shift.editorId) continue;
+    if (!shift.editorId || isVariedShift(shift)) continue;
     const key = `${shift.editorId}|${shift.date}`;
     const bucket = byEditorDate.get(key);
     if (bucket) bucket.push(shift);
@@ -1588,6 +1609,8 @@ contextMenu.addEventListener('click',event=>{
   const action=button.dataset.action, targetCell=contextTargetCell; hideContextMenu();
   if (action==='edit') { const s=selectedShiftList(); if (s.length===1) openEditShift(s[0].id); else openBulkEdit(); }
   else if (action==='block' && targetCell) openBlockDialog(null,targetCell.dataset.room,targetCell.dataset.date);
+  else if (action==='edit-variation') { const list=selectedShiftList(); if(list.length===1) openVariationDialog(list[0].id, 'edit'); }
+  else if (action==='cancel-variation') { const list=selectedShiftList(); if(list.length===1) openCancelVariation(list[0].id); }
   else if (action==='variation') { const list=selectedShiftList(); if(list.length===1) openVariationDialog(list[0].id); }
   else if (action==='confirm') confirmSelectedShift();
   else if (action==='unconfirm') unconfirmSelectedShift();
@@ -1625,7 +1648,7 @@ function sortedActiveEditors() {
 function selectedShiftsEligibleForEditorChange() {
   const selected = selectedShiftList();
   return selected.length > 0
-    && selected.every(shift => !shift.isClient && !shift.confirmed);
+    && selected.every(shift => !shift.isClient && !shift.confirmed && !isVariedShift(shift));
 }
 
 function closeAssignEditorDialog() {
@@ -2246,6 +2269,7 @@ shiftForm.addEventListener("submit", async event => {
   if (editingShiftId) {
     candidates = candidates.filter(candidate => candidate.id === editingShiftId || !shifts.some(existing =>
       existing.id !== editingShiftId
+      && !isVariedShift(existing)
       && existing.room === candidate.room
       && existing.date === candidate.date
       && existing.start === candidate.start
@@ -2255,6 +2279,13 @@ shiftForm.addEventListener("submit", async event => {
       && existing.workType === candidate.workType
       && existing.editorId === candidate.editorId
     ));
+  }
+  if (original) {
+    const edited = candidates.find(c => c.id === original.id);
+    if (edited) edited.isVaried = Boolean(original.isVaried);
+    if (hasVariationLink(original.id) && (candidates.length !== 1 || !sameSlot(original, edited))) {
+      error.textContent = 'Per cambiare data, sala o orario usa Modifica variazione oppure Variazione.'; return;
+    }
   }
   const conflict = candidates.find(candidate => roomConflict(candidate, editingShiftId));
   if (conflict) { error.textContent = `La sala contiene già un turno sovrapposto il ${new Date(conflict.date+"T12:00:00").toLocaleDateString("it-IT")}.`; return; }
@@ -2298,6 +2329,7 @@ shiftForm.addEventListener("submit", async event => {
 document.getElementById("deleteShiftBtn").addEventListener("click", () => {
   const shift = shifts.find(item => item.id === editingShiftId);
   if (!editingShiftId || shift?.confirmed) return;
+  if (hasVariationLink(shift.id)) return showToast("Usa Annulla variazione dal menu del turno.");
   const targets = [shift];
   const unlocked = targets.filter(item => !item.confirmed);
   const lockedCount = targets.length - unlocked.length;
@@ -2907,7 +2939,7 @@ function formatHours(value) {
 function summaryRows() {
   const { start, end } = summaryMonthBounds();
   const grouped = new Map();
-  shifts.filter(shift => shift.editorId && shift.date >= start && shift.date <= end).forEach(shift => {
+  shifts.filter(shift => !isVariedShift(shift) && shift.editorId && shift.date >= start && shift.date <= end).forEach(shift => {
     if (!grouped.has(shift.editorId)) grouped.set(shift.editorId, []);
     grouped.get(shift.editorId).push(shift);
   });
@@ -3172,12 +3204,12 @@ function openPrintPreview() {
       });
     });
     const weekLabel=`${shortPrintDate(week.start)} – ${shortPrintDate(week.end)}`;
-    return `<main class="paper"><header class="head"><div><h1>Digital Video Service</h1><p>PLANNING · ${escapeHtml(monthName(printMonth))}</p><small>Settimana ${escapeHtml(weekLabel)}</small></div><strong>${selectedRooms.length===ROOMS.length?'Tutte le sale':`${selectedRooms.length} sale selezionate`}</strong></header><section class="grid">${cells.join('')}</section><footer class="page-footer"><span>Planning DVS 51</span><span>Pagina ${pageIndex+1} di ${selectedWeeks.length}</span></footer></main>`;
+    return `<main class="paper"><header class="head"><div><h1>Digital Video Service</h1><p>PLANNING · ${escapeHtml(monthName(printMonth))}</p><small>Settimana ${escapeHtml(weekLabel)}</small></div><strong>${selectedRooms.length===ROOMS.length?'Tutte le sale':`${selectedRooms.length} sale selezionate`}</strong></header><section class="grid">${cells.join('')}</section><footer class="page-footer"><span>Planning DVS 51.1</span><span>Pagina ${pageIndex+1} di ${selectedWeeks.length}</span></footer></main>`;
   }).join('');
   const popup=window.open('','_blank');
   if(!popup)return showToast('Consenti l’apertura della finestra di anteprima');
   popup.document.open();
-  popup.document.write(`<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Planning DVS 51 · ${escapeHtml(periodLabel)}</title><style>
+  popup.document.write(`<!doctype html><html lang="it"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Planning DVS 51.1 · ${escapeHtml(periodLabel)}</title><style>
   :root{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;color:#17181b;background:#e9eaed}*{box-sizing:border-box}body{margin:0}.preview-bar{position:sticky;top:0;z-index:5;display:flex;align-items:center;justify-content:space-between;padding:14px 22px;background:#111318;color:#fff;box-shadow:0 5px 20px #0003}.preview-bar div{display:flex;gap:10px}.preview-bar button{border:0;border-radius:10px;padding:10px 16px;font-weight:700;cursor:pointer}.preview-bar .print{background:#e54b57;color:#fff}.paper{margin:24px auto;background:#fff;width:min(1500px,calc(100vw - 48px));padding:22px;box-shadow:0 12px 45px #0002;break-after:page;page-break-after:always}.paper:last-child{break-after:auto;page-break-after:auto}.head{display:flex;justify-content:space-between;align-items:flex-end;border-bottom:2px solid #17181b;padding-bottom:12px;margin-bottom:14px}.head h1{margin:0;font-size:24px}.head p{margin:4px 0 0;color:#5d626c}.head small{display:block;margin-top:3px;color:#777}.head strong{font-size:13px}.grid{display:grid;grid-template-columns:95px repeat(7,${autoFit?'minmax(0,1fr)':'150px'});width:100%;border:1px solid #cfd2d8;border-right:0;border-bottom:0}.grid>div{border-right:1px solid #cfd2d8;border-bottom:1px solid #cfd2d8}.p-corner,.p-day{height:50px;background:#f1f2f4;display:flex;align-items:center;justify-content:center}.p-corner{font-size:11px;font-weight:800}.p-day{flex-direction:column}.p-day span{font-size:9px;font-weight:800}.p-day b{font-size:18px}.p-day small{font-size:7px}.p-day.weekend,.p-cell.weekend{background:#f7f1f2}.p-day.outside{opacity:.55}.p-room{padding:8px;font-size:11px;font-weight:800;background:#f6f7f8;display:flex;align-items:flex-start}.p-cell{min-height:94px;padding:4px;background:#fff}.p-shift{--accent:61,125,235;border:1px solid rgba(var(--accent),.55);border-radius:7px;background:rgba(var(--accent),.18);overflow:hidden;margin-bottom:4px;font-size:7px;break-inside:avoid}.p-shift.provvisorio{background:#fff;border-style:dashed}.p-main{padding:5px}.p-main b,.p-main strong,.p-main em,.p-main time,.p-main small{display:block;white-space:normal;overflow-wrap:anywhere}.p-main b{font-size:8px}.p-main time{font-weight:700;margin:2px 0}.p-main strong{font-size:8px}.p-main em{font-style:normal;font-weight:700;margin-top:2px}.p-main small{margin-top:3px;border-top:1px solid #0002;padding-top:2px}.p-shift footer{background:rgba(var(--accent),.32);padding:4px 5px;font-weight:800}.p-shift.confirmed footer:after{content:'  ●';font-size:6px}.page-footer{margin-top:12px;display:flex;justify-content:space-between;font-size:9px;color:#777}@page{size:A4 landscape;margin:8mm}@media print{body{background:#fff}.preview-bar{display:none}.paper{margin:0;padding:0;box-shadow:none;width:100%;height:auto;break-after:page;page-break-after:always}.paper:last-child{break-after:auto;page-break-after:auto}.grid{width:100%;grid-template-columns:72px repeat(7,minmax(0,1fr))}.p-cell{min-height:60px;padding:2px}.p-room{font-size:8px;padding:4px}.p-day{height:38px}.p-day b{font-size:13px}.p-shift{font-size:5px;border-radius:3px;margin-bottom:2px}.p-main{padding:2px}.p-main b,.p-main strong{font-size:5.5px}.p-shift footer{padding:2px}.head{margin-bottom:6px;padding-bottom:6px}.head h1{font-size:16px}.head p,.head strong,.head small{font-size:8px}.page-footer{font-size:7px}}
   </style></head><body><div class="preview-bar"><button onclick="window.close()">‹ Torna alle impostazioni</button><div><button class="print" onclick="window.print()">Stampa / Salva PDF</button></div></div>${pages}</body></html>`);
   popup.document.close();
@@ -3202,7 +3234,7 @@ function updateIPhoneChrome(viewName) {
   document.querySelectorAll(".iphone-nav-item[data-view]").forEach(item => item.classList.toggle("active", item.dataset.view === viewName));
   updateIPhoneNavIndicator(viewName);
   const title = document.getElementById("iphoneSectionTitle");
-  if (title) title.textContent = IPHONE_VIEW_TITLES[viewName] || "Planning DVS 51";
+  if (title) title.textContent = IPHONE_VIEW_TITLES[viewName] || "Planning DVS 51.1";
   const action = document.getElementById("iphoneContextAction");
   if (!action) return;
   action.classList.add("hidden");
@@ -3395,7 +3427,7 @@ document.querySelectorAll("[data-settings-section]").forEach(button => button.ad
   const sections = {
     backup: { title:"Backup", subtitle:"Stato e autorizzazione", html:backupSettingsHtml() },
     print: { title:"Stampa", subtitle:"Centro Stampa", html:printSettingsHtml() },
-    info: { title:"Informazioni", subtitle:"Planning DVS 51", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>Planning DVS 51</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service. Include blocchi sala, modifica multipla, palette a sette colori, Variabili con ID richiesta e Schema turni mensile riservato alla produzione RAI.</p><div class="settings-info-meta"><div><span>Versione</span><strong>Planning DVS 51</strong></div><div><span>Ideazione e sviluppo</span><strong>Marco D'Agostino per Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div><p class="settings-info-copyright"><strong>Copyright © 2026 Marco D'Agostino per Digital Video Service</strong><br>Tutti i diritti riservati.</p>` }
+    info: { title:"Informazioni", subtitle:"Planning DVS 51.1", html:`<img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video"><h2>Planning DVS 51.1</h2><p>Applicazione collaborativa per la gestione del Planning di Digital Video Service. Include variazioni collegate con modifica e annullamento, disponibilità sale indipendente dai turni con X, blocchi sala, modifica multipla, Variabili con ID richiesta e Schema turni mensile riservato alla produzione RAI.</p><div class="settings-info-meta"><div><span>Versione</span><strong>Planning DVS 51.1</strong></div><div><span>Ideazione e sviluppo</span><strong>Marco D'Agostino per Digital Video Service</strong></div><div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div></div><p class="settings-info-copyright"><strong>Copyright © 2026 Marco D'Agostino per Digital Video Service</strong><br>Tutti i diritti riservati.</p>` }
   };
   const selected = sections[section];
   if (!selected) return;
@@ -3474,7 +3506,7 @@ function renderDashboard() {
   dashboardRenderedMinute = String(Math.floor(now.getTime() / 60000));
   const today = isoDate(now.getFullYear(), now.getMonth(), now.getDate());
   const todays = shifts
-    .filter(shift => shift.date === today || dashboardShiftInProgress(shift, now))
+    .filter(shift => !isVariedShift(shift) && (shift.date === today || dashboardShiftInProgress(shift, now)))
     .sort((a, b) => {
       const roomDifference = dashboardRoomOrder(a.room) - dashboardRoomOrder(b.room);
       return roomDifference || String(a.start || "").localeCompare(String(b.start || ""));
@@ -3633,6 +3665,7 @@ function shiftDatabaseRow(shift) {
     is_variable: Boolean(shift.isVariable),
     request_id: shift.isVariable ? (String(shift.requestId || "").trim() || null) : null,
     notes: shift.notes || null,
+    is_varied: Boolean(shift.isVaried),
     status: shift.status,
     confirmed: Boolean(shift.confirmed),
     confirmed_at: shift.confirmed ? (shift.confirmedAt || new Date().toISOString()) : null,
@@ -3701,48 +3734,9 @@ async function fetchAllSupabaseRows(table, configureQuery, pageSize = 1000) {
   return { data: rows, error: null };
 }
 
-async function loadSupabaseData() {
-  if (!db) return;
-  if (pendingShiftWrites || planningInteractionBusy()) { scheduleRealtimeDataRefresh(); return; }
-  const readSequence = ++dataReadSequence;
-  const readRevision = localMutationRevision;
-
-  const [staffResult, shiftsResult, blocksResult] = await Promise.all([
-    fetchAllSupabaseRows("staff", query => query.order("first_name").order("last_name").order("id")),
-    fetchAllSupabaseRows("shifts", query => query.order("shift_date").order("start_time").order("room_code").order("id")),
-    fetchAllSupabaseRows("room_blocks", query => query.order("date").order("id"))
-  ]);
-
-  if (staffResult.error) {
-    console.error("Errore caricamento staff:", staffResult.error);
-    showToast(`Supabase staff: ${staffResult.error.message}`);
-    return;
-  }
-
-  if (shiftsResult.error) {
-    console.error("Errore caricamento turni:", shiftsResult.error);
-    showToast(`Supabase turni: ${shiftsResult.error.message}`);
-    return;
-  }
-
-  if (readSequence !== dataReadSequence) return;
-  if (pendingShiftWrites || readRevision !== localMutationRevision || planningInteractionBusy()) {
-    scheduleRealtimeDataRefresh(); return;
-  }
-  if (!blocksResult.error && !blockWriteBusy) { roomBlocks=blocksResult.data || []; roomBlocksReady=true; }
-  else if (blocksResult.error) { roomBlocksReady=false; }
-  editors = (staffResult.data || []).map(row => ({
+function shiftFromDatabase(row) { return {
     id: String(row.id),
-    firstName: row.first_name,
-    lastName: row.last_name,
-    role: row.role || "Altro",
-    phone: row.phone || "",
-    email: row.email || "",
-    notes: row.notes || ""
-  }));
-
-  shifts = (shiftsResult.data || []).map(row => ({
-    id: String(row.id),
+    isVaried: Boolean(row.is_varied),
     room: row.room_code,
     date: row.shift_date,
     production: row.production || "",
@@ -3760,7 +3754,55 @@ async function loadSupabaseData() {
     color: paletteKey(row.color_key),
     confirmed: Boolean(row.confirmed),
     confirmedAt: row.confirmed_at || null
+  }; }
+
+async function loadSupabaseData() {
+  if (!db) return;
+  if (pendingShiftWrites || planningInteractionBusy()) { scheduleRealtimeDataRefresh(); return; }
+  const readSequence = ++dataReadSequence;
+  const readRevision = localMutationRevision;
+
+  const [staffResult, shiftsResult, blocksResult, variationsResult] = await Promise.all([
+    fetchAllSupabaseRows("staff", query => query.order("first_name").order("last_name").order("id")),
+    fetchAllSupabaseRows("shifts", query => query.order("shift_date").order("start_time").order("room_code").order("id")),
+    fetchAllSupabaseRows("room_blocks", query => query.order("date").order("id")),
+    fetchAllSupabaseRows("shift_variations", query => query.order("id"))
+  ]);
+
+  if (staffResult.error) {
+    console.error("Errore caricamento staff:", staffResult.error);
+    showToast(`Supabase staff: ${staffResult.error.message}`);
+    return;
+  }
+
+  if (shiftsResult.error) {
+    console.error("Errore caricamento turni:", shiftsResult.error);
+    showToast(`Supabase turni: ${shiftsResult.error.message}`);
+    return;
+  }
+
+  if (variationsResult.error || (shiftsResult.data || []).some(row => !Object.hasOwn(row,'is_varied'))) {
+    variationsReady=false;
+    showToast('Versione 51.1: esegui prima lo script SQL delle variazioni e ricarica.'); return;
+  }
+  if (readSequence !== dataReadSequence) return;
+  if (pendingShiftWrites || readRevision !== localMutationRevision || planningInteractionBusy()) {
+    scheduleRealtimeDataRefresh(); return;
+  }
+  if (!blocksResult.error && !blockWriteBusy) { roomBlocks=blocksResult.data || []; roomBlocksReady=true; }
+  else if (blocksResult.error) { roomBlocksReady=false; }
+  variations = variationsResult.data || []; variationsReady=true;
+  editors = (staffResult.data || []).map(row => ({
+    id: String(row.id),
+    firstName: row.first_name,
+    lastName: row.last_name,
+    role: row.role || "Altro",
+    phone: row.phone || "",
+    email: row.email || "",
+    notes: row.notes || ""
   }));
+
+  shifts = (shiftsResult.data || []).map(shiftFromDatabase);
 
   for (const [id, snapshot] of unsavedShiftOverrides) {
     shifts = shifts.filter(shift => shift.id !== id);
@@ -3789,6 +3831,7 @@ function enableRealtime() {
     .on("postgres_changes", { event: "*", schema: "public", table: "room_blocks" }, scheduleRealtimeDataRefresh)
     .on("postgres_changes", { event: "*", schema: "public", table: "staff" }, scheduleRealtimeDataRefresh)
     .on("postgres_changes", { event: "*", schema: "public", table: "shifts" }, scheduleRealtimeDataRefresh)
+    .on("postgres_changes", { event: "*", schema: "public", table: "shift_variations" }, scheduleRealtimeDataRefresh)
     .on("postgres_changes", { event: "*", schema: "public", table: "reminders" }, loadRemindersFromSupabase)
     .on("postgres_changes", { event: "*", schema: "public", table: "planning_profiles" }, loadProfilesFromSupabase)
     .on("postgres_changes", { event: "*", schema: "public", table: "profile_presence" }, loadOnlineProfiles)
@@ -3863,7 +3906,7 @@ function backupSettingsHtml() {
       <div class="backup-detail"><span>Cartella backup</span><strong id="backupDetailFolder">—</strong></div>
     </div>
     <div class="backup-actions">
-      <a class="primary-btn backup-download-btn" href="./downloads/DVS_Backup_Agent.pkg?v=2.2.0" download>Scarica Backup Agent</a>
+      <a class="primary-btn backup-download-btn" href="./downloads/DVS_Backup_Agent.pkg?v=2.3.0" download>Scarica Backup Agent</a>
       <button id="revokeBackupAuthorization" class="danger-outline-btn" type="button">Revoca autorizzazione</button>
     </div>
     <p class="backup-utility-note">Per eseguire “Backup ora”, aprire la cartella o consultare i log usa <strong>DVS Backup Agent Utility</strong> nella cartella Applicazioni del Mac autorizzato.</p>`;
@@ -3986,97 +4029,158 @@ loadBackupStatus();
 backupStatusTimer = setInterval(loadBackupStatus, 60000);
 enableRealtime();
 
-// v41 — variation uses existing notes and one atomic multi-row upsert.
-let variationSourceSnapshot = null;
-let variationSaving = false;
-const variationDialog = document.getElementById("variationDialog");
+// 51.1 — structured variations. Notes never determine status or relationships.
+let variationSourceSnapshot=null;
+let variationTargetSnapshot=null;
+let variationLinkSnapshot=null;
+let variationMode='create';
+let variationSaving=false;
+const variationDialog=document.getElementById('variationDialog');
+const cancelVariationDialog=document.getElementById('cancelVariationDialog');
+function hasVariationLink(id) { return variations.some(v=>String(v.source_id)===id || String(v.target_id)===id); }
+function sameSlot(a,b) { return Boolean(a && b && ['date','room','start','end'].every(k=>a[k]===b[k])); }
+function manageableVariation(id) {
+  const link=variations.find(v=>String(v.source_id)===id) || variations.find(v=>String(v.target_id)===id);
+  if (!link) return null;
+  const source=shifts.find(s=>s.id===String(link.source_id));
+  const target=shifts.find(s=>s.id===String(link.target_id));
+  if (!source || !target || !isVariedShift(source) || isVariedShift(target) || source.confirmed || target.confirmed) return null;
+  if (variations.some(v=>String(v.source_id)===target.id)) return null;
+  return {link,source,target};
+}
 function variationDateLabel(iso) {
-  const [year, month, day] = iso.split("-").map(Number);
-  const months = ["GEN","FEB","MAR","APR","MAG","GIU","LUG","AGO","SET","OTT","NOV","DIC"];
-  return `${day} ${months[month - 1]}`;
+  const [,month,day]=iso.split('-').map(Number);
+  return `${day} ${['GEN','FEB','MAR','APR','MAG','GIU','LUG','AGO','SET','OTT','NOV','DIC'][month-1]}`;
 }
-function variationNotes(notes, direction, date) {
-  const existing = String(notes || "").split("\n").filter(line => !/^SPOSTATO (AL|DAL) \d{1,2} /.test(line)).join("\n").trim();
-  const result = [existing, `SPOSTATO ${direction} ${variationDateLabel(date)} - MAIL`].filter(Boolean).join("\n");
-  if (result.length > 100) throw new Error("La nota con la variazione supera 100 caratteri. Accorcia prima la nota del turno e riprova.");
-  return result;
+function variationSlotLabel(shift) {
+  return `${shift.date.split('-').reverse().join('/')} · ${ROOMS.find(r=>r.id===shift.room)?.label || shift.room} · ${shift.start}–${shift.end}`;
 }
-function createVariationPair(source, date, start, end, room, id) {
-  return [
-    {...source, editorId:null, notes:variationNotes(source.notes,"AL",date)},
-    {...source,id,date,start,end,room,confirmed:false,confirmedAt:null,notes:variationNotes(source.notes,"DAL",source.date)}
-  ];
+function prepareVariation(id,mode) {
+  if (variationSaving) return false;
+  if (!db || !variationsReady) { showToast('Le variazioni richiedono il database aggiornato e connesso.'); return false; }
+  variationMode=mode;
+  variationTargetSnapshot=null; variationLinkSnapshot=null;
+  if (mode==='create') {
+    const source=shifts.find(s=>s.id===id);
+    if (!source || source.confirmed || isVariedShift(source)) return false;
+    variationSourceSnapshot=structuredClone(source);
+  } else {
+    const found=manageableVariation(id);
+    if (!found) { showToast('Gestisci prima lo spostamento successivo; i vecchi turni senza collegamento si gestiscono manualmente.'); return false; }
+    variationSourceSnapshot=structuredClone(found.source);
+    variationTargetSnapshot=structuredClone(found.target);
+    variationLinkSnapshot=structuredClone(found.link);
+  }
+  return true;
 }
-function availableVariationRooms(date, start, end) {
+function availableVariationRooms(date,start,end) {
   if (!date || !/^([01]\d|2[0-3]):[0-5]\d$/.test(start) || !/^(([01]\d|2[0-3]):[0-5]\d|24:00)$/.test(end)) return [];
-  if (end === "00:00" && start !== "00:00") end = "24:00";
-  if (timeToMinutes(end) <= timeToMinutes(start)) return [];
-  return ROOMS.filter(room => !roomConflict({date,start,end,room:room.id}));
+  if (end==='00:00' && start!=='00:00') end='24:00';
+  if (timeToMinutes(end)<=timeToMinutes(start)) return [];
+  const ignore=variationMode==='create' ? variationSourceSnapshot?.id : variationTargetSnapshot?.id;
+  return ROOMS.filter(r=>!roomConflict({date,start,end,room:r.id},ignore));
 }
 function updateVariationRooms() {
   if (variationSaving) return;
-  const select = document.getElementById("variationRoom");
-  const previous = select.value;
-  const rooms = availableVariationRooms(document.getElementById("variationDate").value, document.getElementById("variationStart").value, document.getElementById("variationEnd").value);
-  select.innerHTML = rooms.length ? rooms.map(room=>`<option value="${escapeHtml(room.id)}">${escapeHtml(room.label)}</option>`).join("") : '<option value="">Nessuna sala disponibile</option>';
-  if (rooms.some(room=>room.id===previous)) select.value=previous;
-  select.disabled = !rooms.length;
-  document.querySelector('#variationForm button[type="submit"]').disabled = !rooms.length;
-  document.getElementById("variationAvailability").textContent = rooms.length ? "Sale libere nella data e nella fascia oraria scelte." : "Controlla gli orari oppure scegli un’altra data o fascia oraria.";
+  const select=document.getElementById('variationRoom'), previous=select.value;
+  const rooms=availableVariationRooms(document.getElementById('variationDate').value,document.getElementById('variationStart').value,document.getElementById('variationEnd').value);
+  select.innerHTML=rooms.length ? rooms.map(r=>`<option value="${escapeHtml(r.id)}">${escapeHtml(r.label)}</option>`).join('') : '<option value="">Nessuna sala disponibile</option>';
+  if (rooms.some(r=>r.id===previous)) select.value=previous;
+  select.disabled=!rooms.length;
+  document.querySelector('#variationForm button[type="submit"]').disabled=!rooms.length;
+  document.getElementById('variationAvailability').textContent=rooms.length ? 'Sale libere nella data e nella fascia oraria scelte.' : 'Controlla gli orari oppure scegli un’altra data o fascia oraria.';
 }
-["variationDate","variationStart","variationEnd"].forEach(id=>document.getElementById(id).addEventListener("input",updateVariationRooms));
-function openVariationDialog(id) {
-  const source = shifts.find(item => item.id === id);
-  if (!source || source.confirmed || isVariedShift(source)) return;
-  variationSourceSnapshot = structuredClone(source);
-  document.getElementById("variationSummary").textContent = `${source.production} · ${source.film}`;
-  document.getElementById("variationDate").value = source.date;
-  document.getElementById("variationStart").value = source.start;
-  document.getElementById("variationEnd").value = source.end;
+['variationDate','variationStart','variationEnd'].forEach(id=>document.getElementById(id).addEventListener('input',updateVariationRooms));
+function openVariationDialog(id,mode='create') {
+  if (!prepareVariation(id,mode)) return;
+  const slot=variationTargetSnapshot || variationSourceSnapshot;
+  document.querySelector('#variationDialog h2').textContent=mode==='edit' ? 'Modifica variazione' : 'Variazione';
+  document.querySelector('#variationForm button[type="submit"]').textContent=mode==='edit' ? 'SALVA MODIFICA' : 'VARIA';
+  document.getElementById('variationSummary').textContent=`${slot.production} · ${slot.film}`;
+  document.getElementById('variationDate').value=slot.date;
+  document.getElementById('variationStart').value=slot.start;
+  document.getElementById('variationEnd').value=slot.end;
   updateVariationRooms();
-  document.getElementById("variationError").textContent = "";
+  const select=document.getElementById('variationRoom');
+  if ([...select.options].some(o=>o.value===slot.room)) select.value=slot.room;
+  document.getElementById('variationError').textContent='';
   variationDialog.showModal();
 }
-function closeVariationDialog() { if (!variationSaving) variationDialog.close(); }
-document.getElementById("cancelVariation").onclick = closeVariationDialog;
-document.getElementById("closeVariation").onclick = closeVariationDialog;
-variationDialog.addEventListener("cancel",event=>{if(variationSaving)event.preventDefault();});
-document.getElementById("variationForm").addEventListener("submit", async event => {
-  event.preventDefault();
-  if (variationSaving) return;
-  const errorBox = document.getElementById("variationError");
-  errorBox.textContent = "";
-  const source = shifts.find(item => item.id === variationSourceSnapshot?.id);
-  if (!source || JSON.stringify(source)!==JSON.stringify(variationSourceSnapshot)) { errorBox.textContent="Il turno è cambiato. Chiudi e riapri Variazione."; return; }
-  if (pendingShiftWrites || unsavedShiftOverrides.size) { errorBox.textContent="Attendi il completamento dei salvataggi e risolvi eventuali errori prima di variare."; return; }
-  const date=document.getElementById("variationDate").value;
-  const start=document.getElementById("variationStart").value;
-  let end=document.getElementById("variationEnd").value;
-  const room=document.getElementById("variationRoom").value;
-  if(end==="00:00" && start!=="00:00")end="24:00";
-  if(!date || !/^([01]\d|2[0-3]):[0-5]\d$/.test(start) || !/^(([01]\d|2[0-3]):[0-5]\d|24:00)$/.test(end) || end<=start || !ROOMS.some(r=>r.id===room)) {errorBox.textContent="Controlla data, sala e orari. La fine deve essere successiva all’inizio.";return;}
-  if(date===source.date && room===source.room && start===source.start && end===source.end) {errorBox.textContent="Scegli una data, una sala o un orario diverso.";return;}
-  if (!availableVariationRooms(date,start,end).some(item=>item.id===room)) { updateVariationRooms(); errorBox.textContent="La sala non è più disponibile. Scegli un’altra sala."; return; }
-  let pair;
-  try {pair=createVariationPair(source,date,start,end,room,crypto.randomUUID());} catch(error) {errorBox.textContent=error.message;return;}
-  if (!approveBlockOverlaps([pair[1]])) return;
-  variationSaving=true;
-  document.querySelectorAll("#variationForm button, #variationForm input, #variationForm select").forEach(el=>el.disabled=true);
-  pendingShiftWrites++; localMutationRevision++;
-  try {
-    if(db) { const result=await db.from("shifts").upsert(pair.map(shiftDatabaseRow)); if(result.error)throw result.error; }
-    recordShiftUndo("variazione turno");
-    shifts=shifts.map(item=>item.id===source.id?pair[0]:item);
-    shifts.push(pair[1]); saveLocal();
-    selectedShiftIds=new Set([pair[1].id]); selectionAnchorId=pair[1].id;
-    renderPlanning(); variationDialog.close(); showToast("Variazione salvata");
-  } catch(error) {errorBox.textContent=`Variazione non confermata: ${error.message || "errore di connessione"}. Verifica i turni prima di riprovare.`;}
-  finally {
-    pendingShiftWrites--; variationSaving=false;
-    document.querySelectorAll("#variationForm button, #variationForm input, #variationForm select").forEach(el=>el.disabled=false);
-    updateVariationRooms();
-    scheduleRealtimeDataRefresh();
+function closeVariationDialog() { if(!variationSaving) variationDialog.close(); }
+document.getElementById('cancelVariation').onclick=closeVariationDialog;
+document.getElementById('closeVariation').onclick=closeVariationDialog;
+variationDialog.addEventListener('cancel',e=>{if(variationSaving)e.preventDefault();});
+function openCancelVariation(id) {
+  if(!prepareVariation(id,'cancel'))return;
+  document.getElementById('cancelVariationDescription').textContent=`${variationSourceSnapshot.production} · ${variationSourceSnapshot.film}. Il turno originale del ${variationSlotLabel(variationSourceSnapshot)} tornerà attivo e perderà la X.`;
+  document.getElementById('cancelVariationDeletion').textContent=`Il turno creato per la variazione del ${variationSlotLabel(variationTargetSnapshot)} verrà eliminato.`;
+  document.getElementById('cancelVariationError').textContent='';
+  cancelVariationDialog.showModal();
+}
+for(const id of ['backCancelVariation','closeCancelVariation']) document.getElementById(id).onclick=()=>{if(!variationSaving)cancelVariationDialog.close();};
+cancelVariationDialog.addEventListener('cancel',e=>{if(variationSaving)e.preventDefault();});
+async function submitStructuredVariation(destination,errorBox,dialog) {
+  if(variationSaving)return;
+  errorBox.textContent='';
+  if(!db || !variationsReady) { errorBox.textContent='Database non pronto: ricarica dopo aver eseguito SQL 51.1.';return; }
+  if(pendingShiftWrites || unsavedShiftOverrides.size) { errorBox.textContent='Attendi i salvataggi in corso prima di proseguire.';return; }
+  for(const snapshot of [variationSourceSnapshot,variationTargetSnapshot].filter(Boolean)) {
+    if(JSON.stringify(shifts.find(s=>s.id===snapshot.id))!==JSON.stringify(snapshot)) {errorBox.textContent='Il turno è cambiato: chiudi e riapri la finestra.';return;}
   }
+  if(variationLinkSnapshot && JSON.stringify(variations.find(v=>v.id===variationLinkSnapshot.id))!==JSON.stringify(variationLinkSnapshot)) {errorBox.textContent='La variazione è cambiata: riapri la finestra.';return;}
+  let candidate;
+  if(variationMode==='cancel') {
+    candidate={...variationSourceSnapshot,isVaried:false};
+    if(roomConflict(candidate,variationTargetSnapshot.id)) {errorBox.textContent='La sala originale è occupata in quell’orario. Sposta prima il turno che la occupa.';return;}
+  } else {
+    candidate={...(variationTargetSnapshot || variationSourceSnapshot),...destination,isVaried:false};
+    if(sameSlot(candidate,variationSourceSnapshot)) {errorBox.textContent='La destinazione coincide con l’origine: usa Annulla variazione.';return;}
+    if(!availableVariationRooms(candidate.date,candidate.start,candidate.end).some(r=>r.id===candidate.room)) {errorBox.textContent='Sala non disponibile o orari non validi.';return;}
+  }
+  if(!approveBlockOverlaps([candidate]))return;
+  const mode=variationMode, linkId=variationLinkSnapshot?.id;
+  variationSaving=true; pendingShiftWrites++; localMutationRevision++;
+  dialog.querySelectorAll('button,input,select').forEach(el=>el.disabled=true);
+  try {
+    const {data,error}=await db.rpc('apply_shift_variation',{
+      operation:mode,expected_source:shiftDatabaseRow(variationSourceSnapshot),
+      expected_target:variationTargetSnapshot ? shiftDatabaseRow(variationTargetSnapshot) : null,
+      link_id:linkId || null,destination:destination || null
+    });
+    if(error)throw error;
+    if(!data?.source)throw new Error('Risposta incompleta: ricarica e verifica prima di riprovare.');
+    const changed=[shiftFromDatabase(data.source),...(data.target ? [shiftFromDatabase(data.target)] : [])];
+    const ids=new Set(changed.map(s=>s.id));
+    shifts=shifts.filter(s=>!ids.has(s.id) && s.id!==data.deleted_id).concat(changed);
+    if(linkId)variations=variations.filter(v=>v.id!==linkId);
+    if(data.link)variations.push(data.link);
+    // Generic undo cannot replay half of a transaction involving two tables.
+    shiftUndoStack=[];shiftRedoStack=[];
+    saveLocal();clearCutState();
+    selectedShiftIds=new Set([data.target ? String(data.target.id) : String(data.source.id)]);
+    selectionAnchorId=[...selectedShiftIds][0];
+    renderPlanning();renderDashboard();renderSummaries();
+    if(document.getElementById('schemaView')?.classList.contains('active'))renderShiftSchema();
+    if(document.getElementById('variablesView')?.classList.contains('active'))renderVariables();
+    dialog.close();showToast(mode==='cancel' ? 'Variazione annullata: turno originale ripristinato' : 'Variazione salvata');
+  } catch(error) {errorBox.textContent=`Operazione non confermata: ${error.message || 'connessione interrotta'}. Ricarica e verifica prima di riprovare.`;}
+  finally {
+    pendingShiftWrites--;variationSaving=false;
+    dialog.querySelectorAll('button,input,select').forEach(el=>el.disabled=false);
+    updateVariationRooms();scheduleRealtimeDataRefresh();
+  }
+}
+document.getElementById('variationForm').addEventListener('submit',event=>{
+  event.preventDefault();
+  const start=normalizeTime(document.getElementById('variationStart').value);
+  let end=normalizeTime(document.getElementById('variationEnd').value);
+  if(end==='00:00' && start!=='00:00')end='24:00';
+  const destination={date:document.getElementById('variationDate').value,room:document.getElementById('variationRoom').value,start,end};
+  if(!start || !end || timeToMinutes(end)<=timeToMinutes(start)) {document.getElementById('variationError').textContent='Inserisci un orario valido.';return;}
+  submitStructuredVariation(destination,document.getElementById('variationError'),variationDialog);
+});
+document.getElementById('cancelVariationForm').addEventListener('submit',event=>{
+  event.preventDefault();submitStructuredVariation(null,document.getElementById('cancelVariationError'),cancelVariationDialog);
 });
 
 // v41 — palette, blocchi sala separati, modifica multipla esplicita.

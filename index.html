@@ -3,23 +3,23 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
-  <title>Planning DVS 51</title>
+  <title>Planning DVS 51.1</title>
   <meta name="theme-color" content="#09090b">
-  <link rel="icon" href="./favicon.ico?v=51" sizes="any">
-  <link rel="icon" type="image/png" sizes="32x32" href="./assets/icons/dvs-planning-32.png?v=51">
-  <link rel="icon" type="image/png" sizes="16x16" href="./assets/icons/dvs-planning-16.png?v=51">
-  <link rel="icon" type="image/png" sizes="64x64" href="./assets/icons/dvs-planning-64.png?v=51">
-  <link rel="apple-touch-icon" sizes="180x180" href="./assets/icons/dvs-planning-180.png?v=51">
-  <link rel="manifest" href="./manifest.webmanifest?v=51">
-  <link rel="stylesheet" href="./src/styles.css?v=51">
-<link rel="stylesheet" href="./src/app-ui.css?v=51">
-<link rel="stylesheet" href="./src/iphone-ui.css?v=51">
-  <link rel="stylesheet" href="./src/zoom-guard.css?v=51">
-  <script src="./src/zoom-guard.js?v=51" defer></script>
+  <link rel="icon" href="./favicon.ico?v=51.1" sizes="any">
+  <link rel="icon" type="image/png" sizes="32x32" href="./assets/icons/dvs-planning-32.png?v=51.1">
+  <link rel="icon" type="image/png" sizes="16x16" href="./assets/icons/dvs-planning-16.png?v=51.1">
+  <link rel="icon" type="image/png" sizes="64x64" href="./assets/icons/dvs-planning-64.png?v=51.1">
+  <link rel="apple-touch-icon" sizes="180x180" href="./assets/icons/dvs-planning-180.png?v=51.1">
+  <link rel="manifest" href="./manifest.webmanifest?v=51.1">
+  <link rel="stylesheet" href="./src/styles.css?v=51.1">
+<link rel="stylesheet" href="./src/app-ui.css?v=51.1">
+<link rel="stylesheet" href="./src/iphone-ui.css?v=51.1">
+  <link rel="stylesheet" href="./src/zoom-guard.css?v=51.1">
+  <script src="./src/zoom-guard.js?v=51.1" defer></script>
 </head>
 <body>
-<div id="appIntro" class="app-intro" role="status" aria-label="Avvio Planning DVS 51"><div class="intro-brand"><div class="intro-logo"><img src="./assets/logos/digital-video-full.png" alt="" aria-hidden="true"></div><div class="intro-planning">PLANNING</div></div></div>
-<script src="./src/app-intro.js?v=51" defer></script>
+<div id="appIntro" class="app-intro" role="status" aria-label="Avvio Planning DVS 51.1"><div class="intro-brand"><div class="intro-logo"><img src="./assets/logos/digital-video-full.png" alt="" aria-hidden="true"></div><div class="intro-planning">PLANNING</div></div></div>
+<script src="./src/app-intro.js?v=51.1" defer></script>
 
   <section id="profileGate" class="profile-gate" aria-label="Selezione profilo">
     <div class="profile-gate-content">
@@ -82,7 +82,7 @@
           <span class="nav-icon"><svg class="sf-icon" viewBox="0 0 24 24" aria-hidden="true"><path d="M10 5H5.5A2.5 2.5 0 0 0 3 7.5v9A2.5 2.5 0 0 0 5.5 19H10M14 8l4 4-4 4M8 12h10"/></svg></span><span>Esci</span>
         </button>
         <span id="activeProfileLabel" class="active-profile-label"></span>
-        <span class="build-pill">Planning DVS 51</span>
+        <span class="build-pill">Planning DVS 51.1</span>
       </div>
     </aside>
 
@@ -298,10 +298,10 @@
           <div class="settings-detail-toolbar"><button id="backFromGenericSettings" class="toolbar-btn" type="button">‹ Impostazioni</button></div>
           <div id="genericSettingsContent" class="management-card settings-generic-card">
             <img class="settings-info-logo" src="./assets/logos/digital-video-full.png" alt="Digital Video">
-            <h2>Planning DVS 51</h2>
+            <h2>Planning DVS 51.1</h2>
             <p>Applicazione collaborativa per la gestione del Planning di Digital Video Service.</p>
             <div class="settings-info-meta">
-              <div><span>Versione</span><strong>51</strong></div>
+              <div><span>Versione</span><strong>51.1</strong></div>
               <div><span>Ideazione e sviluppo</span><strong>Marco D'Agostino per Digital Video Service</strong></div>
               <div><span>Sincronizzazione</span><strong>Supabase Realtime</strong></div>
             </div>
@@ -566,6 +566,8 @@
     <button type="button" data-action="paste">Incolla</button>
     <div class="context-separator"></div>
     <button type="button" data-action="variation">Variazione</button>
+    <button type="button" data-action="edit-variation">Modifica variazione</button>
+    <button type="button" data-action="cancel-variation">Annulla variazione</button>
     <button type="button" data-action="make-definitive">Rendi definitivo</button>
     <button type="button" data-action="make-provisional">Rendi provvisorio</button>
     <div class="context-separator"></div>
@@ -607,6 +609,16 @@
       <div class="dialog-actions"><span class="dialog-spacer"></span><button id="cancelVariation" type="button" class="secondary-btn">Annulla</button><button type="submit" class="primary-btn">VARIA</button></div>
     </form>
   </dialog>
+  <dialog id="cancelVariationDialog" class="app-dialog">
+    <form id="cancelVariationForm">
+      <div class="dialog-header"><h2>Annullare la variazione?</h2><button type="button" id="closeCancelVariation" class="dialog-close" aria-label="Chiudi">×</button></div>
+      <p id="cancelVariationDescription"></p>
+      <p id="cancelVariationDeletion" style="font-weight:700;color:#d32340"></p>
+      <p>Le altre note vengono conservate. Il montatore originale viene ripristinato, se ancora presente in rubrica.</p>
+      <div id="cancelVariationError" class="form-error" role="alert"></div>
+      <div class="dialog-actions"><button type="button" class="secondary-btn" id="backCancelVariation">Indietro</button><button type="submit" class="primary-btn">Annulla variazione</button></div>
+    </form>
+  </dialog>
   <dialog id="profileDialog" class="app-dialog profile-dialog">
     <form id="profileForm">
       <div class="dialog-header"><div><span class="dialog-eyebrow">PROFILO</span><h2 id="profileDialogTitle">Nuovo profilo</h2></div><button id="closeProfileDialog" class="dialog-close" type="button" aria-label="Chiudi">×</button></div>
@@ -625,10 +637,10 @@
   <div id="toast" class="toast" aria-live="polite"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="./src/config.js?v=51"></script>
-  <script src="./src/safari-scale.js?v=51"></script>
-  <script src="./src/app.js?v=51"></script>
-<script src="./src/dashboard-layout.js?v=51"></script>
-<script src="./src/sidebar-slim.js?v=51"></script>
+  <script src="./src/config.js?v=51.1"></script>
+  <script src="./src/safari-scale.js?v=51.1"></script>
+  <script src="./src/app.js?v=51.1"></script>
+<script src="./src/dashboard-layout.js?v=51.1"></script>
+<script src="./src/sidebar-slim.js?v=51.1"></script>
 </body>
 </html>
