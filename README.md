@@ -31,3 +31,4 @@ Il JSON conserva i dati applicativi e i collegamenti delle variazioni. Orario au
 
 ## Verifica
 Controlli locali sull’export e sulla conservazione. Installazione e avvio del servizio macOS da verificare sul Mac autorizzato con il primo backup manuale. Nessuna scrittura sul database reale effettuata durante lo sviluppo.
+Versione corrente: Planning DVS 51.5
