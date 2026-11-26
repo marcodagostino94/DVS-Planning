@@ -1779,12 +1779,12 @@ button.dashboard-kpi { cursor:pointer; }
   font-weight:650;
   line-height:1.18;
   letter-spacing:.005em;
-  white-space:normal;
+  white-space:pre-wrap;
   overflow-wrap:anywhere;
-  display:-webkit-box;
-  -webkit-box-orient:vertical;
-  -webkit-line-clamp:2;
-  overflow:hidden;
+  display:block;
+  max-height:none;
+  -webkit-line-clamp:unset;
+  overflow:visible;
 }
 
 
@@ -2727,3 +2727,6 @@ html.is-ipad-desktop #planningView {
   text-size-adjust: none;
 }
 html.is-ipad-desktop .iphone-shift-menu { display:none !important; }
+
+/* 51.4 — keep line breaks in complete iPhone notes as on desktop. */
+html.is-iphone-device .shift-note { white-space:pre-wrap!important; }

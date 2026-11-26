@@ -1,4 +1,10 @@
-# Planning DVS 51.3
+# Planning DVS 51.4
+
+Note complete sulle card: rimosso il limite di due righe. Il testo va a capo e mantiene le interruzioni di riga; l’altezza si adatta con il sistema di allineamento già presente.
+
+## Aggiornamento dalla 51.3
+Sostituire i file dell’app e ricaricare. Nessun nuovo SQL e nessuna reinstallazione del Backup Agent. Il limite di inserimento di 100 caratteri resta invariato: questa correzione riguarda la visualizzazione del testo già salvato.
+
 
 Variazioni UFFICIALI e NON UFFICIALI, selezionabili nella finestra Variazione e Modifica variazione. UFFICIALE è la scelta iniziale.
 
