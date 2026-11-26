@@ -1,36 +1,33 @@
-# Planning DVS 51.4
+# Planning DVS 51.5 — Backup Agent 2.4.0
 
-Note complete sulle card: rimosso il limite di due righe. Il testo va a capo e mantiene le interruzioni di riga; l’altezza si adatta con il sistema di allineamento già presente.
+## Installazione dell’aggiornamento
+1. Pubblicare il contenuto di questa cartella con index.html alla radice.
+2. Nell’app aggiornata aprire Backup e scaricare il nuovo Backup Agent 2.4.0.
+3. Sul Mac autorizzato, attendere che un eventuale backup in corso termini ed eseguire l’installazione sopra la versione precedente. Cartella scelta, configurazione e stato vengono mantenuti.
+4. Eseguire un backup manuale dall’utility del Backup Agent e controllare i nuovi Excel. Non serve spostare o cancellare le copie precedenti.
 
-## Aggiornamento dalla 51.3
-Sostituire i file dell’app e ricaricare. Nessun nuovo SQL e nessuna reinstallazione del Backup Agent. Il limite di inserimento di 100 caratteri resta invariato: questa correzione riguarda la visualizzazione del testo già salvato.
+Nessun nuovo SQL. Se è già installata e configurata la 51.4, non ripetere le migrazioni. Gli script database 001–003 sono conservati per installazioni precedenti: valgono le istruzioni delle rispettive versioni.
 
+## Nuovo Excel
+Il file viene costruito dal programma: il vecchio template vuoto non viene più letto.
+Ogni Excel contiene 12 fogli, Gennaio–Dicembre. Le settimane lunedì–domenica appartengono al mese del giovedì, come nell’app. Possono quindi essere visibili giorni dell’anno precedente o successivo. Novembre 2026 comprende 2–29 novembre; 30 novembre apre Dicembre. Il programma legge tutti i turni necessari anche ai bordi dell’anno.
 
-Variazioni UFFICIALI e NON UFFICIALI, selezionabili nella finestra Variazione e Modifica variazione. UFFICIALE è la scelta iniziale.
+Un turno occupa due celle verticali: dettagli e montatore. Per spostarlo selezionare entrambe e usare Taglia/Incolla in una coppia di celle vuote. I contenuti sono modificabili e non protetti. Le modifiche Excel non aggiornano l’app e saranno assenti dai nuovi backup, che leggono di nuovo il database. Note e collegamenti dentro Excel sono informativi, senza automazioni di variazione.
 
-## Aggiornamento dalla 51.2
-1. Chiudere le vecchie app su tutte le postazioni.
-2. In Supabase SQL Editor eseguire solo `database/003_variazioni_ufficiali.sql`.
-3. Pubblicare il contenuto di questa cartella, con index.html alla radice. Riaprire e verificare 51.3 nelle Informazioni su tutte le postazioni.
+Contenuti: produzione in grassetto; programma in stampatello e grassetto; orario compatto (minuti quando necessari); lavorazione in grassetto, EDIT nero e GRAFICA/COLOR/SOUND rossi; VARIABILE e DOPPIA POSTAZIONE rossi; note complete. Montatore sotto in N. COGNOME, stampatello e grassetto. Se assente, cella vuota; CLIENTE quando previsto.
 
-Se non è ancora stato eseguito lo script 002 della 51.2, eseguirlo prima del 003. Solo per installazioni precedenti alla 51.1: eseguire nell’ordine 001, 002, 003. Non rieseguire 001 o 002 dopo 003: 001 contiene la precedente funzione Variazione.
+I colori derivano dal color_key di ogni turno, con le stesse corrispondenze dell’app. Le sfumature web sono rese come riempimenti Excel uniformi; Grafica/Color/Sound sono più saturi. I provvisori sono senza riempimento. I turni originali con X sono riconoscibili dallo sfondo rosso e dalla dicitura X SPOSTATO, anche se provvisori. Le destinazioni attive conservano il proprio colore.
 
-## Regole
-- UFFICIALE: il Planning mostra la X all’origine e il turno alla destinazione. Lo Schema turni conta la destinazione. Note automatiche SPOSTATO AL / DAL … - VEDI MAIL.
-- NON UFFICIALE: il Planning funziona nello stesso modo, ma lo Schema turni conta il turno all’ultima data e fascia oraria ufficiali, una sola volta. Note automatiche SPOSTATO AL / DAL … - NON UFFICIALE.
-- Esempio: 10→15 ufficiale, 15→18 non ufficiale: operatività il 18, Schema turni il 15. Vale anche fra mesi o anni diversi. Una nuova variazione ufficiale sposta il conteggio alla nuova destinazione.
-- Modifica variazione permette di cambiare la scelta sull’ultimo spostamento della catena, anche lasciando invariati data, sala e orari. Le diciture automatiche di entrambi i turni vengono aggiornate, conservando le altre note entro il limite esistente di 100 caratteri.
-- Annulla variazione conserva il comportamento e la conferma di eliminazione della destinazione. Nelle catene si gestisce prima l’ultimo spostamento.
-- Il trascinamento fra sale conserva scelta e collegamenti. La disponibilità segue sempre i turni operativi, non quelli con X.
-- La classificazione è un campo del database: scrivere o cancellare la nota non cambia lo stato ufficiale, la X o il collegamento.
-- Le vecchie note manuali con orari UFFICIAL./UFFICI continuano a essere interpretate nello Schema turni. Le diciture automatiche NON UFFICIALE sono escluse da questa lettura.
-- Lo Schema turni resta riservato alla produzione RAI, esclusi i clienti. Gli altri riepiloghi continuano a seguire i turni operativi.
+Nomi sale grandi e uniti verticalmente. Riga separatrice con il nome della sala che segue ripetuto lungo il mese. Linea verticale spessa tra domenica e lunedì. Intestazioni e colonna sale bloccate. Ogni sala ha tante coppie di righe quanti sono i turni nel suo giorno più pieno del mese, senza accorpare o eliminare turni.
 
-## Turni esistenti
-La migrazione imposta tutte le variazioni già collegate come UFFICIALI, senza spostare turni o riscrivere note esistenti. I vecchi casi senza collegamento restano invariati: i due non ufficiali possono essere eliminati e ricreati manualmente con la nuova modalità. Rieseguire 003 non reimposta le nuove variazioni non ufficiali.
+Sale 1–10, Sale 1A–5A, Remoto 1–3: corrispondenza diretta con i codici dell’app. Nessun abbinamento per somiglianza dei nomi o ordine delle righe. La fonte è la tabella shifts, insieme alla rubrica staff; la vecchia vista planning_export non decide più cosa appare nell’Excel. Una sala sconosciuta provoca un errore esplicito, senza pubblicare un backup incompleto.
 
-## Backup
-Backup Agent 2.3.0 invariato: se già installato non occorre reinstallarlo. Il JSON salva già tutte le colonne di shift_variations, quindi include is_official. Gli Excel restano copie del Planning operativo, non dello Schema turni ufficiale.
+I blocchi sala sono esclusi dagli Excel, ma restano nel JSON. Lo Schema turni ufficiale non è rappresentato: l’Excel è il Planning operativo, comprese le origini con X e le destinazioni delle variazioni ufficiali e non ufficiali.
 
-## Verifiche
-Test locali PostgreSQL con permessi anon e calcolo JavaScript: migrazione degli esistenti, ripetibilità, note su entrambi i turni, cambio modalità, catene miste, mesi/anni diversi, annullamento, spostamento sala e protezione da modifiche concorrenti. Controllati sintassi e integrità ZIP. Non sono state effettuate scritture sul database reale né una prova sui dispositivi fisici.
+## Regole di conservazione invariate
+Ogni copia contiene Planning_ANNO.xlsx, Planning_ANNO_SUCCESSIVO.xlsx e il JSON dei dati, con controllo integrità. Sono mantenute le ultime sette copie complete nella cartella dell’anno in corso, indipendentemente dal giorno della settimana. Al cambio anno viene aperta la nuova cartella annuale; quella precedente non viene svuotata. Un errore nella generazione del secondo Excel non pubblica una copia parziale e non elimina copie precedenti.
+
+Il JSON conserva i dati applicativi e i collegamenti delle variazioni. Orario automatico, autorizzazione del Mac, semaforo 24 ore e notifiche di stato restano quelli esistenti.
+
+## Verifica
+Controlli locali sull’export e sulla conservazione. Installazione e avvio del servizio macOS da verificare sul Mac autorizzato con il primo backup manuale. Nessuna scrittura sul database reale effettuata durante lo sviluppo.

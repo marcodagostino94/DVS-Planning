@@ -1,0 +1,9 @@
+Planning DVS 51.5
+- Incluso Backup Agent 2.4.0 con nuovo Excel generato senza template.
+- Corrette corrispondenze sala/remoto tramite codici identificativi diretti.
+- Un turno in due celle; dodici mesi; settimane identiche al Planning.
+- Programmi in stampatello, grassetti e note complete, montatore separato.
+- Colori dei turni, X con sfondo rosso, provvisori senza riempimento.
+- Blocchi sala esclusi soltanto dagli Excel.
+- Regole dei due anni e delle sette copie complete invariate.
+- Nessuna nuova migrazione SQL o modifica al Planning dell’app.
